@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""Switch LLM provider to Cerebras as Groq GPT-20B is blocked."""
+
+import json
+import subprocess
+import time
+
+def switch_to_cerebras():
+    # Read current config
+    with open("bot_config.json", "r") as f:
+        config = json.load(f)
+
+    # Backup current config
+    with open("bot_config.json.backup_groq_blocked", "w") as f:
+        json.dump(config, f, indent=2)
+
+    # Update to Cerebras
+    config["ava_sales_bot"]["llm"]["provider"] = "cerebras"
+    config["ava_sales_bot"]["llm"]["model"] = "llama3.3-70b"
+    config["ava_sales_bot"]["llm"]["temperature"] = 0.1  # Keep low temp for script adherence
+    config["ava_sales_bot"]["llm"]["max_completion_tokens"] = 80  # Slightly higher for Cerebras
+
+    # Write new config
+    with open("bot_config.json", "w") as f:
+        json.dump(config, f, indent=2)
+
+    print("✅ Switched to Cerebras Llama 3.3 70B")
+    print("   Temperature: 0.1 (strict script adherence)")
+    print("   Max tokens: 80")
+
+    # Restart bot pool
+    print("\n🔄 Restarting bot pool...")
+    subprocess.run(["pkill", "-f", "ava_sales_bot_audiosocket.py"], capture_output=True)
+    time.sleep(2)
+
+    print("✅ Bots will restart automatically via bot pool manager")
+    print("\n📊 New Configuration Active:")
+    print("   Provider: Cerebras")
+    print("   Model: llama3.3-70b")
+    print("   Cost: ~$0.007/hour per bot (same as before)")
+
+if __name__ == "__main__":
+    switch_to_cerebras()

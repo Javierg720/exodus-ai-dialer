@@ -1,0 +1,691 @@
+[DEBUG] Watching for changes in setting files /home/user/.claude/settings.json, /home/user/.claude/settings.json, /home/user/.claude/settings.local.json...
+[DEBUG] Applying permission update: Adding 26 allow rule(s) to destination 'localSettings': ["WebSearch","WebFetch(domain:docs.pipecat.ai)","WebFetch(domain:github.com)","WebFetch(domain:console.groq.com)","Bash(pkill:*)","WebFetch(domain:www.daily.co)","Bash(source:*)","Bash(edge-tts:*)","Bash(paplay:*)","Bash(aplay:*)","Bash(mpg123:*)","Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/pip list)","Bash(python3:*)","Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/python3 -c \"from pipecat.transports.network.fastapi_websocket import FastAPIWebsocketTransport, FastAPIWebsocketParams; from pipecat.serializers.twilio import TwilioFrameSerializer; print(''Pipecat Twilio WebSocket support available'')\")","Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/python3 -c \"import pipecat.serializers.twilio; import inspect; print(inspect.getsourcefile(pipecat.serializers.twilio))\")","WebFetch(domain:livekit.io)","WebFetch(domain:docs.livekit.io)","WebFetch(domain:docs.bolna.ai)","WebFetch(domain:www.bolna.ai)","WebFetch(domain:community.asterisk.org)","WebFetch(domain:www.agentvoiceresponse.com)","WebFetch(domain:demo.agentvoiceresponse.com)","Bash(docker exec:*)","Read(//etc/**)","Bash(sqlite3:*)","WebFetch(domain:viciwiki.com)"]
+[DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+[DEBUG] Creating shell snapshot for zsh (/usr/bin/zsh)
+[DEBUG] Looking for shell config file: /home/user/.zshrc
+[DEBUG] Snapshots directory: /home/user/.claude/shell-snapshots
+[DEBUG] Creating snapshot at: /home/user/.claude/shell-snapshots/snapshot-zsh-1760365397300-v2z5fc.sh
+[DEBUG] Shell binary exists: true
+[DEBUG] Execution timeout: 10000ms
+[DEBUG] Writing to temp file: /home/user/.claude/todos/90ffcea8-d24b-490f-9fd6-6b1fb795f772-agent-90ffcea8-d24b-490f-9fd6-6b1fb795f772.json.tmp.685984.1760365397311
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Renaming /home/user/.claude/todos/90ffcea8-d24b-490f-9fd6-6b1fb795f772-agent-90ffcea8-d24b-490f-9fd6-6b1fb795f772.json.tmp.685984.1760365397311 to /home/user/.claude/todos/90ffcea8-d24b-490f-9fd6-6b1fb795f772-agent-90ffcea8-d24b-490f-9fd6-6b1fb795f772.json
+[DEBUG] File /home/user/.claude/todos/90ffcea8-d24b-490f-9fd6-6b1fb795f772-agent-90ffcea8-d24b-490f-9fd6-6b1fb795f772.json written atomically
+[DEBUG] Registered 0 hooks from 0 plugins
+[DEBUG] Loading skills from directories: managed=/etc/claude-code/.claude/skills, user=/home/user/.claude/skills, project=/home/user/.claude/skills
+[DEBUG] Loaded 0 skills total (managed: 0, user: 0, project: 0)
+[DEBUG] Total plugin commands loaded: 0
+[DEBUG] Total plugin skills loaded: 0
+[DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/usr/local/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+[DEBUG] Shell snapshot created successfully (9233 bytes)
+[DEBUG] Summarizing all 3 messages (~30554 tokens)
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.685984.1760365397637
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 148231 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.685984.1760365397637 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.685984.1760365397744
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 148231 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.685984.1760365397744 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] rg error (signal=undefined, code=ERR_CHILD_PROCESS_STDIO_MAXBUFFER, stderr: ), 187422 results
+[ERROR] RangeError: RangeError [ERR_CHILD_PROCESS_STDIO_MAXBUFFER]: stdout maxBuffer length exceeded
+    at Socket.onChildStdout (node:child_process:490:14)
+    at Socket.emit (node:events:524:28)
+    at Socket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:191:23)
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.685984.1760365398161
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 148231 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.685984.1760365398161 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Executing hooks for SessionStart:startup
+[DEBUG] Getting matching hook commands for SessionStart with query: startup
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.685984.1760365398289
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 148126 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.685984.1760365398289 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.685984.1760365398308
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 148126 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.685984.1760365398308 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] performStartupChecks called, ENABLE_PLUGINS=undefined
+[DEBUG] Skipping plugin installations - ENABLE_PLUGINS not set
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.685984.1760365398337
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 148231 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.685984.1760365398337 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[DEBUG] Summarizing last 4 of 63 messages (~142328 tokens)
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314
+[DEBUG] Summarizing last 4 of 66 messages (~112835 tokens)
+[DEBUG] Summarizing last 3 of 76 messages (~117920 tokens)
+[DEBUG] Summarizing last 7 of 53 messages (~141290 tokens)
+[DEBUG] Summarizing last 1 of 313 messages (~0 tokens)
+[DEBUG] Summarizing last 1 of 395 messages (~0 tokens)
+[DEBUG] Summarizing last 5 of 19 messages (~131682 tokens)
+[DEBUG] Summarizing last 5 of 48 messages (~147258 tokens)
+[DEBUG] Summarizing last 1 of 307 messages (~0 tokens)
+[DEBUG] Summarizing last 1 of 317 messages (~0 tokens)
+[DEBUG] Summarizing last 0 of 225 messages (~0 tokens)
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Executing hooks for UserPromptSubmit
+[DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] FileHistory: Added snapshot for 41392aa0-6cbf-400a-9eff-fbc1bfa93221, tracking 0 files
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.685984.1760365458337
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 148291 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.685984.1760365458337 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: which obs
+[DEBUG] Bash tool description: Check if OBS Studio is installed
+[DEBUG] Bash tool invoked with command: ls -la ~/.config/obs-studio/basic/profiles/ 2>/dev/null || echo "Profile directory not found"
+[DEBUG] Bash tool description: Check OBS profile directory
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: ls ~/.config/obs-studio/basic/profiles/Untitled/
+[DEBUG] Bash tool description: Check profile structure
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Executing hooks for PreToolUse:Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Executing hooks for PostToolUse:Read
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Executing hooks for PreToolUse:Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Executing hooks for PostToolUse:Read
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: mkdir -p ~/.config/obs-studio/basic/profiles/640x480
+[DEBUG] Bash tool description: Create 640x480 profile directory
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Write
+[DEBUG] Executing hooks for PreToolUse:Write
+[DEBUG] Getting matching hook commands for PreToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] FileHistory: Tracked file modification for /home/user/.config/obs-studio/basic/profiles/640x480/basic.ini
+[DEBUG] rg error (signal=undefined, code=ABORT_ERR, stderr: ), 12817 results
+[ERROR] AbortError: AbortError: The operation was aborted
+    at abortChildProcess (node:child_process:725:27)
+    at EventTarget.onAbortListener (node:child_process:795:7)
+    at [nodejs.internal.kHybridDispatch] (node:internal/event_target:831:20)
+    at EventTarget.dispatchEvent (node:internal/event_target:766:26)
+    at abortSignal (node:internal/abort_controller:370:10)
+    at AbortController.abort (node:internal/abort_controller:392:5)
+    at Timeout._onTimeout (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3435:75)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7)
+[DEBUG] Writing to temp file: /home/user/.config/obs-studio/basic/profiles/640x480/basic.ini.tmp.685984.1760365493529
+[DEBUG] Temp file written successfully, size: 250 bytes
+[DEBUG] Renaming /home/user/.config/obs-studio/basic/profiles/640x480/basic.ini.tmp.685984.1760365493529 to /home/user/.config/obs-studio/basic/profiles/640x480/basic.ini
+[DEBUG] File /home/user/.config/obs-studio/basic/profiles/640x480/basic.ini written atomically
+[DEBUG] Executing hooks for PostToolUse:Write
+[DEBUG] Getting matching hook commands for PostToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: ls -la ~/.config/obs-studio/basic/profiles/640x480/
+[DEBUG] Bash tool description: Verify profile creation
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.685984.1760365505087
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 148292 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.685984.1760365505087 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Executing hooks for Stop
+[DEBUG] Getting matching hook commands for Stop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.685984.1760365505120
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 148293 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.685984.1760365505120 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Executing hooks for UserPromptSubmit
+[DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] FileHistory: Making snapshot for message 09a17b7d-5695-4eb8-b571-f4218afa2c95
+[DEBUG] FileHistory: Added snapshot for 09a17b7d-5695-4eb8-b571-f4218afa2c95, tracking 1 files
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.685984.1760365609882
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 148324 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.685984.1760365609882 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[ERROR] Error: Error: Language not supported while highlighting code, falling back to markdown: 
+    at CK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:1218)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:946
+    at Array.map (<anonymous>)
+    at hX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:937)
+    at WOB (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:12993)
+    at EC (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:32:19415)
+    at Cp (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:42814)
+    at G9 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38355)
+    at Lh (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38283)
+    at _C (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38137)
+[ERROR] Error: Error: Language not supported while highlighting code, falling back to markdown: 
+    at CK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:1218)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:946
+    at Array.map (<anonymous>)
+    at hX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:937)
+    at WOB (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:12993)
+    at EC (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:32:19415)
+    at Cp (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:42814)
+    at G9 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38355)
+    at Lh (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38283)
+    at _C (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38137)
+[ERROR] Error: Error: Language not supported while highlighting code, falling back to markdown: 
+    at CK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:1218)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:946
+    at Array.map (<anonymous>)
+    at hX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:937)
+    at WOB (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:12993)
+    at EC (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:32:19415)
+    at Cp (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:42814)
+    at G9 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38355)
+    at Lh (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38283)
+    at _C (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38137)
+[ERROR] Error: Error: Language not supported while highlighting code, falling back to markdown: 
+    at CK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:1218)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:946
+    at Array.map (<anonymous>)
+    at hX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:937)
+    at WOB (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:12993)
+    at EC (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:32:19415)
+    at Cp (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:42814)
+    at G9 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38355)
+    at Lh (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38283)
+    at _C (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38137)
+[ERROR] Error: Error: Language not supported while highlighting code, falling back to markdown: 
+    at CK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:1218)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:946
+    at Array.map (<anonymous>)
+    at hX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:937)
+    at WOB (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:12993)
+    at EC (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:32:19415)
+    at Cp (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:42814)
+    at G9 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38355)
+    at Lh (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38283)
+    at _C (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38137)
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.685984.1760365622291
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 148325 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.685984.1760365622291 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Executing hooks for Stop
+[DEBUG] Getting matching hook commands for Stop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.685984.1760365622319
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 148326 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.685984.1760365622319 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Executing hooks for UserPromptSubmit
+[DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] FileHistory: Making snapshot for message 0415efa7-446f-4f13-a59d-94a85b7041a2
+[DEBUG] FileHistory: Added snapshot for 0415efa7-446f-4f13-a59d-94a85b7041a2, tracking 1 files
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.685984.1760365768582
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 73430 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.685984.1760365768582 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: mkdir -p ~/.config/obs-studio/basic/profiles/480x320-Landscape
+[DEBUG] Bash tool description: Create 480x320 landscape profile directory
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: mkdir -p ~/.config/obs-studio/basic/profiles/320x480-Portrait
+[DEBUG] Bash tool description: Create 320x480 portrait profile directory
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Write
+[DEBUG] Executing hooks for PreToolUse:Write
+[DEBUG] Getting matching hook commands for PreToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] FileHistory: Tracked file modification for /home/user/.config/obs-studio/basic/profiles/480x320-Landscape/basic.ini
+[DEBUG] Writing to temp file: /home/user/.config/obs-studio/basic/profiles/480x320-Landscape/basic.ini.tmp.685984.1760365784508
+[DEBUG] Temp file written successfully, size: 260 bytes
+[DEBUG] Renaming /home/user/.config/obs-studio/basic/profiles/480x320-Landscape/basic.ini.tmp.685984.1760365784508 to /home/user/.config/obs-studio/basic/profiles/480x320-Landscape/basic.ini
+[DEBUG] File /home/user/.config/obs-studio/basic/profiles/480x320-Landscape/basic.ini written atomically
+[DEBUG] Executing hooks for PostToolUse:Write
+[DEBUG] Getting matching hook commands for PostToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] executePreToolHooks called for tool: Write
+[DEBUG] Executing hooks for PreToolUse:Write
+[DEBUG] Getting matching hook commands for PreToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] FileHistory: Tracked file modification for /home/user/.config/obs-studio/basic/profiles/320x480-Portrait/basic.ini
+[DEBUG] Writing to temp file: /home/user/.config/obs-studio/basic/profiles/320x480-Portrait/basic.ini.tmp.685984.1760365784634
+[DEBUG] Temp file written successfully, size: 259 bytes
+[DEBUG] Renaming /home/user/.config/obs-studio/basic/profiles/320x480-Portrait/basic.ini.tmp.685984.1760365784634 to /home/user/.config/obs-studio/basic/profiles/320x480-Portrait/basic.ini
+[DEBUG] File /home/user/.config/obs-studio/basic/profiles/320x480-Portrait/basic.ini written atomically
+[DEBUG] Executing hooks for PostToolUse:Write
+[DEBUG] Getting matching hook commands for PostToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: ls -la ~/.config/obs-studio/basic/profiles/ | grep -E "(480x320|320x480)"
+[DEBUG] Bash tool description: Verify both profiles created
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.685984.1760365793916
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 73431 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.685984.1760365793916 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Executing hooks for Stop
+[DEBUG] Getting matching hook commands for Stop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.685984.1760365793962
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 73431 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.685984.1760365793962 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] npm view failed with code 1
+[DEBUG] npm stderr: (empty)
+[DEBUG] npm view failed with code 1
+[DEBUG] npm stderr: (empty)
+[DEBUG] npm view failed with code 1
+[DEBUG] npm stderr: (empty)
+[DEBUG] npm view failed with code 1
+[DEBUG] npm stderr: (empty)
+[DEBUG] npm view failed with code 1
+[DEBUG] npm stderr: (empty)
+[DEBUG] npm view failed with code 1
+[DEBUG] npm stderr: (empty)
+[DEBUG] npm view failed with code 1
+[DEBUG] npm stderr: (empty)
+[DEBUG] npm view failed with code 1
+[DEBUG] npm stderr: (empty)
+[DEBUG] npm view failed with code 1
+[DEBUG] npm stderr: (empty)
+[DEBUG] npm view failed with code 1
+[DEBUG] npm stderr: (empty)
+[DEBUG] npm view failed with code 1
+[DEBUG] npm stderr: (empty)
+[DEBUG] npm view failed with code 1
+[DEBUG] npm stderr: (empty)
+[DEBUG] npm view failed with code 1
+[DEBUG] npm stderr: (empty)
+[DEBUG] npm view failed with code 1
+[DEBUG] npm stderr: (empty)
+[DEBUG] npm view failed with code 1
+[DEBUG] npm stderr: (empty)
+[DEBUG] Detected change to /home/user/.claude/settings.json
+[DEBUG] Replacing all allow rules for destination 'localSettings' with 26 rule(s): ["WebSearch","WebFetch(domain:docs.pipecat.ai)","WebFetch(domain:github.com)","WebFetch(domain:console.groq.com)","Bash(pkill:*)","WebFetch(domain:www.daily.co)","Bash(source:*)","Bash(edge-tts:*)","Bash(paplay:*)","Bash(aplay:*)","Bash(mpg123:*)","Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/pip list)","Bash(python3:*)","Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/python3 -c \"from pipecat.transports.network.fastapi_websocket import FastAPIWebsocketTransport, FastAPIWebsocketParams; from pipecat.serializers.twilio import TwilioFrameSerializer; print(''Pipecat Twilio WebSocket support available'')\")","Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/python3 -c \"import pipecat.serializers.twilio; import inspect; print(inspect.getsourcefile(pipecat.serializers.twilio))\")","WebFetch(domain:livekit.io)","WebFetch(domain:docs.livekit.io)","WebFetch(domain:docs.bolna.ai)","WebFetch(domain:www.bolna.ai)","WebFetch(domain:community.asterisk.org)","WebFetch(domain:www.agentvoiceresponse.com)","WebFetch(domain:demo.agentvoiceresponse.com)","Bash(docker exec:*)","Read(//etc/**)","Bash(sqlite3:*)","WebFetch(domain:viciwiki.com)"]
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async Object.current (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314)

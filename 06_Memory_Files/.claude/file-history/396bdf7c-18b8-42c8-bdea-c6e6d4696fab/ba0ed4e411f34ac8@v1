@@ -1,0 +1,293 @@
+;================================
+; Ava AudioSocket Configuration
+;================================
+
+[ava-context]
+; Bot instance extensions - connect to Ava via AudioSocket
+exten => 9092,1,NoOp(Connecting to Bot 1 via AudioSocket)
+ same => n,Answer()
+ same => n,Set(JITTERBUFFER(adaptive)=25,1000,20)  ; LOW LATENCY: 25ms target
+ same => n,Wait(2)  ; TCPA: 2-second delay before connection
+ same => n,Set(UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,Set(CONTACT_NAME=TestCaller)
+ same => n,NoOp(Dialing AudioSocket - UUID: ${UUID})
+ same => n,AudioSocket(${UUID},172.17.0.1:9092)
+ same => n,Hangup()
+
+exten => 9093,1,NoOp(Connecting to Bot 2 via AudioSocket)
+ same => n,Answer()
+ same => n,Set(TIMEOUT(absolute)=300)  ; Keep call alive 5 minutes minimum
+ same => n,Set(JITTERBUFFER(adaptive)=25,1000,20)  ; LOW LATENCY: 25ms target
+ same => n,Wait(2)  ; TCPA: 2-second delay before connection
+ same => n,Set(UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,Set(CONTACT_NAME=TestCaller)
+ same => n,NoOp(Dialing AudioSocket - UUID: ${UUID})
+ same => n,AudioSocket(${UUID},172.17.0.1:9093)
+ same => n,Hangup()
+
+exten => 9094,1,NoOp(Connecting to Bot 3 via AudioSocket)
+ same => n,Answer()
+ same => n,Set(JITTERBUFFER(adaptive)=25,1000,20)  ; LOW LATENCY: 25ms target
+ same => n,Wait(2)  ; TCPA: 2-second delay before connection
+ same => n,Set(UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,Set(CONTACT_NAME=TestCaller)
+ same => n,NoOp(Dialing AudioSocket - UUID: ${UUID})
+ same => n,AudioSocket(${UUID},172.17.0.1:9094)
+ same => n,Hangup()
+
+; Echo test extension for testing SIP connection
+exten => 600,1,NoOp(Echo Test)
+ same => n,Answer()
+ same => n,Playback(demo-echotest)
+ same => n,Echo()
+ same => n,Playback(demo-echodone)
+ same => n,Hangup()
+
+; Status extension
+exten => 500,1,NoOp(System Status)
+ same => n,Answer()
+ same => n,Playback(hello-world)
+ same => n,SayNumber(${EPOCH})
+ same => n,Hangup()
+
+; Predictive dialer - wait for answer then connect to bot
+exten => wait,1,NoOp(Predictive dialer - waiting for answer)
+ same => n,Answer()
+ same => n,Wait(2)  ; TCPA: 2-second delay before connection
+ same => n,Set(UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,Set(BOT_PORT=${CHANNEL(endpoint)})
+ same => n,NoOp(Call answered - UUID: ${UUID})
+ same => n,Hangup()
+
+; ========================================
+; Call Monitoring (ChanSpy)
+; ========================================
+
+; Monitor all active calls (cycles through channels)
+exten => 700,1,NoOp(Call Monitoring - Spy on all channels)
+ same => n,Answer()
+ same => n,Wait(1)
+ same => n,ChanSpy(PJSIP,qB)  ; q=quiet, B=barge mode disabled, cycles through channels
+ same => n,Hangup()
+
+; Monitor specific bot port (701 = bot 1, 702 = bot 2, 703 = bot 3)
+exten => 701,1,NoOp(Monitor Bot 1 on port 9092)
+ same => n,Answer()
+ same => n,Wait(1)
+ same => n,ChanSpy(PJSIP,q)  ; Quiet mode - listen only
+ same => n,Hangup()
+
+exten => 702,1,NoOp(Monitor Bot 2 on port 9093)
+ same => n,Answer()
+ same => n,Wait(1)
+ same => n,ChanSpy(PJSIP,q)
+ same => n,Hangup()
+
+exten => 703,1,NoOp(Monitor Bot 3 on port 9094)
+ same => n,Answer()
+ same => n,Wait(1)
+ same => n,ChanSpy(PJSIP,q)
+ same => n,Hangup()
+
+; Whisper mode - can talk to bot (not recommended for AI bots)
+exten => 710,1,NoOp(Monitor with whisper mode)
+ same => n,Answer()
+ same => n,Wait(1)
+ same => n,ChanSpy(PJSIP,qw)  ; w=whisper mode
+ same => n,Hangup()
+; Asterisk Dialplan Configuration for Exodus Dialer
+; Add this to /etc/asterisk/extensions.conf
+;
+; Purpose:
+; - Handle outbound calls originated by dialer_orchestrator.py
+; - Bridge answered calls to AudioSocket bot instances
+; - Support predictive dialing with call parking
+
+[audiosocket-dial]
+; ============================================================================
+; Wait Extension - Used while call is ringing/dialing
+; ============================================================================
+exten => wait,1,NoOp(Call dialing, waiting for answer)
+ same => n,Answer()
+ same => n,Wait(30)  ; Wait up to 30 seconds for orchestrator to bridge
+ same => n,Hangup()
+
+; ============================================================================
+; Bot Port Extensions - Bridge to specific bot instance
+; ============================================================================
+; When call is answered, orchestrator redirects to extension matching bot port
+
+; Bot on port 9092
+exten => 9092,1,NoOp(Bridging to bot on port 9092)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,NoOp(UUID: ${AUDIOSOCKET_UUID})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9092)
+ same => n,Hangup()
+
+; Bot on port 9093
+exten => 9093,1,NoOp(Bridging to bot on port 9093)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9093)
+ same => n,Hangup()
+
+; Bot on port 9094
+exten => 9094,1,NoOp(Bridging to bot on port 9094)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9094)
+ same => n,Hangup()
+
+; Bot on port 9095
+exten => 9095,1,NoOp(Bridging to bot on port 9095)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9095)
+ same => n,Hangup()
+
+; Bot on port 9096
+exten => 9096,1,NoOp(Bridging to bot on port 9096)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9096)
+ same => n,Hangup()
+
+; Bot on port 9097
+exten => 9097,1,NoOp(Bridging to bot on port 9097)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9097)
+ same => n,Hangup()
+
+; Bot on port 9098
+exten => 9098,1,NoOp(Bridging to bot on port 9098)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9098)
+ same => n,Hangup()
+
+; Bot on port 9099
+exten => 9099,1,NoOp(Bridging to bot on port 9099)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9099)
+ same => n,Hangup()
+
+; Bot on port 9100
+exten => 9100,1,NoOp(Bridging to bot on port 9100)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9100)
+ same => n,Hangup()
+
+; Bot on port 9101
+exten => 9101,1,NoOp(Bridging to bot on port 9101)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9101)
+ same => n,Hangup()
+
+; Bot on port 9102
+exten => 9102,1,NoOp(Bridging to bot on port 9102)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9102)
+ same => n,Hangup()
+
+; Bot on port 9103
+exten => 9103,1,NoOp(Bridging to bot on port 9103)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9103)
+ same => n,Hangup()
+
+; Bot on port 9104
+exten => 9104,1,NoOp(Bridging to bot on port 9104)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9104)
+ same => n,Hangup()
+
+; Bot on port 9105
+exten => 9105,1,NoOp(Bridging to bot on port 9105)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9105)
+ same => n,Hangup()
+
+; Bot on port 9106
+exten => 9106,1,NoOp(Bridging to bot on port 9106)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9106)
+ same => n,Hangup()
+
+; Bot on port 9107
+exten => 9107,1,NoOp(Bridging to bot on port 9107)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9107)
+ same => n,Hangup()
+
+; Bot on port 9108
+exten => 9108,1,NoOp(Bridging to bot on port 9108)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9108)
+ same => n,Hangup()
+
+; Bot on port 9109
+exten => 9109,1,NoOp(Bridging to bot on port 9109)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9109)
+ same => n,Hangup()
+
+; Bot on port 9110
+exten => 9110,1,NoOp(Bridging to bot on port 9110)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9110)
+ same => n,Hangup()
+
+; Bot on port 9111
+exten => 9111,1,NoOp(Bridging to bot on port 9111)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(uuidgen | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},localhost:9111)
+ same => n,Hangup()
+
+; ============================================================================
+; Installation Instructions:
+; ============================================================================
+; 1. Copy this configuration to /etc/asterisk/extensions.conf
+;    (or include it: #include "asterisk-dialer-config.conf")
+;
+; 2. Reload Asterisk dialplan:
+;    asterisk -rx "dialplan reload"
+;
+; 3. Verify configuration:
+;    asterisk -rx "dialplan show audiosocket-dial"
+; ============================================================================
+#include avr-outbound.conf

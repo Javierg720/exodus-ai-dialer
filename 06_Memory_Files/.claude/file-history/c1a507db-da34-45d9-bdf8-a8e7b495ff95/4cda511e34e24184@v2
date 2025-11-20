@@ -1,0 +1,1087 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import './App.css';
+import { 
+  Phone, Users, BarChart3, History, Settings, Ban, 
+  Play, Pause, RefreshCw, AlertCircle, CheckCircle, 
+  Mic, MicOff, Upload, Download, Search, Plus,
+  Edit, Trash2, X, ChevronLeft, ChevronRight,
+  Sun, Moon, Volume2, VolumeX, Wifi, WifiOff,
+  PhoneCall, PhoneOff, User, Building, Mail, Calendar
+} from 'lucide-react';
+import axios from 'axios';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
+import { Line, Bar, Doughnut } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend);
+
+const API_BASE_URL = 'http://localhost:8000';
+const WS_URL = 'ws://localhost:8000/ws';
+
+function App() {
+  const [activeTab, setActiveTab] = useState('bots');
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+  const [refreshInterval, setRefreshInterval] = useState(5000);
+  const [notifications, setNotifications] = useState({ sound: true, desktop: true });
+  const [isConnected, setIsConnected] = useState(false);
+  
+  const [bots, setBots] = useState([]);
+  const [campaigns, setCampaigns] = useState([]);
+  const [leads, setLeads] = useState([]);
+  const [calls, setCalls] = useState([]);
+  const [activeCalls, setActiveCalls] = useState([]);
+  const [dncList, setDncList] = useState([]);
+  const [stats, setStats] = useState({
+    activeCalls: 0,
+    idleBots: 0,
+    connectionRate: 0,
+    dropRate: 0,
+    dialRatio: 1.0
+  });
+  
+  // Bot pool management
+  const [desiredBotCount, setDesiredBotCount] = useState(6);
+  const [actualRunningBots, setActualRunningBots] = useState(0);
+  const [isAdjustingPool, setIsAdjustingPool] = useState(false);
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [modalType, setModalType] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const wsRef = useRef(null);
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    // Delay initial fetch to ensure API is ready
+    setTimeout(() => {
+      connectWebSocket();
+      fetchInitialData();
+    }, 1000);
+    
+    const interval = setInterval(fetchInitialData, refreshInterval);
+    
+    return () => {
+      clearInterval(interval);
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [refreshInterval]);
+
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (e.ctrlKey && e.key >= '1' && e.key <= '7') {
+        const tabs = ['bots', 'campaigns', 'leads', 'calls', 'analytics', 'dnc', 'settings'];
+        const index = parseInt(e.key) - 1;
+        if (tabs[index]) {
+          setActiveTab(tabs[index]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
+  const connectWebSocket = () => {
+    try {
+      wsRef.current = new WebSocket(WS_URL);
+      
+      wsRef.current.onopen = () => {
+        setIsConnected(true);
+        showNotification('Connected to server', 'success');
+      };
+
+      wsRef.current.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        handleWebSocketMessage(data);
+      };
+
+      wsRef.current.onerror = () => {
+        setIsConnected(false);
+        showNotification('Connection error', 'error');
+      };
+
+      wsRef.current.onclose = () => {
+        setIsConnected(false);
+        setTimeout(connectWebSocket, 5000);
+      };
+    } catch (err) {
+      console.error('WebSocket connection failed:', err);
+      setIsConnected(false);
+    }
+  };
+
+  const handleWebSocketMessage = (data) => {
+    switch (data.type) {
+      case 'bot_status':
+        setBots(data.bots);
+        break;
+      case 'active_calls':
+        setActiveCalls(data.calls);
+        break;
+      case 'stats_update':
+        setStats(data.stats);
+        break;
+      case 'new_call':
+        if (notifications.sound) {
+          playSound('new_call');
+        }
+        break;
+      default:
+        break;
+    }
+  };
+
+  const fetchInitialData = async () => {
+    try {
+      setLoading(true);
+      const [botsRes, campaignsRes, statsRes, activeCallsRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/bots/status`),
+        axios.get(`${API_BASE_URL}/campaigns`),
+        axios.get(`${API_BASE_URL}/stats`),
+        axios.get(`${API_BASE_URL}/calls/active`)
+      ]);
+
+      setBots(botsRes.data);
+      setCampaigns(campaignsRes.data);
+      setStats(statsRes.data);
+      setActiveCalls(activeCallsRes.data);
+      setError(null);
+    } catch (err) {
+      setError('Failed to fetch data from server');
+      console.error('API Error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchLeads = async (campaignId = null) => {
+    try {
+      const url = campaignId ? `${API_BASE_URL}/campaigns/${campaignId}/leads` : `${API_BASE_URL}/leads`;
+      const res = await axios.get(url);
+      setLeads(res.data);
+    } catch (err) {
+      console.error('Failed to fetch leads:', err);
+    }
+  };
+
+  const fetchCallHistory = async (page = 1) => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/calls/history?page=${page}&limit=50`);
+      setCalls(res.data);
+      setCurrentPage(page);
+    } catch (err) {
+      console.error('Failed to fetch call history:', err);
+    }
+  };
+
+  const fetchDNCList = async () => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/dnc`);
+      setDncList(res.data);
+    } catch (err) {
+      console.error('Failed to fetch DNC list:', err);
+    }
+  };
+
+  const controlBot = async (port, action) => {
+    try {
+      await axios.post(`${API_BASE_URL}/bots/${port}/${action}`);
+      showNotification(`Bot ${port} ${action} successful`, 'success');
+      fetchInitialData();
+    } catch (err) {
+      showNotification(`Failed to ${action} bot ${port}`, 'error');
+    }
+  };
+  
+  const adjustBotPool = async (targetCount) => {
+    setIsAdjustingPool(true);
+    try {
+      const response = await axios.post(`${API_BASE_URL}/bots/adjust-pool`, {
+        target_count: targetCount
+      });
+      setDesiredBotCount(targetCount);
+      showNotification(`Adjusting bot pool to ${targetCount} bots`, 'success');
+      // Refresh after adjustment
+      setTimeout(fetchInitialData, 2000);
+    } catch (err) {
+      showNotification('Failed to adjust bot pool', 'error');
+    } finally {
+      setIsAdjustingPool(false);
+    }
+  };
+
+  const manageCampaign = async (campaignId, action) => {
+    if (!window.confirm(`Are you sure you want to ${action} this campaign?`)) return;
+    
+    try {
+      await axios.post(`${API_BASE_URL}/campaigns/${campaignId}/${action}`);
+      showNotification(`Campaign ${action} successful`, 'success');
+      fetchInitialData();
+    } catch (err) {
+      showNotification(`Failed to ${action} campaign`, 'error');
+    }
+  };
+
+  const updateLeadDisposition = async (leadId, disposition) => {
+    try {
+      await axios.put(`${API_BASE_URL}/leads/${leadId}/disposition`, { disposition });
+      showNotification('Lead disposition updated', 'success');
+      fetchLeads();
+    } catch (err) {
+      showNotification('Failed to update lead', 'error');
+    }
+  };
+
+  const addToDNC = async (phoneNumber, reason) => {
+    try {
+      await axios.post(`${API_BASE_URL}/dnc`, { phone_number: phoneNumber, reason });
+      showNotification('Number added to DNC list', 'success');
+      fetchDNCList();
+    } catch (err) {
+      showNotification('Failed to add to DNC', 'error');
+    }
+  };
+
+  const monitorCall = async (callId) => {
+    try {
+      const res = await axios.post(`${API_BASE_URL}/calls/${callId}/monitor`);
+      showNotification('Call monitoring started', 'success');
+      openModal('monitor', res.data);
+    } catch (err) {
+      showNotification('Failed to monitor call', 'error');
+    }
+  };
+
+  const exportData = async (type) => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/export/${type}`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${type}_export_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showNotification(`${type} data exported`, 'success');
+    } catch (err) {
+      showNotification('Export failed', 'error');
+    }
+  };
+
+  const showNotification = (message, type = 'info') => {
+    if (notifications.desktop && 'Notification' in window && Notification.permission === 'granted') {
+      new Notification('EXODUS Dashboard', { body: message, icon: '/favicon.ico' });
+    }
+    
+    setError(type === 'error' ? message : null);
+    
+    if (type === 'success' && notifications.sound) {
+      playSound('success');
+    }
+  };
+
+  const playSound = (type) => {
+    if (audioRef.current) {
+      audioRef.current.src = `/sounds/${type}.mp3`;
+      audioRef.current.play().catch(e => console.log('Sound play failed:', e));
+    }
+  };
+
+  const openModal = (type, data) => {
+    setModalType(type);
+    setSelectedItem(data);
+  };
+
+  const closeModal = () => {
+    setModalType(null);
+    setSelectedItem(null);
+  };
+
+  const filteredData = (data) => {
+    if (!searchQuery) return data;
+    return data.filter(item => 
+      JSON.stringify(item).toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
+
+  const renderBotPool = () => (
+    <div className="tab-content">
+      <div className="header-controls">
+        <h2>Bot Pool Management</h2>
+        <div className="controls">
+          <button className="btn btn-primary" onClick={() => fetchInitialData()}>
+            <RefreshCw size={16} /> Refresh
+          </button>
+        </div>
+      </div>
+
+      <div className="bot-grid">
+        {bots.map(bot => (
+          <div key={bot.port} className={`bot-card status-${bot.status}`}>
+            <div className="bot-header">
+              <h3>Bot {bot.port}</h3>
+              <span className={`status-badge ${bot.status}`}>{bot.status}</span>
+            </div>
+            
+            <div className="bot-info">
+              <p><User size={14} /> Port: {bot.port}</p>
+              <p><Phone size={14} /> Calls: {bot.total_calls}</p>
+              {bot.status === 'busy' && bot.current_call && (
+                <>
+                  <p><PhoneCall size={14} /> Call: {bot.current_call.uuid}</p>
+                  <p>Duration: {bot.current_call.duration}s</p>
+                </>
+              )}
+              {bot.uptime && <p>Uptime: {bot.uptime}</p>}
+              {bot.crashes > 0 && <p className="error">Crashes: {bot.crashes}</p>}
+            </div>
+
+            <div className="bot-actions">
+              {bot.status === 'stopped' ? (
+                <button className="btn btn-success" onClick={() => controlBot(bot.port, 'start')}>
+                  <Play size={16} /> Start
+                </button>
+              ) : (
+                <button className="btn btn-danger" onClick={() => controlBot(bot.port, 'stop')}>
+                  <Pause size={16} /> Stop
+                </button>
+              )}
+              <button className="btn btn-secondary" onClick={() => controlBot(bot.port, 'restart')}>
+                <RefreshCw size={16} /> Restart
+              </button>
+              {bot.status === 'busy' && (
+                <button className="btn btn-info" onClick={() => monitorCall(bot.current_call?.uuid)}>
+                  <Mic size={16} /> Monitor
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="stats-bar">
+        <div className="stat">
+          <span className="label">Total Bots:</span>
+          <span className="value">{bots.length}</span>
+        </div>
+        <div className="stat">
+          <span className="label">Idle:</span>
+          <span className="value success">{bots.filter(b => b.status === 'idle').length}</span>
+        </div>
+        <div className="stat">
+          <span className="label">Busy:</span>
+          <span className="value warning">{bots.filter(b => b.status === 'busy').length}</span>
+        </div>
+        <div className="stat">
+          <span className="label">Crashed:</span>
+          <span className="value error">{bots.filter(b => b.status === 'crashed').length}</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderCampaigns = () => (
+    <div className="tab-content">
+      <div className="header-controls">
+        <h2>Campaign Management</h2>
+        <div className="controls">
+          <button className="btn btn-primary" onClick={() => openModal('newCampaign')}>
+            <Plus size={16} /> New Campaign
+          </button>
+        </div>
+      </div>
+
+      <div className="table-container">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Method</th>
+              <th>Leads</th>
+              <th>Dial Ratio</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredData(campaigns).map(campaign => (
+              <tr key={campaign.id}>
+                <td>{campaign.name}</td>
+                <td>
+                  <span className={`status-badge ${campaign.is_active ? 'active' : 'paused'}`}>
+                    {campaign.is_active ? 'Active' : 'Paused'}
+                  </span>
+                </td>
+                <td>{campaign.dial_method}</td>
+                <td>{campaign.lead_count}</td>
+                <td>{campaign.dial_ratio}</td>
+                <td>{new Date(campaign.created_at).toLocaleDateString()}</td>
+                <td>
+                  <div className="action-buttons">
+                    {campaign.is_active ? (
+                      <button className="btn-icon" onClick={() => manageCampaign(campaign.id, 'pause')}>
+                        <Pause size={16} />
+                      </button>
+                    ) : (
+                      <button className="btn-icon" onClick={() => manageCampaign(campaign.id, 'start')}>
+                        <Play size={16} />
+                      </button>
+                    )}
+                    <button className="btn-icon" onClick={() => openModal('editCampaign', campaign)}>
+                      <Edit size={16} />
+                    </button>
+                    <button className="btn-icon" onClick={() => {
+                      fetchLeads(campaign.id);
+                      setActiveTab('leads');
+                    }}>
+                      <Users size={16} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const renderLeads = () => (
+    <div className="tab-content">
+      <div className="header-controls">
+        <h2>Lead Management</h2>
+        <div className="controls">
+          <div className="search-box">
+            <Search size={16} />
+            <input
+              type="text"
+              placeholder="Search leads..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <button className="btn btn-primary" onClick={() => openModal('newLead')}>
+            <Plus size={16} /> Add Lead
+          </button>
+          <button className="btn btn-secondary" onClick={() => openModal('importLeads')}>
+            <Upload size={16} /> Import CSV
+          </button>
+        </div>
+      </div>
+
+      <div className="table-container">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Phone</th>
+              <th>Name</th>
+              <th>Company</th>
+              <th>Email</th>
+              <th>Status</th>
+              <th>Campaign</th>
+              <th>Last Called</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredData(leads).map(lead => (
+              <tr key={lead.id}>
+                <td>{lead.phone_number}</td>
+                <td>{lead.first_name} {lead.last_name}</td>
+                <td>{lead.company}</td>
+                <td>{lead.email}</td>
+                <td>
+                  <span className={`status-badge ${lead.status.toLowerCase()}`}>
+                    {lead.status}
+                  </span>
+                </td>
+                <td>{lead.campaign_name}</td>
+                <td>{lead.last_called ? new Date(lead.last_called).toLocaleString() : '-'}</td>
+                <td>
+                  <div className="action-buttons">
+                    <button className="btn-icon" onClick={() => openModal('editLead', lead)}>
+                      <Edit size={16} />
+                    </button>
+                    <button className="btn-icon" onClick={() => openModal('leadNotes', lead)}>
+                      <Mail size={16} />
+                    </button>
+                    <button className="btn-icon danger" onClick={() => addToDNC(lead.phone_number, 'Manual')}>
+                      <Ban size={16} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="pagination">
+        <button 
+          className="btn btn-secondary" 
+          disabled={currentPage === 1}
+          onClick={() => fetchLeads(null, currentPage - 1)}
+        >
+          <ChevronLeft size={16} /> Previous
+        </button>
+        <span>Page {currentPage}</span>
+        <button 
+          className="btn btn-secondary"
+          onClick={() => fetchLeads(null, currentPage + 1)}
+        >
+          Next <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderCallHistory = () => (
+    <div className="tab-content">
+      <div className="header-controls">
+        <h2>Call History & Monitoring</h2>
+        <div className="controls">
+          <div className="search-box">
+            <Search size={16} />
+            <input
+              type="text"
+              placeholder="Search calls..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <button className="btn btn-secondary" onClick={() => exportData('calls')}>
+            <Download size={16} /> Export CSV
+          </button>
+        </div>
+      </div>
+
+      {activeCalls.length > 0 && (
+        <div className="active-calls-section">
+          <h3>Active Calls ({activeCalls.length})</h3>
+          <div className="active-calls-grid">
+            {activeCalls.map(call => (
+              <div key={call.uuid} className="active-call-card">
+                <div className="call-info">
+                  <p><Phone size={14} /> {call.phone_number}</p>
+                  <p><User size={14} /> {call.lead_name}</p>
+                  <p>Bot: {call.bot_port}</p>
+                  <p className="duration">Duration: {call.duration}s</p>
+                </div>
+                <div className="call-actions">
+                  <button className="btn btn-info" onClick={() => monitorCall(call.uuid)}>
+                    <Mic size={14} /> Monitor
+                  </button>
+                  <button className="btn btn-danger" onClick={() => {/* hangup logic */}}>
+                    <PhoneOff size={14} /> Hangup
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="table-container">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Phone</th>
+              <th>Lead</th>
+              <th>Campaign</th>
+              <th>Duration</th>
+              <th>Status</th>
+              <th>Disposition</th>
+              <th>Bot</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredData(calls).map(call => (
+              <tr key={call.id}>
+                <td>{new Date(call.start_time).toLocaleString()}</td>
+                <td>{call.phone_number}</td>
+                <td>{call.lead_name}</td>
+                <td>{call.campaign_name}</td>
+                <td>{call.duration}s</td>
+                <td>
+                  <span className={`status-badge ${call.status}`}>
+                    {call.status}
+                  </span>
+                </td>
+                <td>{call.disposition || '-'}</td>
+                <td>Bot {call.bot_port}</td>
+                <td>
+                  <div className="action-buttons">
+                    {call.transcript && (
+                      <button className="btn-icon" onClick={() => openModal('transcript', call)}>
+                        <Mail size={16} />
+                      </button>
+                    )}
+                    {call.recording_url && (
+                      <button className="btn-icon" onClick={() => openModal('recording', call)}>
+                        <Volume2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="pagination">
+        <button 
+          className="btn btn-secondary" 
+          disabled={currentPage === 1}
+          onClick={() => fetchCallHistory(currentPage - 1)}
+        >
+          <ChevronLeft size={16} /> Previous
+        </button>
+        <span>Page {currentPage}</span>
+        <button 
+          className="btn btn-secondary"
+          onClick={() => fetchCallHistory(currentPage + 1)}
+        >
+          Next <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderAnalytics = () => {
+    const chartOptions = {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        title: { display: false }
+      },
+      scales: {
+        y: { beginAtZero: true }
+      }
+    };
+
+    const callVolumeData = {
+      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      datasets: [{
+        label: 'Call Volume',
+        data: [120, 150, 180, 200, 170, 80, 40],
+        borderColor: 'rgb(75, 192, 192)',
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+      }]
+    };
+
+    const connectionRateData = {
+      labels: ['8AM', '10AM', '12PM', '2PM', '4PM', '6PM'],
+      datasets: [
+        {
+          label: 'Connection Rate',
+          data: [65, 70, 75, 80, 72, 68],
+          borderColor: 'rgb(53, 162, 235)',
+          backgroundColor: 'rgba(53, 162, 235, 0.5)',
+        },
+        {
+          label: 'Drop Rate',
+          data: [2.1, 2.3, 2.5, 2.8, 2.9, 2.7],
+          borderColor: 'rgb(255, 99, 132)',
+          backgroundColor: 'rgba(255, 99, 132, 0.5)',
+        }
+      ]
+    };
+
+    const dispositionData = {
+      labels: ['Interested', 'Not Interested', 'Callback', 'No Answer', 'DNC'],
+      datasets: [{
+        data: [35, 25, 20, 15, 5],
+        backgroundColor: [
+          'rgba(75, 192, 192, 0.8)',
+          'rgba(255, 99, 132, 0.8)',
+          'rgba(255, 206, 86, 0.8)',
+          'rgba(153, 102, 255, 0.8)',
+          'rgba(201, 203, 207, 0.8)'
+        ],
+      }]
+    };
+
+    return (
+      <div className="tab-content">
+        <div className="header-controls">
+          <h2>Analytics & Reporting</h2>
+          <div className="controls">
+            <select className="select-input">
+              <option>Today</option>
+              <option>This Week</option>
+              <option>This Month</option>
+              <option>Last 30 Days</option>
+            </select>
+            <button className="btn btn-secondary" onClick={() => exportData('analytics')}>
+              <Download size={16} /> Export Report
+            </button>
+          </div>
+        </div>
+
+        <div className="metrics-grid">
+          <div className="metric-card">
+            <div className="metric-icon"><PhoneCall /></div>
+            <div className="metric-info">
+              <h4>Active Calls</h4>
+              <p className="metric-value">{stats.activeCalls}</p>
+            </div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-icon"><Users /></div>
+            <div className="metric-info">
+              <h4>Idle Bots</h4>
+              <p className="metric-value">{stats.idleBots}</p>
+            </div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-icon success"><CheckCircle /></div>
+            <div className="metric-info">
+              <h4>Connection Rate</h4>
+              <p className="metric-value">{stats.connectionRate}%</p>
+            </div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-icon error"><AlertCircle /></div>
+            <div className="metric-info">
+              <h4>Drop Rate</h4>
+              <p className="metric-value">{stats.dropRate}%</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="charts-grid">
+          <div className="chart-container">
+            <h3>Call Volume Trend</h3>
+            <Line data={callVolumeData} options={chartOptions} />
+          </div>
+          <div className="chart-container">
+            <h3>Connection vs Drop Rate</h3>
+            <Line data={connectionRateData} options={chartOptions} />
+          </div>
+          <div className="chart-container">
+            <h3>Disposition Breakdown</h3>
+            <Doughnut data={dispositionData} />
+          </div>
+          <div className="chart-container">
+            <h3>Hourly Performance</h3>
+            <Bar data={callVolumeData} options={chartOptions} />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDNC = () => (
+    <div className="tab-content">
+      <div className="header-controls">
+        <h2>DNC Management</h2>
+        <div className="controls">
+          <div className="search-box">
+            <Search size={16} />
+            <input
+              type="text"
+              placeholder="Search DNC..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <button className="btn btn-primary" onClick={() => openModal('addDNC')}>
+            <Plus size={16} /> Add Number
+          </button>
+          <button className="btn btn-secondary" onClick={() => exportData('dnc')}>
+            <Download size={16} /> Export CSV
+          </button>
+        </div>
+      </div>
+
+      <div className="table-container">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Phone Number</th>
+              <th>Reason</th>
+              <th>Date Added</th>
+              <th>Added By</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredData(dncList).map(dnc => (
+              <tr key={dnc.id}>
+                <td>{dnc.phone_number}</td>
+                <td>{dnc.reason}</td>
+                <td>{new Date(dnc.created_at).toLocaleDateString()}</td>
+                <td>{dnc.added_by || 'System'}</td>
+                <td>
+                  <div className="action-buttons">
+                    <button className="btn-icon danger" onClick={() => {/* remove logic */}}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const renderSettings = () => (
+    <div className="tab-content">
+      <div className="header-controls">
+        <h2>Settings</h2>
+      </div>
+
+      <div className="settings-sections">
+        <div className="settings-section">
+          <h3>Appearance</h3>
+          <div className="setting-item">
+            <label>Theme</label>
+            <div className="toggle-group">
+              <button 
+                className={`toggle-btn ${theme === 'dark' ? 'active' : ''}`}
+                onClick={() => setTheme('dark')}
+              >
+                <Moon size={16} /> Dark
+              </button>
+              <button 
+                className={`toggle-btn ${theme === 'light' ? 'active' : ''}`}
+                onClick={() => setTheme('light')}
+              >
+                <Sun size={16} /> Light
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="settings-section">
+          <h3>Auto-Refresh</h3>
+          <div className="setting-item">
+            <label>Refresh Interval</label>
+            <select 
+              className="select-input"
+              value={refreshInterval}
+              onChange={(e) => setRefreshInterval(Number(e.target.value))}
+            >
+              <option value="2000">2 seconds</option>
+              <option value="5000">5 seconds</option>
+              <option value="10000">10 seconds</option>
+              <option value="30000">30 seconds</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="settings-section">
+          <h3>Notifications</h3>
+          <div className="setting-item">
+            <label>Sound Notifications</label>
+            <button 
+              className={`toggle-switch ${notifications.sound ? 'active' : ''}`}
+              onClick={() => setNotifications({...notifications, sound: !notifications.sound})}
+            >
+              {notifications.sound ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            </button>
+          </div>
+          <div className="setting-item">
+            <label>Desktop Notifications</label>
+            <button 
+              className={`toggle-switch ${notifications.desktop ? 'active' : ''}`}
+              onClick={() => {
+                if (!notifications.desktop && 'Notification' in window) {
+                  Notification.requestPermission();
+                }
+                setNotifications({...notifications, desktop: !notifications.desktop});
+              }}
+            >
+              {notifications.desktop ? 'Enabled' : 'Disabled'}
+            </button>
+          </div>
+        </div>
+
+        <div className="settings-section">
+          <h3>System Information</h3>
+          <div className="info-grid">
+            <div className="info-item">
+              <span className="label">API Server:</span>
+              <span className="value">{API_BASE_URL}</span>
+            </div>
+            <div className="info-item">
+              <span className="label">WebSocket:</span>
+              <span className="value">
+                {isConnected ? (
+                  <span className="success"><Wifi size={14} /> Connected</span>
+                ) : (
+                  <span className="error"><WifiOff size={14} /> Disconnected</span>
+                )}
+              </span>
+            </div>
+            <div className="info-item">
+              <span className="label">Version:</span>
+              <span className="value">1.0.0</span>
+            </div>
+            <div className="info-item">
+              <span className="label">Last Update:</span>
+              <span className="value">{new Date().toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderModal = () => {
+    if (!modalType) return null;
+
+    return (
+      <div className="modal-overlay" onClick={closeModal}>
+        <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h3>{modalType.charAt(0).toUpperCase() + modalType.slice(1)}</h3>
+            <button className="btn-icon" onClick={closeModal}>
+              <X size={20} />
+            </button>
+          </div>
+          <div className="modal-body">
+            {modalType === 'transcript' && selectedItem && (
+              <pre className="transcript">{selectedItem.transcript}</pre>
+            )}
+            {modalType === 'recording' && selectedItem && (
+              <audio controls src={selectedItem.recording_url} className="audio-player" />
+            )}
+            {modalType === 'monitor' && selectedItem && (
+              <div className="monitor-view">
+                <p>Monitoring call: {selectedItem.uuid}</p>
+                <p>Extension to dial: {selectedItem.extension}</p>
+                <audio ref={audioRef} />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className={`app theme-${theme}`}>
+      <header className="app-header">
+        <div className="logo">
+          <Phone size={24} />
+          <h1>EXODUS AI Dialer</h1>
+        </div>
+        <div className="header-stats">
+          <div className="stat-item">
+            <span className="label">Active Calls:</span>
+            <span className="value">{stats.activeCalls}</span>
+          </div>
+          <div className="stat-item">
+            <span className="label">Connection Rate:</span>
+            <span className="value success">{stats.connectionRate}%</span>
+          </div>
+          <div className="stat-item">
+            <span className="label">Drop Rate:</span>
+            <span className="value error">{stats.dropRate}%</span>
+          </div>
+          <div className="stat-item">
+            <span className="label">Status:</span>
+            {isConnected ? (
+              <span className="value success"><Wifi size={14} /> Online</span>
+            ) : (
+              <span className="value error"><WifiOff size={14} /> Offline</span>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <nav className="app-nav">
+        <button 
+          className={`nav-btn ${activeTab === 'bots' ? 'active' : ''}`}
+          onClick={() => setActiveTab('bots')}
+        >
+          <Users size={18} /> Bot Pool
+        </button>
+        <button 
+          className={`nav-btn ${activeTab === 'campaigns' ? 'active' : ''}`}
+          onClick={() => setActiveTab('campaigns')}
+        >
+          <Phone size={18} /> Campaigns
+        </button>
+        <button 
+          className={`nav-btn ${activeTab === 'leads' ? 'active' : ''}`}
+          onClick={() => {
+            setActiveTab('leads');
+            fetchLeads();
+          }}
+        >
+          <User size={18} /> Leads
+        </button>
+        <button 
+          className={`nav-btn ${activeTab === 'calls' ? 'active' : ''}`}
+          onClick={() => {
+            setActiveTab('calls');
+            fetchCallHistory();
+          }}
+        >
+          <History size={18} /> Calls
+        </button>
+        <button 
+          className={`nav-btn ${activeTab === 'analytics' ? 'active' : ''}`}
+          onClick={() => setActiveTab('analytics')}
+        >
+          <BarChart3 size={18} /> Analytics
+        </button>
+        <button 
+          className={`nav-btn ${activeTab === 'dnc' ? 'active' : ''}`}
+          onClick={() => {
+            setActiveTab('dnc');
+            fetchDNCList();
+          }}
+        >
+          <Ban size={18} /> DNC
+        </button>
+        <button 
+          className={`nav-btn ${activeTab === 'settings' ? 'active' : ''}`}
+          onClick={() => setActiveTab('settings')}
+        >
+          <Settings size={18} /> Settings
+        </button>
+      </nav>
+
+      <main className="app-main">
+        {loading && <div className="loading-spinner">Loading...</div>}
+        {error && (
+          <div className="error-banner">
+            <AlertCircle size={16} /> {error}
+            <button onClick={() => setError(null)}>×</button>
+          </div>
+        )}
+        
+        {activeTab === 'bots' && renderBotPool()}
+        {activeTab === 'campaigns' && renderCampaigns()}
+        {activeTab === 'leads' && renderLeads()}
+        {activeTab === 'calls' && renderCallHistory()}
+        {activeTab === 'analytics' && renderAnalytics()}
+        {activeTab === 'dnc' && renderDNC()}
+        {activeTab === 'settings' && renderSettings()}
+      </main>
+
+      {renderModal()}
+      <audio ref={audioRef} />
+    </div>
+  );
+}
+
+export default App;

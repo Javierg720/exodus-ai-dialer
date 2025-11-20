@@ -1,0 +1,38 @@
+-- FIX DATABASE ISSUES
+-- Reset stuck leads
+UPDATE leads
+SET attempts = 0,
+    status = 'NEW',
+    updated_at = CURRENT_TIMESTAMP
+WHERE attempts >= max_attempts;
+
+-- Reset leads stuck in CALLING
+UPDATE leads
+SET status = 'NEW',
+    updated_at = CURRENT_TIMESTAMP
+WHERE status = 'CALLING';
+
+-- Increase max_attempts for all leads
+UPDATE leads
+SET max_attempts = 10
+WHERE max_attempts = 3;
+
+-- Database optimizations
+PRAGMA journal_mode=WAL;
+PRAGMA busy_timeout=60000;  -- 60 seconds
+PRAGMA cache_size=-64000;    -- 64MB cache
+PRAGMA temp_store=MEMORY;    -- RAM for temp tables
+PRAGMA synchronous=NORMAL;   -- Faster writes
+
+-- Checkpoint WAL to clear any locks
+PRAGMA wal_checkpoint(TRUNCATE);
+
+-- Verify fixes
+SELECT 'Leads by status:' as msg;
+SELECT status, COUNT(*) as count FROM leads GROUP BY status;
+
+SELECT 'Constraint violations:' as msg;
+SELECT COUNT(*) as violations FROM leads WHERE attempts > max_attempts;
+
+SELECT 'Total available leads:' as msg;
+SELECT COUNT(*) FROM leads WHERE status='NEW';

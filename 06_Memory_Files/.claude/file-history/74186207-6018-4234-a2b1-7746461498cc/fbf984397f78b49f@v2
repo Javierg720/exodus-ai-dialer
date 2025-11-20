@@ -1,0 +1,45 @@
+#!/bin/bash
+# Ultimate Steam fix for Kali Linux with GLX issues
+
+echo "Starting Steam with compatibility settings..."
+
+# Kill any existing Steam processes
+pkill -f steam 2>/dev/null
+
+# Set correct display
+export DISPLAY=:1
+
+# Check if display is available
+if ! xdpyinfo -display :1 &>/dev/null; then
+    echo "Display :1 not available, trying :0"
+    export DISPLAY=:0
+fi
+
+# Mesa/OpenGL settings for compatibility
+export MESA_LOADER_DRIVER_OVERRIDE=iris  # Try iris driver first
+export __GLX_VENDOR_LIBRARY_NAME=mesa
+export LIBGL_DRI3_DISABLE=1
+
+# Steam-specific settings
+export STEAM_RUNTIME_PREFER_HOST_LIBRARIES=0
+export STEAM_RUNTIME=1
+export DBUS_FATAL_WARNINGS=0
+
+# Try to launch Steam with minimal UI
+echo "Attempting to launch Steam..."
+steam -tcp -console -noreactlogin +open steam://open/minigameslist "$@" 2>&1 | tee /tmp/steam-log.txt &
+
+STEAM_PID=$!
+sleep 5
+
+# Check if Steam is still running
+if ps -p $STEAM_PID > /dev/null; then
+    echo "Steam is running with PID $STEAM_PID"
+    echo "If you don't see the UI, try running: DISPLAY=:1 steam -bigpicture"
+else
+    echo "Steam crashed. Checking log for errors..."
+    grep -i "error\|fail\|assert" /tmp/steam-log.txt | tail -5
+    echo ""
+    echo "Alternative: Try running Steam in software mode:"
+    echo "  DISPLAY=:1 LIBGL_ALWAYS_SOFTWARE=1 steam"
+fi

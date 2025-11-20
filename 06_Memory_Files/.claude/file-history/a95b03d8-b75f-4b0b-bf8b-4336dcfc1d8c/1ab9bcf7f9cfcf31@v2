@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+import json
+import os
+import sys
+
+# Add the bot directory to path
+sys.path.insert(0, '/home/user/Desktop/Projects_Organized/01_Exodus_Dialer/exodus-kali-deploy')
+
+# Import the load function
+from ava_sales_bot_audiosocket import load_bot_config
+
+print("Testing bot config loading...")
+config = load_bot_config()
+
+print("\nConfig loaded successfully!")
+print(f"Provider: {config.get('llm', {}).get('provider')}")
+print(f"Model: {config.get('llm', {}).get('model')}")
+print(f"Script prompt length: {len(config.get('script', {}).get('system_prompt', ''))}")
+print(f"Contains Fund Express: {'Fund Express' in config.get('script', {}).get('system_prompt', '')}")
+
+# Show first 500 chars of actual prompt
+prompt = config.get('script', {}).get('system_prompt', 'NO PROMPT FOUND')
+print(f"\nFirst 500 chars of system_prompt:")
+print(prompt[:500])

@@ -1,0 +1,22 @@
+[
+  {
+    "content": "Check why calls aren't being recorded",
+    "status": "in_progress",
+    "activeForm": "Checking why calls aren't being recorded"
+  },
+  {
+    "content": "Find user's call to 3057768712 in system",
+    "status": "in_progress",
+    "activeForm": "Finding user's call to 3057768712 in system"
+  },
+  {
+    "content": "Verify recording configuration in Asterisk",
+    "status": "pending",
+    "activeForm": "Verifying recording configuration in Asterisk"
+  },
+  {
+    "content": "Fix recording issue",
+    "status": "pending",
+    "activeForm": "Fixing recording issue"
+  }
+]

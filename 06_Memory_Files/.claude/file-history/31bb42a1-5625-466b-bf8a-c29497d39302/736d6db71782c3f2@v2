@@ -1,0 +1,57 @@
+#!/bin/bash
+# Start the dialer system with z.ai FREE bots
+
+echo "🚀 Starting Exodus Dialer with z.ai GLM-4.5-Flash (FREE)"
+echo "💰 Cost: $0.01/hour vs $5.34/hour (99.8% cheaper!)"
+echo ""
+
+# Kill any existing bot instances
+echo "🔪 Killing any existing bot instances..."
+pkill -f "ava_sales_bot"
+sleep 2
+
+# Activate virtual environment
+echo "🐍 Activating Python environment..."
+source /home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/activate
+
+# Start bot pool manager with 20 z.ai bots
+echo "🤖 Starting bot pool with 20 z.ai instances..."
+cd /home/user/Desktop/exodus-kali-deploy
+python3 bot_pool_manager.py &
+BOT_POOL_PID=$!
+
+echo "✅ Bot pool started (PID: $BOT_POOL_PID)"
+echo ""
+
+# Wait for bots to initialize
+echo "⏳ Waiting for bots to initialize..."
+sleep 10
+
+# Start the dialer orchestrator
+echo "📞 Starting dialer orchestrator..."
+python3 dialer_orchestrator.py &
+DIALER_PID=$!
+
+echo "✅ Dialer orchestrator started (PID: $DIALER_PID)"
+echo ""
+
+# Start the API/Dashboard (optional)
+echo "🌐 Starting API/Dashboard on port 8000..."
+python3 dialer_api.py &
+API_PID=$!
+
+echo "✅ API started (PID: $API_PID)"
+echo ""
+
+echo "=================================================================================="
+echo "✅ DIALER SYSTEM RUNNING WITH Z.AI FREE BOTS"
+echo "=================================================================================="
+echo "Bot Pool PID: $BOT_POOL_PID"
+echo "Dialer PID: $DIALER_PID"
+echo "API PID: $API_PID"
+echo ""
+echo "📊 Dashboard: http://localhost:8000/dashboard"
+echo "🔍 Bot Status: http://localhost:8000/bots"
+echo ""
+echo "💡 To stop all: pkill -f 'ava_sales_bot|dialer_orchestrator|dialer_api'"
+echo "=================================================================================="

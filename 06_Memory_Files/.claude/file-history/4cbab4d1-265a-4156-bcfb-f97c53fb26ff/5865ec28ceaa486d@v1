@@ -1,0 +1,235 @@
+import React, { useState, useEffect } from 'react';
+import { Ban, Upload, Download, Trash2, Search, Plus, AlertTriangle } from 'lucide-react';
+import axios from 'axios';
+import './DNCManager.css';
+
+function DNCManager({ apiUrl }) {
+  const [dncList, setDncList] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newDNC, setNewDNC] = useState({
+    phone_number: '',
+    reason: 'Customer Request'
+  });
+
+  const fetchDNCList = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${apiUrl}/dnc`);
+      setDncList(response.data);
+    } catch (error) {
+      console.error('Failed to fetch DNC list:', error);
+      setDncList([]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchDNCList();
+  }, [apiUrl]);
+
+  const addToDNC = async () => {
+    if (!newDNC.phone_number) {
+      alert('Phone number is required');
+      return;
+    }
+    
+    try {
+      await axios.post(`${apiUrl}/dnc`, newDNC);
+      setShowAddModal(false);
+      setNewDNC({ phone_number: '', reason: 'Customer Request' });
+      fetchDNCList();
+    } catch (error) {
+      alert('Failed to add to DNC: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const removeFromDNC = async (phoneNumber) => {
+    if (!window.confirm(`Remove ${phoneNumber} from DNC list?`)) return;
+    
+    try {
+      await axios.delete(`${apiUrl}/dnc/${encodeURIComponent(phoneNumber)}`);
+      fetchDNCList();
+    } catch (error) {
+      alert('Failed to remove from DNC');
+    }
+  };
+
+  const handleImportDNC = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv,.txt';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      try {
+        const response = await axios.post(`${apiUrl}/dnc/import`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        alert(`Imported ${response.data.imported} numbers to DNC list`);
+        fetchDNCList();
+      } catch (error) {
+        alert('Failed to import DNC list');
+      }
+    };
+    input.click();
+  };
+
+  const handleExportDNC = async () => {
+    try {
+      const response = await axios.get(`${apiUrl}/dnc/export`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `dnc_list_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      alert('Failed to export DNC list');
+    }
+  };
+
+  const filteredList = dncList.filter(item => 
+    !searchQuery || item.phone_number?.includes(searchQuery)
+  );
+
+  return (
+    <div className="dnc-manager">
+      <div className="section-header">
+        <h2>Do Not Call (DNC) Management</h2>
+        <div className="header-actions">
+          <button className="btn-action" onClick={() => setShowAddModal(true)}>
+            <Plus size={16} />
+            Add Number
+          </button>
+          <button className="btn-action" onClick={handleImportDNC}>
+            <Upload size={16} />
+            Import
+          </button>
+          <button className="btn-action" onClick={handleExportDNC}>
+            <Download size={16} />
+            Export
+          </button>
+        </div>
+      </div>
+
+      <div className="dnc-warning">
+        <AlertTriangle size={20} />
+        <span>
+          TCPA Compliance: Numbers on this list will never be called. 
+          Violations can result in fines up to $1,500 per call.
+        </span>
+      </div>
+
+      <div className="search-bar">
+        <Search size={16} />
+        <input
+          type="text"
+          placeholder="Search phone numbers..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+        />
+      </div>
+
+      <div className="dnc-stats">
+        <div className="stat">
+          <Ban size={20} />
+          <span className="stat-value">{dncList.length}</span>
+          <span className="stat-label">Total Blocked</span>
+        </div>
+      </div>
+
+      <div className="dnc-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Phone Number</th>
+              <th>Date Added</th>
+              <th>Reason</th>
+              <th>Added By</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan="5" className="loading-cell">Loading DNC list...</td>
+              </tr>
+            ) : filteredList.length === 0 ? (
+              <tr>
+                <td colSpan="5" className="empty-cell">
+                  {searchQuery ? 'No matching numbers found' : 'No numbers in DNC list'}
+                </td>
+              </tr>
+            ) : (
+              filteredList.map(item => (
+                <tr key={item.phone_number}>
+                  <td className="phone-cell">
+                    <Ban size={14} className="dnc-icon" />
+                    {item.phone_number}
+                  </td>
+                  <td>{new Date(item.added_date).toLocaleDateString()}</td>
+                  <td>{item.reason || 'Customer Request'}</td>
+                  <td>{item.added_by || 'System'}</td>
+                  <td>
+                    <button
+                      className="btn-remove"
+                      onClick={() => removeFromDNC(item.phone_number)}
+                      title="Remove from DNC list"
+                    >
+                      <Trash2 size={14} />
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {showAddModal && (
+        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>Add to DNC List</h3>
+            <input
+              type="tel"
+              placeholder="Phone Number"
+              value={newDNC.phone_number}
+              onChange={e => setNewDNC({...newDNC, phone_number: e.target.value})}
+            />
+            <select
+              value={newDNC.reason}
+              onChange={e => setNewDNC({...newDNC, reason: e.target.value})}
+            >
+              <option value="Customer Request">Customer Request</option>
+              <option value="Legal Requirement">Legal Requirement</option>
+              <option value="Invalid Number">Invalid Number</option>
+              <option value="Business Policy">Business Policy</option>
+              <option value="Other">Other</option>
+            </select>
+            <div className="modal-warning">
+              <AlertTriangle size={16} />
+              This number will be permanently blocked from all campaigns
+            </div>
+            <div className="modal-actions">
+              <button onClick={addToDNC} className="btn-primary">Add to DNC</button>
+              <button onClick={() => setShowAddModal(false)} className="btn-cancel">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default DNCManager;

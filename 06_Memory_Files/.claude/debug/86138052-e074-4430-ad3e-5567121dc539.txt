@@ -1,0 +1,479 @@
+[DEBUG] Watching for changes in setting files /home/user/.claude/settings.json, /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json...
+[DEBUG] Applying permission update: Adding 8 allow rule(s) to destination 'localSettings': ["Bash(nvidia-smi:*)","Bash(lspci:*)","Bash(lsmod:*)","Bash(glxinfo:*)","Bash(DRI_PRIME=1 glxinfo:*)","Bash(sudo apt:*)","Bash(sudo apt install:*)","Bash(sudo -S apt:*)"]
+[DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+[DEBUG] Creating shell snapshot for zsh (/usr/bin/zsh)
+[DEBUG] Looking for shell config file: /home/user/.zshrc
+[DEBUG] Snapshots directory: /home/user/.claude/shell-snapshots
+[DEBUG] Creating snapshot at: /home/user/.claude/shell-snapshots/snapshot-zsh-1759911680080-xev5q5.sh
+[DEBUG] Shell binary exists: true
+[DEBUG] Execution timeout: 10000ms
+[DEBUG] Writing to temp file: /home/user/.claude/todos/86138052-e074-4430-ad3e-5567121dc539-agent-86138052-e074-4430-ad3e-5567121dc539.json.tmp.167059.1759911680092
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Renaming /home/user/.claude/todos/86138052-e074-4430-ad3e-5567121dc539-agent-86138052-e074-4430-ad3e-5567121dc539.json.tmp.167059.1759911680092 to /home/user/.claude/todos/86138052-e074-4430-ad3e-5567121dc539-agent-86138052-e074-4430-ad3e-5567121dc539.json
+[DEBUG] File /home/user/.claude/todos/86138052-e074-4430-ad3e-5567121dc539-agent-86138052-e074-4430-ad3e-5567121dc539.json written atomically
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.167059.1759911680117
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 42622 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.167059.1759911680117 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Registered 0 hooks from 0 plugins
+[DEBUG] Loading skills from directories: managed=/etc/claude-code/.claude/skills, user=/home/user/.claude/skills, project=/home/user/Desktop/exodus-kali-deploy/.claude/skills
+[DEBUG] Loaded 0 skills total (managed: 0, user: 0, project: 0)
+[DEBUG] Total plugin commands loaded: 0
+[DEBUG] Total plugin skills loaded: 0
+[DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/usr/local/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.167059.1759911680313
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 42622 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.167059.1759911680313 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.167059.1759911680378
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 42622 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.167059.1759911680378 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.167059.1759911680605
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 42622 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.167059.1759911680605 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Executing hooks for SessionStart:startup
+[DEBUG] Getting matching hook commands for SessionStart with query: startup
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.167059.1759911680687
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 42517 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.167059.1759911680687 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.167059.1759911680693
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 42517 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.167059.1759911680693 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] performStartupChecks called, ENABLE_PLUGINS=undefined
+[DEBUG] Skipping plugin installations - ENABLE_PLUGINS not set
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.167059.1759911680719
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 42622 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.167059.1759911680719 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Shell snapshot created successfully (9197 bytes)
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Executing hooks for UserPromptSubmit
+[DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] FileHistory: Added snapshot for 5eb63024-859b-417a-b326-65c1228b0aa3, tracking 0 files
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.167059.1759911704165
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 42831 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.167059.1759911704165 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Executing hooks for PreToolUse:TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Writing to temp file: /home/user/.claude/todos/86138052-e074-4430-ad3e-5567121dc539-agent-86138052-e074-4430-ad3e-5567121dc539.json.tmp.167059.1759911711252
+[DEBUG] Preserving file permissions: 100664
+[DEBUG] Temp file written successfully, size: 465 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude/todos/86138052-e074-4430-ad3e-5567121dc539-agent-86138052-e074-4430-ad3e-5567121dc539.json.tmp.167059.1759911711252 to /home/user/.claude/todos/86138052-e074-4430-ad3e-5567121dc539-agent-86138052-e074-4430-ad3e-5567121dc539.json
+[DEBUG] File /home/user/.claude/todos/86138052-e074-4430-ad3e-5567121dc539-agent-86138052-e074-4430-ad3e-5567121dc539.json written atomically
+[DEBUG] Executing hooks for PostToolUse:TodoWrite
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: sudo apt update && sudo apt install -y nvidia-driver nvidia-cuda-toolkit
+[DEBUG] Bash tool description: Install NVIDIA drivers and CUDA toolkit
+[DEBUG] Bash tool timeout: 600000ms
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] Streaming aborted by user: Request was aborted.
+[ERROR] Error in non-streaming fallback: Request was aborted.
+[ERROR] Error: Error: Request was aborted.
+    at Bm._createMessage (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:885:4707)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at runNextTicks (node:internal/process/task_queues:64:3)
+    at process.processTimers (node:internal/timers:516:9)
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Executing hooks for UserPromptSubmit
+[DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] FileHistory: Making snapshot for message e07276b7-391d-4405-9990-2d42e1b76882
+[DEBUG] FileHistory: Added snapshot for e07276b7-391d-4405-9990-2d42e1b76882, tracking 0 files
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.167059.1759911722066
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 42920 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.167059.1759911722066 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: echo '0000' | sudo -S apt update && echo '0000' | sudo -S apt install -y nvidia-driver nvidia-cuda-toolkit
+[DEBUG] Bash tool description: Install NVIDIA drivers and CUDA toolkit with sudo
+[DEBUG] Bash tool timeout: 600000ms
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Permission suggestions for Bash: [
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Bash",
+        "ruleContent": "while echo '0000'"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "localSettings"
+  },
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Bash",
+        "ruleContent": "sudo -S fuser:*"
+      },
+      {
+        "toolName": "Bash",
+        "ruleContent": "/dev/null"
+      },
+      {
+        "toolName": "Bash",
+        "ruleContent": "do sleep:*"
+      },
+      {
+        "toolName": "Bash",
+        "ruleContent": "done"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "localSettings"
+  }
+]
+[DEBUG] Getting matching hook commands for Notification with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Persisting permission update: addRules to source 'localSettings'
+[DEBUG] Persisting 1 allow rule(s) to localSettings
+[DEBUG] Writing to temp file: /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json.tmp.167059.1759911916914
+[DEBUG] Preserving file permissions: 100664
+[DEBUG] Temp file written successfully, size: 336 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json.tmp.167059.1759911916914 to /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json
+[DEBUG] File /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json written atomically
+[DEBUG] Persisting permission update: addRules to source 'localSettings'
+[DEBUG] Persisting 4 allow rule(s) to localSettings
+[DEBUG] Writing to temp file: /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json.tmp.167059.1759911916931
+[DEBUG] Preserving file permissions: 100664
+[DEBUG] Temp file written successfully, size: 438 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json.tmp.167059.1759911916931 to /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json
+[DEBUG] File /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json written atomically
+[DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["Bash(while echo '0000')"]
+[DEBUG] Applying permission update: Adding 4 allow rule(s) to destination 'localSettings': ["Bash(sudo -S fuser:*)","Bash(/dev/null)","Bash(do sleep:*)","Bash(done)"]
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] Bash tool invoked with command: while echo '0000' | sudo -S fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do sleep 2; done && echo '0000' | sudo -S apt install -y nvidia-driver nvidia-cuda-toolkit
+[DEBUG] Bash tool description: Wait for apt lock and install NVIDIA drivers
+[DEBUG] Bash tool timeout: 600000ms
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.167059.1759912338887
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 43368 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.167059.1759912338887 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Executing hooks for UserPromptSubmit
+[DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] FileHistory: Making snapshot for message c959207b-7e1f-48fd-a621-311e3210474d
+[DEBUG] FileHistory: Added snapshot for c959207b-7e1f-48fd-a621-311e3210474d, tracking 0 files
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.167059.1759912359825
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 43457 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.167059.1759912359825 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: nvidia-smi
+[DEBUG] Bash tool description: Check NVIDIA driver status
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Permission suggestions for Bash: [
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Bash",
+        "ruleContent": "dpkg:*"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "localSettings"
+  }
+]
+[DEBUG] Persisting permission update: addRules to source 'localSettings'
+[DEBUG] Persisting 1 allow rule(s) to localSettings
+[DEBUG] Writing to temp file: /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json.tmp.167059.1759912368619
+[DEBUG] Preserving file permissions: 100664
+[DEBUG] Temp file written successfully, size: 460 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json.tmp.167059.1759912368619 to /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json
+[DEBUG] File /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json written atomically
+[DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["Bash(dpkg:*)"]
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] Bash tool invoked with command: dpkg -l | grep nvidia
+[DEBUG] Bash tool description: Check installed NVIDIA packages
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: ps aux | grep -E 'apt|dpkg' | grep -v grep
+[DEBUG] Bash tool description: Check for running apt/dpkg processes
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Permission suggestions for Bash: [
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Bash",
+        "ruleContent": "while:*"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "localSettings"
+  }
+]
+[DEBUG] Persisting permission update: addRules to source 'localSettings'
+[DEBUG] Persisting 1 allow rule(s) to localSettings
+[DEBUG] Writing to temp file: /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json.tmp.167059.1759912382615
+[DEBUG] Preserving file permissions: 100664
+[DEBUG] Temp file written successfully, size: 483 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json.tmp.167059.1759912382615 to /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json
+[DEBUG] File /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json written atomically
+[DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["Bash(while:*)"]
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] Bash tool invoked with command: while ps -p 152803 > /dev/null 2>&1; do sleep 3; done && echo "Installation process completed"
+[DEBUG] Bash tool description: Wait for apt installation to complete
+[DEBUG] Bash tool timeout: 600000ms
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: ps aux | grep 152803 | grep -v grep
+[DEBUG] Bash tool description: Check if installation process still running
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Permission suggestions for Bash: [
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Bash",
+        "ruleContent": "sudo -S:*"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "localSettings"
+  }
+]
+[DEBUG] Getting matching hook commands for Notification with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Persisting permission update: addRules to source 'localSettings'
+[DEBUG] Persisting 1 allow rule(s) to localSettings
+[DEBUG] Writing to temp file: /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json.tmp.167059.1759916225530
+[DEBUG] Preserving file permissions: 100664
+[DEBUG] Temp file written successfully, size: 508 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json.tmp.167059.1759916225530 to /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json
+[DEBUG] File /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json written atomically
+[DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["Bash(sudo -S:*)"]
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] Bash tool invoked with command: echo '0000' | sudo -S dmesg | grep -i nvidia | tail -20
+[DEBUG] Bash tool description: Check kernel messages for NVIDIA
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: echo '0000' | sudo -S kill -9 152803 153703 160524 160535 && echo '0000' | sudo -S dpkg --configure -a
+[DEBUG] Bash tool description: Kill hung processes and reconfigure packages
+[DEBUG] Bash tool timeout: 600000ms
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Executing hooks for PreToolUse:TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Writing to temp file: /home/user/.claude/todos/86138052-e074-4430-ad3e-5567121dc539-agent-86138052-e074-4430-ad3e-5567121dc539.json.tmp.167059.1759916409459
+[DEBUG] Preserving file permissions: 100664
+[DEBUG] Temp file written successfully, size: 614 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude/todos/86138052-e074-4430-ad3e-5567121dc539-agent-86138052-e074-4430-ad3e-5567121dc539.json.tmp.167059.1759916409459 to /home/user/.claude/todos/86138052-e074-4430-ad3e-5567121dc539-agent-86138052-e074-4430-ad3e-5567121dc539.json
+[DEBUG] File /home/user/.claude/todos/86138052-e074-4430-ad3e-5567121dc539-agent-86138052-e074-4430-ad3e-5567121dc539.json written atomically
+[DEBUG] Executing hooks for PostToolUse:TodoWrite
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: echo '0000' | sudo -S reboot
+[DEBUG] Bash tool description: Reboot system to load NVIDIA driver
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:

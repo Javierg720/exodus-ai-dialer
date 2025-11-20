@@ -1,0 +1,27 @@
+[
+  {
+    "content": "Fix SQLite database locking (enable WAL mode, increase timeout)",
+    "status": "in_progress",
+    "activeForm": "Fixing SQLite database locking issue"
+  },
+  {
+    "content": "Fix orchestrator bot pool detection (AVR vs Pipecat mismatch)",
+    "status": "pending",
+    "activeForm": "Fixing bot pool detection logic"
+  },
+  {
+    "content": "Reduce dial ratio to prevent 60-call bursts (3.0 → 1.5)",
+    "status": "pending",
+    "activeForm": "Reducing dial ratio for stability"
+  },
+  {
+    "content": "Add orchestrator crash recovery and auto-restart",
+    "status": "pending",
+    "activeForm": "Adding crash recovery mechanism"
+  },
+  {
+    "content": "Optimize database queries for high-volume calling",
+    "status": "pending",
+    "activeForm": "Optimizing database performance"
+  }
+]

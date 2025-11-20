@@ -1,0 +1,131 @@
+[DEBUG] Watching for changes in setting files /home/user/.claude/settings.json, /home/user/.claude/settings.json, /home/user/.claude/settings.local.json...
+[DEBUG] Applying permission update: Adding 29 allow rule(s) to destination 'localSettings': ["WebSearch","WebFetch(domain:docs.pipecat.ai)","WebFetch(domain:github.com)","WebFetch(domain:console.groq.com)","Bash(pkill:*)","WebFetch(domain:www.daily.co)","Bash(source:*)","Bash(edge-tts:*)","Bash(paplay:*)","Bash(aplay:*)","Bash(mpg123:*)","Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/pip list)","Bash(python3:*)","Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/python3 -c \"from pipecat.transports.network.fastapi_websocket import FastAPIWebsocketTransport, FastAPIWebsocketParams; from pipecat.serializers.twilio import TwilioFrameSerializer; print(''Pipecat Twilio WebSocket support available'')\")","Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/python3 -c \"import pipecat.serializers.twilio; import inspect; print(inspect.getsourcefile(pipecat.serializers.twilio))\")","WebFetch(domain:livekit.io)","WebFetch(domain:docs.livekit.io)","WebFetch(domain:docs.bolna.ai)","WebFetch(domain:www.bolna.ai)","WebFetch(domain:community.asterisk.org)","WebFetch(domain:www.agentvoiceresponse.com)","WebFetch(domain:demo.agentvoiceresponse.com)","Bash(docker exec:*)","Read(//etc/**)","Bash(sqlite3:*)","WebFetch(domain:viciwiki.com)","Read(//tmp/**)","WebFetch(domain:docs.asterisk.org)","WebFetch(domain:caruizdiaz.com)"]
+[DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+[DEBUG] Creating shell snapshot for zsh (/usr/bin/zsh)
+[DEBUG] Looking for shell config file: /home/user/.zshrc
+[DEBUG] Snapshots directory: /home/user/.claude/shell-snapshots
+[DEBUG] Creating snapshot at: /home/user/.claude/shell-snapshots/snapshot-zsh-1763282483576-8n423g.sh
+[DEBUG] Shell binary exists: true
+[DEBUG] Execution timeout: 10000ms
+[DEBUG] Writing to temp file: /home/user/.claude/todos/2840eac5-edb8-43fb-bfe8-a03155ceabe3-agent-2840eac5-edb8-43fb-bfe8-a03155ceabe3.json.tmp.258504.1763282483585
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Renaming /home/user/.claude/todos/2840eac5-edb8-43fb-bfe8-a03155ceabe3-agent-2840eac5-edb8-43fb-bfe8-a03155ceabe3.json.tmp.258504.1763282483585 to /home/user/.claude/todos/2840eac5-edb8-43fb-bfe8-a03155ceabe3-agent-2840eac5-edb8-43fb-bfe8-a03155ceabe3.json
+[DEBUG] File /home/user/.claude/todos/2840eac5-edb8-43fb-bfe8-a03155ceabe3-agent-2840eac5-edb8-43fb-bfe8-a03155ceabe3.json written atomically
+[DEBUG] Registered 0 hooks from 0 plugins
+[DEBUG] Loading skills from directories: managed=/etc/claude-code/.claude/skills, user=/home/user/.claude/skills, project=/home/user/.claude/skills
+[DEBUG] Loaded 0 skills total (managed: 0, user: 0, project: 0)
+[DEBUG] Total plugin commands loaded: 0
+[DEBUG] Total plugin skills loaded: 0
+[DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/usr/local/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+[DEBUG] Shell snapshot created successfully (9233 bytes)
+[DEBUG] Summarizing last 1 of 303 messages (~0 tokens)
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.258504.1763282483855
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 1335427 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.258504.1763282483855 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.258504.1763282483973
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 1335427 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.258504.1763282483973 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] rg error (signal=undefined, code=ERR_CHILD_PROCESS_STDIO_MAXBUFFER, stderr: rg: I/O error (os error 5)
+), 168304 results
+[ERROR] RangeError: RangeError [ERR_CHILD_PROCESS_STDIO_MAXBUFFER]: stdout maxBuffer length exceeded
+    at Socket.onChildStdout (node:child_process:490:14)
+    at Socket.emit (node:events:524:28)
+    at Socket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:191:23)
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.258504.1763282484292
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 1335427 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.258504.1763282484292 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Executing hooks for SessionStart:startup
+[DEBUG] Getting matching hook commands for SessionStart with query: startup
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.258504.1763282484429
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 1335322 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.258504.1763282484429 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.258504.1763282484461
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 1335322 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.258504.1763282484461 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] performStartupChecks called, ENABLE_PLUGINS=undefined
+[DEBUG] Skipping plugin installations - ENABLE_PLUGINS not set
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.258504.1763282484517
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 1335427 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.258504.1763282484517 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Summarizing last 6 of 184 messages (~88974 tokens)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Executing hooks for UserPromptSubmit
+[DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] FileHistory: Added snapshot for b87c1dd8-e75b-4650-892f-38056ffe153a, tracking 0 files
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.258504.1763282506035
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 1786052 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.258504.1763282506035 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[ERROR] Error streaming, falling back to non-streaming mode: 400 {"type":"error","error":{"type":"invalid_request_error","message":"input length and `max_tokens` exceed context limit: 187235 + 32000 > 200000, decrease input length or `max_tokens` and try again"},"request_id":"req_011CVBGdky8ZV8rpD5ti14sr"}
+[ERROR] Error in non-streaming fallback: 400 {"type":"error","error":{"type":"invalid_request_error","message":"input length and `max_tokens` exceed context limit: 187235 + 21333 > 200000, decrease input length or `max_tokens` and try again"},"request_id":"req_011CVBGe3rP8hy7eUdciC6cy"}
+[ERROR] Error: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"input length and `max_tokens` exceed context limit: 187235 + 21333 > 200000, decrease input length or `max_tokens` and try again"},"request_id":"req_011CVBGe3rP8hy7eUdciC6cy"}
+    at i9.generate (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:881:18710)
+    at bP.makeStatusError (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1026:2117)
+    at bP.makeRequest (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1026:5330)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async tI1.model (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3208:18601)
+    at async tI1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2534:2114)
+    at async pQQ (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3208:18755)
+    at async file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3208:12983
+    at async Nk0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3208:4228)
+    at async x11 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3208:12953)
+[DEBUG] Executing hooks for Stop
+[DEBUG] Getting matching hook commands for Stop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.258504.1763282510707
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 1786052 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.258504.1763282510707 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[ERROR] SyntaxError: SyntaxError: Unexpected token 'B', "Based on t"... is not valid JSON
+    at JSON.parse (<anonymous>)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:745:9912
+    at Q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:711:14235)
+    at B_2 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1045:27917)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)

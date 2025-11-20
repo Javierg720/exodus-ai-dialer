@@ -1,0 +1,537 @@
+version: '3.8'
+
+# AVR Bot Pool - 20 Production Voice Agents
+# Replaces custom Python bots with battle-tested AVR containers
+# Ports 9092-9111 map to AudioSocket connections in Asterisk
+
+services:
+  # ============================================
+  # PROVIDER SERVICES (Shared by all agents)
+  # ============================================
+
+  avr-sts-deepgram:
+    image: agentvoiceresponse/avr-sts-deepgram
+    platform: linux/x86_64
+    container_name: avr-sts-deepgram
+    restart: always
+    environment:
+      - PORT=6033
+      - DEEPGRAM_API_KEY=44f464f1116d54ee9412f7b9214cdde028240091
+      - DEEPGRAM_SAMPLE_RATE=8000
+      - DEEPGRAM_ASR_MODEL=nova-3
+      - DEEPGRAM_TTS_MODEL=aura-2-thalia-en
+      - DEEPGRAM_GREETING=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+      - AGENT_PROMPT=You are Ava, Funding Specialist at Fund Express. Direct, no fluff. Use Straight Line pitch, qualify, close. **ONE statement max + ONE question per response—<40 words total. Shut up after question WAIT for user response before ANY next output. Respond ONLY to last user input.** NO repeats, no re-explain opener. Advance or end call. NO CONSECUTIVE REPEATS of same question—track last response, skip/vary if duplicate vibe; if #1 repeated 2x on neutrals, confirm once then advance or de-escalate.\n\nPITCH (line 1 only) Hey {{contactFirstName}}, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?\n\nQUALIFY (one at a time, verbatim order—confirm need before #2+) 1. How much money can the business use right now? 2. What will that money help with? 3. When do you need it? 4. What's the gross revenue? 5. Any existing loans? How many, total balance, current on payments?\n\nCLOSE Great. I'll send the one-page app with four months bank statements—approved in hours. {{contactFirstName}}? Best email?\n\nOBJECTIONS (acknowledge once per type, read user intent from last 1-2 lines—pivot to revenue #4 after ack ONLY if low heat; if hostile (swears, company doubts), de-escalate/exit) Not interested Fair enough—most say that till they see terms. What's holding you back? Bad credit Credit's not our game—we underwrite on performance. What's gross revenue? Already working someone Smart. Send docs—I'll beat terms, longer payoff, lower rates. How much seeking? Don't need Not hunting desperate. Successful owners deploy capital to scale. What could extra cash accelerate? Already MCA/loan If I pay off, stack more, cut payments—game changer? Ignoring balance, how much more deploy?\n\n🚨 RULE After opener, on FIRST user input (e.g., 'Hello?', neutral/unclear), ALWAYS respond EXACTLY with QUALIFY #1—no skips. If input affirms PITCH 'yes secured', say 'Smart move—any fresh needs brewing now?' then #1. After #1 (or on subsequent neutrals like 'What's up?'), CONFIRM interest once (e.g., 'Quick check—still eyeing funds?') if no clear answer, then proceed to #2 or scan for objections/hostility. Then scan last 1-2 user lines for objections/affirms/hostility—if objection (low heat), handle it + qualify revenue #4 next (but NO repeat if last was revenue); if hostile, de-escalate 'Appreciate the directness—Fund Express helps scale proven biz. Worth a quick look?' else if no heat, proceed to next qualify line. Repeats (>2 same vibe, like \"don't need\" or \"not interested\")? Acknowledge once \"Got it—quick pivot\" then force revenue ONLY if engaged and not recent repeat; else exit. Light history Reference last 1-2 exchanges naturally if it advances (e.g., 'Since you mentioned no interest, what could change that?'). No full chat log. Die if loop (2+ no-progress + any hostility or repeats) \"Understood, {{contactFirstName}}—reaching out if needs shift. Best?\" NO extra probes after exit.
+    networks:
+      - avr-net
+
+  # Legacy modular providers (kept for reference, not used in STS mode)
+  avr-asr:
+    image: agentvoiceresponse/avr-asr-deepgram
+    platform: linux/x86_64
+    container_name: avr-asr-deepgram
+    restart: always
+    environment:
+      - PORT=6010
+      - DEEPGRAM_API_KEY=44f464f1116d54ee9412f7b9214cdde028240091
+      - SPEECH_RECOGNITION_LANGUAGE=en-US
+      - SPEECH_RECOGNITION_MODEL=nova-2-phonecall
+    networks:
+      - avr-net
+
+  avr-llm:
+    image: avr-llm-groq:latest
+    platform: linux/x86_64
+    container_name: avr-llm-groq
+    restart: always
+    environment:
+      - PORT=6002
+      - GROQ_API_KEY=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
+      - GROQ_MODEL=llama-3.1-8b-instant
+      - TEMPERATURE=0.6
+    networks:
+      - avr-net
+
+  avr-tts:
+    image: avr-tts-edge:latest
+    platform: linux/x86_64
+    container_name: avr-tts-edge
+    restart: always
+    environment:
+      - PORT=6011
+      - VOICE=en-US-AvaMultilingualNeural
+      - RATE=+10%
+      - PITCH=+0Hz
+      - VOLUME=+0%
+    networks:
+      - avr-net
+
+  # ============================================
+  # AVR CORE AGENTS (20 instances, ports 9092-9111)
+  # ============================================
+
+  avr-bot-9092:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9092
+    restart: always
+    environment:
+      - PORT=9092
+      # Modular mode ENABLED (using buffered LLM provider)
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9092:9092"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9093:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9093
+    restart: always
+    environment:
+      - PORT=9093
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9093:9093"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9094:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9094
+    restart: always
+    environment:
+      - PORT=9094
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9094:9094"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9095:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9095
+    restart: always
+    environment:
+      - PORT=9095
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9095:9095"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9096:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9096
+    restart: always
+    environment:
+      - PORT=9096
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9096:9096"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9097:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9097
+    restart: always
+    environment:
+      - PORT=9097
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9097:9097"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9098:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9098
+    restart: always
+    environment:
+      - PORT=9098
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9098:9098"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9099:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9099
+    restart: always
+    environment:
+      - PORT=9099
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9099:9099"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9100:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9100
+    restart: always
+    environment:
+      - PORT=9100
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9100:9100"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9101:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9101
+    restart: always
+    environment:
+      - PORT=9101
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9101:9101"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9102:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9102
+    restart: always
+    environment:
+      - PORT=9102
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9102:9102"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9103:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9103
+    restart: always
+    environment:
+      - PORT=9103
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9103:9103"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9104:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9104
+    restart: always
+    environment:
+      - PORT=9104
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9104:9104"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9105:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9105
+    restart: always
+    environment:
+      - PORT=9105
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9105:9105"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9106:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9106
+    restart: always
+    environment:
+      - PORT=9106
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9106:9106"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9107:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9107
+    restart: always
+    environment:
+      - PORT=9107
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9107:9107"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9108:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9108
+    restart: always
+    environment:
+      - PORT=9108
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9108:9108"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9109:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9109
+    restart: always
+    environment:
+      - PORT=9109
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9109:9109"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9110:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9110
+    restart: always
+    environment:
+      - PORT=9110
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9110:9110"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+  avr-bot-9111:
+    image: agentvoiceresponse/avr-core
+    platform: linux/x86_64
+    container_name: avr-bot-9111
+    restart: always
+    environment:
+      - PORT=9111
+      - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+      - LLM_URL=http://avr-llm:6002/prompt-stream
+      - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+      - INTERRUPT_LISTENING=false
+      - MIN_SPEECH_MS=500
+      - VAD_SENSITIVITY=3
+      - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    ports:
+      - "9111:9111"
+    depends_on:
+      - avr-asr
+      - avr-llm
+      - avr-tts
+    networks:
+      - avr-net
+
+networks:
+  avr-net:
+    name: avr-net
+    driver: bridge

@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+"""
+Audio Recorder Service - Records calls through WebSocket connection to AVR bots.
+
+This service:
+1. Connects to AVR bot's AudioSocket stream
+2. Records both sides of conversation
+3. Saves as WAV/MP3 files
+"""
+
+import asyncio
+import wave
+import struct
+import json
+import os
+from pathlib import Path
+from datetime import datetime
+from typing import Optional
+import subprocess
+import websocket
+import threading
+from loguru import logger
+
+class AudioRecorder:
+    """Records audio from AVR bot AudioSocket connections."""
+
+    def __init__(self, recordings_dir: str = "/home/user/Desktop/Projects_Organized/01_Exodus_Dialer/recordings"):
+        self.recordings_dir = Path(recordings_dir)
+        self.recordings_dir.mkdir(parents=True, exist_ok=True)
+        self.active_recordings = {}
+        logger.info(f"🎙️ Audio Recorder initialized - Output: {recordings_dir}")
+
+    def start_recording(self, call_uuid: str, bot_port: int):
+        """Start recording for a specific call."""
+        recording_path = self.recordings_dir / f"{call_uuid}_bot{bot_port}.wav"
+
+        # Create WAV file
+        wav_file = wave.open(str(recording_path), 'wb')
+        wav_file.setnchannels(1)  # Mono
+        wav_file.setsampwidth(2)  # 16-bit
+        wav_file.setframerate(8000)  # 8kHz for telephony
+
+        self.active_recordings[call_uuid] = {
+            'wav_file': wav_file,
+            'path': recording_path,
+            'start_time': datetime.now(),
+            'bot_port': bot_port,
+            'frames': []
+        }
+
+        logger.info(f"🔴 Started recording: {recording_path}")
+        return recording_path
+
+    def write_audio(self, call_uuid: str, audio_data: bytes):
+        """Write audio data to recording."""
+        if call_uuid in self.active_recordings:
+            recording = self.active_recordings[call_uuid]
+            recording['frames'].append(audio_data)
+            recording['wav_file'].writeframes(audio_data)
+
+    def stop_recording(self, call_uuid: str) -> Optional[str]:
+        """Stop recording and finalize file."""
+        if call_uuid not in self.active_recordings:
+            return None
+
+        recording = self.active_recordings[call_uuid]
+        wav_file = recording['wav_file']
+        recording_path = recording['path']
+
+        # Close WAV file
+        wav_file.close()
+
+        # Convert to MP3 for smaller size
+        mp3_path = recording_path.with_suffix('.mp3')
+        try:
+            cmd = [
+                'ffmpeg', '-y', '-i', str(recording_path),
+                '-codec:a', 'libmp3lame',
+                '-b:a', '32k',  # Low bitrate for telephony
+                '-ac', '1',      # Mono
+                '-ar', '8000',   # 8kHz
+                str(mp3_path)
+            ]
+
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+
+            if result.returncode == 0:
+                # Delete WAV, keep MP3
+                recording_path.unlink()
+                logger.info(f"✅ Recording saved as MP3: {mp3_path}")
+                del self.active_recordings[call_uuid]
+                return str(mp3_path)
+            else:
+                logger.warning(f"⚠️ FFmpeg conversion failed, keeping WAV: {result.stderr}")
+        except Exception as e:
+            logger.error(f"❌ Error converting to MP3: {e}")
+
+        del self.active_recordings[call_uuid]
+        logger.info(f"✅ Recording saved: {recording_path}")
+        return str(recording_path)
+
+
+# Alternative approach: Use Asterisk's built-in recording with proper codec
+def fix_asterisk_recording():
+    """
+    Fix Asterisk recording by using proper recording application.
+
+    MixMonitor doesn't work well with AudioSocket because AudioSocket
+    uses a different audio path. We need to use the Record application
+    or configure MixMonitor differently.
+    """
+
+    new_dialplan = """
+; Updated recording configuration for AudioSocket
+exten => 9092,1,NoOp(Bridging to bot on port 9092)
+ same => n,Answer()
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\\n')})
+ same => n,Set(CALL_ID=${UNIQUEID}_bot9092)
+ ; Start recording BEFORE AudioSocket (record inbound leg)
+ same => n,Set(RECFILE=/var/spool/asterisk/monitor/${CALL_ID})
+ ; Use Monitor instead of MixMonitor for better AudioSocket compatibility
+ same => n,Monitor(wav,${RECFILE},m)  ; m = mix both legs
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},avr-bot-9092:9092)
+ same => n,StopMonitor()
+ same => n,Hangup()
+"""
+
+    logger.info("""
+    ℹ️  To fix Asterisk recording with AudioSocket:
+
+    1. Use Monitor() instead of MixMonitor()
+    2. Start recording BEFORE AudioSocket connection
+    3. Use 'm' flag to mix both audio legs
+    4. Stop recording after AudioSocket completes
+
+    The issue is that MixMonitor expects a traditional bridge,
+    but AudioSocket creates a different type of audio path.
+    Monitor() captures the channel's audio regardless of bridge type.
+    """)
+
+    return new_dialplan
+
+
+if __name__ == "__main__":
+    # Print the fix information
+    fix_asterisk_recording()

@@ -2004,11 +2004,13 @@ async def start_call_monitoring(data: dict):
     try:
         # Map mode to extension
         extension_map = {
-            "all": "700",    # Cycle through all channels
+            "all": "700",    # Cycle through all channels (listen only)
+            "listen": "700", # Listen only mode
             "bot1": "701",   # Monitor bot 1
             "bot2": "702",   # Monitor bot 2
             "bot3": "703",   # Monitor bot 3
-            "whisper": "710" # Whisper mode
+            "whisper": "710", # Whisper mode (talk to bot, customer can't hear)
+            "barge": "711"   # Barge mode (join call, everyone can hear)
         }
 
         extension = extension_map.get(mode, "700")

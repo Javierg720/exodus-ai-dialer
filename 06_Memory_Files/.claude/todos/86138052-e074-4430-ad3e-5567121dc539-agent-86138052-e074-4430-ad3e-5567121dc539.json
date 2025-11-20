@@ -1,0 +1,22 @@
+[
+  {
+    "content": "Install NVIDIA proprietary drivers",
+    "status": "completed",
+    "activeForm": "Installing NVIDIA proprietary drivers"
+  },
+  {
+    "content": "Reboot system to load NVIDIA driver",
+    "status": "in_progress",
+    "activeForm": "Rebooting system to load NVIDIA driver"
+  },
+  {
+    "content": "Verify both GPUs are working properly",
+    "status": "pending",
+    "activeForm": "Verifying both GPUs are working properly"
+  },
+  {
+    "content": "Test GPU rendering and compute capabilities",
+    "status": "pending",
+    "activeForm": "Testing GPU rendering and compute capabilities"
+  }
+]

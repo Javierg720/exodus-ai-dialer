@@ -1,0 +1,134 @@
+const express = require('express');
+const axios = require('axios');
+
+const app = express();
+app.use(express.json());
+
+const PORT = process.env.PORT || 6002;
+const CEREBRAS_API_KEY = process.env.CEREBRAS_API_KEY;
+const MODEL = process.env.CEREBRAS_MODEL || 'llama-3.3-70b';
+const TEMPERATURE = parseFloat(process.env.TEMPERATURE || '0.7');
+const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '500');
+const SYSTEM_PROMPT = process.env.SYSTEM_PROMPT || 'You are a helpful AI assistant.';
+
+const cerebras = axios.create({
+  baseURL: 'https://api.cerebras.ai/v1',
+  headers: {
+    'Authorization': `Bearer ${CEREBRAS_API_KEY}`,
+    'Content-Type': 'application/json'
+  }
+});
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', provider: 'cerebras', model: MODEL });
+});
+
+// Main LLM endpoint
+app.post('/chat', async (req, res) => {
+  try {
+    const { messages = [], systemPrompt = SYSTEM_PROMPT } = req.body;
+
+    // Format messages for Cerebras
+    const formattedMessages = [
+      { role: 'system', content: systemPrompt },
+      ...messages.map(msg => ({
+        role: msg.role || 'user',
+        content: msg.content || msg.text || ''
+      }))
+    ];
+
+    console.log(`[Cerebras] Generating response with model ${MODEL}`);
+
+    // Call Cerebras API
+    const response = await cerebras.post('/chat/completions', {
+      model: MODEL,
+      messages: formattedMessages,
+      temperature: TEMPERATURE,
+      max_completion_tokens: MAX_TOKENS,
+      stream: false
+    });
+
+    const content = response.data.choices[0]?.message?.content || '';
+
+    res.json({
+      response: content,
+      model: MODEL,
+      usage: response.data.usage
+    });
+
+  } catch (error) {
+    console.error('[Cerebras] Error:', error.response?.data || error.message);
+    res.status(500).json({
+      error: error.message,
+      provider: 'cerebras'
+    });
+  }
+});
+
+// Streaming endpoint
+app.post('/chat/stream', async (req, res) => {
+  try {
+    const { messages = [], systemPrompt = 'You are a helpful AI assistant.' } = req.body;
+
+    const formattedMessages = [
+      { role: 'system', content: systemPrompt },
+      ...messages.map(msg => ({
+        role: msg.role || 'user',
+        content: msg.content || msg.text || ''
+      }))
+    ];
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const response = await cerebras.post('/chat/completions', {
+      model: MODEL,
+      messages: formattedMessages,
+      temperature: TEMPERATURE,
+      max_completion_tokens: MAX_TOKENS,
+      stream: true
+    }, {
+      responseType: 'stream'
+    });
+
+    response.data.on('data', (chunk) => {
+      const lines = chunk.toString().split('\n').filter(line => line.trim() !== '');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') {
+            res.write('data: [DONE]\n\n');
+            return;
+          }
+
+          try {
+            const json = JSON.parse(data);
+            const content = json.choices[0]?.delta?.content || '';
+            if (content) {
+              res.write(`data: ${JSON.stringify({ content })}\n\n`);
+            }
+          } catch (e) {
+            // Skip invalid JSON
+          }
+        }
+      }
+    });
+
+    response.data.on('end', () => {
+      res.end();
+    });
+
+  } catch (error) {
+    console.error('[Cerebras] Stream error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[Cerebras LLM Provider] Running on port ${PORT}`);
+  console.log(`[Cerebras] Model: ${MODEL}`);
+  console.log(`[Cerebras] Temperature: ${TEMPERATURE}`);
+});

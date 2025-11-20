@@ -1,0 +1,22 @@
+[
+  {
+    "content": "Check what Steam packages are currently installed",
+    "status": "completed",
+    "activeForm": "Checking installed Steam packages"
+  },
+  {
+    "content": "Remove Steam package and purge configuration",
+    "status": "in_progress",
+    "activeForm": "Removing Steam package and purging configuration"
+  },
+  {
+    "content": "Remove Steam game data from home directory",
+    "status": "pending",
+    "activeForm": "Removing Steam game data from home directory"
+  },
+  {
+    "content": "Verify Flatpak Steam remains untouched",
+    "status": "pending",
+    "activeForm": "Verifying Flatpak Steam remains untouched"
+  }
+]

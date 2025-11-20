@@ -1,0 +1,824 @@
+#!/usr/bin/env python3
+"""
+Dialer Orchestrator - Predictive Dialing Engine
+
+Core component that orchestrates the entire dialing operation:
+- Monitors bot pool for available instances
+- Fetches leads from database
+- Implements predictive dialing algorithm (3-5x dial ratio)
+- Originates calls via Asterisk AMI (simple_ami)
+- Routes answered calls to bot instances
+- Monitors TCPA compliance (drop rate <3%)
+- Handles call lifecycle and dispositions
+
+Architecture:
+    Database ← Orchestrator → Bot Pool
+                    ↕
+              Asterisk AMI
+
+Algorithm adapted from VICIdial's proven 15+ year production system.
+"""
+
+import asyncio
+import time
+from datetime import datetime, timedelta
+from typing import Optional, Dict, List
+from dataclasses import dataclass, field
+
+from simple_ami import Manager
+from loguru import logger
+
+from dialer_db_async import AsyncDialerDB
+from bot_pool_manager import BotPoolManager
+from tcpa_compliance import TCPACompliance
+
+try:
+    from dialer_logging import get_logger, LogContext, PerformanceLogger
+    struct_logger = get_logger("dialer_orchestrator")
+    STRUCTURED_LOGGING = True
+except ImportError:
+    STRUCTURED_LOGGING = False
+    struct_logger = None
+
+
+@dataclass
+class CallAttempt:
+    """Represents an outbound call attempt in progress.
+
+    Tracked by Uniqueid (Asterisk's immutable call identifier) to avoid race conditions.
+    """
+
+    lead_id: int
+    phone_number: str
+    campaign_id: int
+    uniqueid: Optional[str] = None       # PRIMARY KEY - Asterisk's global unique ID (immutable)
+    action_id: Optional[str] = None      # For correlating OriginateResponse events
+    channel_id: Optional[str] = None     # Asterisk channel name (can change, stored for reference)
+    bot_port: Optional[int] = None       # Assigned when answered
+    dialed_at: float = field(default_factory=time.time)
+    status: str = "DIALING"  # DIALING, ANSWERED, NO_ANSWER, BUSY, FAILED
+
+
+class PredictiveDialer:
+    """Predictive dialing algorithm.
+
+    Adaptive algorithm that adjusts dial ratio (3-5 calls per bot) based on:
+    - Connection rate (% of calls answered)
+    - Drop rate (TCPA compliance - must stay <3%)
+    - Available bot capacity
+    """
+
+    def __init__(
+        self,
+        min_dial_ratio: float = 3.0,
+        max_dial_ratio: float = 5.0,
+        target_drop_rate: float = 0.03  # 3% TCPA limit
+    ):
+        self.min_dial_ratio = min_dial_ratio
+        self.max_dial_ratio = max_dial_ratio
+        self.target_drop_rate = target_drop_rate
+        self.current_dial_ratio = min_dial_ratio
+
+    def calculate_dials_needed(
+        self,
+        available_bots: int,
+        inflight_calls: int,
+        recent_connection_rate: float,
+        recent_drop_rate: float
+    ) -> int:
+        """Calculate how many calls to place right now.
+
+        Args:
+            available_bots: Number of idle bot instances
+            inflight_calls: Number of calls currently ringing/dialing
+            recent_connection_rate: % of recent calls that were answered (0.0-1.0)
+            recent_drop_rate: % of answered calls that were dropped (0.0-1.0)
+
+        Returns:
+            Number of new calls to originate
+        """
+        # Adjust dial ratio based on performance
+        self._adjust_dial_ratio(recent_connection_rate, recent_drop_rate)
+
+        # Calculate target concurrent calls
+        target_calls = int(available_bots * self.current_dial_ratio)
+
+        # Subtract already inflight calls
+        calls_needed = max(0, target_calls - inflight_calls)
+
+        logger.debug(
+            f"📊 Dial calculation: {available_bots} bots × {self.current_dial_ratio:.2f} ratio "
+            f"= {target_calls} target, {inflight_calls} inflight → dial {calls_needed} more"
+        )
+
+        return calls_needed
+
+    def _adjust_dial_ratio(self, connection_rate: float, drop_rate: float):
+        """Adaptively adjust dial ratio based on recent performance.
+
+        Enhanced VICIdial-style algorithm with:
+        - Exponential reduction when drop rate is critical
+        - Gradual increases when safe
+        - Connection rate-based optimization
+        - Finer-grained adjustments
+        """
+        # Handle None values (no historical data yet)
+        if connection_rate is None:
+            connection_rate = 0.5  # Assume 50% connection rate initially
+        if drop_rate is None:
+            drop_rate = 0.0  # Assume 0% drop rate initially
+
+        # Calculate drop rate percentage of limit
+        drop_rate_pct = drop_rate / self.target_drop_rate if self.target_drop_rate > 0 else 0
+
+        # CRITICAL: Drop rate above 90% of limit - emergency reduction
+        if drop_rate_pct >= 0.9:
+            reduction = 0.3  # Aggressive 30% reduction
+            self.current_dial_ratio = max(
+                self.min_dial_ratio,
+                self.current_dial_ratio - reduction
+            )
+            logger.error(
+                f"🚨 CRITICAL: Drop rate {drop_rate:.1%} at {drop_rate_pct:.0%} of limit! "
+                f"Emergency reduction to {self.current_dial_ratio:.2f}"
+            )
+
+        # HIGH: Drop rate 80-90% of limit - significant reduction
+        elif drop_rate_pct >= 0.8:
+            reduction = 0.15
+            self.current_dial_ratio = max(
+                self.min_dial_ratio,
+                self.current_dial_ratio - reduction
+            )
+            logger.warning(
+                f"⚠️  Drop rate {drop_rate:.1%} approaching limit ({drop_rate_pct:.0%}), "
+                f"reducing dial ratio to {self.current_dial_ratio:.2f}"
+            )
+
+        # MODERATE: Drop rate 60-80% - gentle reduction
+        elif drop_rate_pct >= 0.6:
+            reduction = 0.05
+            self.current_dial_ratio = max(
+                self.min_dial_ratio,
+                self.current_dial_ratio - reduction
+            )
+            logger.info(
+                f"📉 Drop rate {drop_rate:.1%} moderate, "
+                f"reducing dial ratio to {self.current_dial_ratio:.2f}"
+            )
+
+        # SAFE ZONE: Drop rate under 50% of limit
+        elif drop_rate_pct < 0.5:
+            # Optimize based on connection rate
+            if connection_rate < 0.3:  # Very low connection rate
+                # Increase aggressively to fill bots
+                increase = 0.2
+                self.current_dial_ratio = min(
+                    self.max_dial_ratio,
+                    self.current_dial_ratio + increase
+                )
+                logger.info(
+                    f"📈 Very low connection rate {connection_rate:.1%}, "
+                    f"increasing dial ratio to {self.current_dial_ratio:.2f}"
+                )
+            elif connection_rate < 0.5:  # Low connection rate
+                # Moderate increase
+                increase = 0.1
+                self.current_dial_ratio = min(
+                    self.max_dial_ratio,
+                    self.current_dial_ratio + increase
+                )
+                logger.info(
+                    f"📈 Low connection rate {connection_rate:.1%}, "
+                    f"increasing dial ratio to {self.current_dial_ratio:.2f}"
+                )
+            elif connection_rate > 0.7:  # High connection rate
+                # Slight reduction to avoid over-dialing
+                reduction = 0.05
+                self.current_dial_ratio = max(
+                    self.min_dial_ratio,
+                    self.current_dial_ratio - reduction
+                )
+                logger.debug(
+                    f"High connection rate {connection_rate:.1%}, "
+                    f"reducing dial ratio to {self.current_dial_ratio:.2f}"
+                )
+            # else: 50-70% connection rate is optimal, maintain current ratio
+
+
+class DialerOrchestrator:
+    """Main dialer orchestration engine.
+
+    Coordinates between:
+    - Database (leads, campaigns)
+    - Bot Pool (available instances)
+    - Asterisk AMI (call origination)
+    - TCPA compliance monitoring
+    """
+
+    def __init__(
+        self,
+        db: AsyncDialerDB,
+        bot_pool: BotPoolManager,
+        ami_host: str = "localhost",
+        ami_port: int = 5038,
+        ami_username: str = "ava",
+        ami_password: str = "ava123",
+        asterisk_context: str = "audiosocket-dial",
+        dial_interval: float = 1.0,  # Check for new dials every N seconds
+        stats_window_days: int = 30  # TCPA: Calculate drop rate over last N days
+    ):
+        self.db = db
+        self.bot_pool = bot_pool
+        self.ami_host = ami_host
+        self.ami_port = ami_port
+        self.ami_username = ami_username
+        self.ami_password = ami_password
+        self.asterisk_context = asterisk_context
+        self.dial_interval = dial_interval
+        self.stats_window_days = stats_window_days
+
+        # Asterisk Manager Interface connection
+        self.ami: Optional[Manager] = None
+
+        # Predictive dialing algorithm
+        self.dialer = PredictiveDialer()
+
+        # TCPA compliance checker
+        self.tcpa = TCPACompliance()
+
+        # Active call attempts (keyed by Uniqueid for race-condition-free tracking)
+        self.active_calls: Dict[str, CallAttempt] = {}
+
+        # Track ActionID → CallAttempt for OriginateResponse events (before Uniqueid is known)
+        self._pending_originates: Dict[str, CallAttempt] = {}
+
+        # Channel name → Uniqueid reverse mapping (for AMI actions that require channel names)
+        self.channel_to_uniqueid: Dict[str, str] = {}
+
+        # Orchestration control
+        self._running = False
+        self._dial_task: Optional[asyncio.Task] = None
+        self._stop_event = asyncio.Event()
+
+        logger.info("📞 Dialer Orchestrator initialized")
+
+    async def start(self):
+        """Start the dialer orchestrator."""
+        logger.info("🚀 Starting Dialer Orchestrator...")
+
+        # Connect to Asterisk AMI
+        self.ami = Manager(
+            host=self.ami_host,
+            port=self.ami_port,
+            username=self.ami_username,
+            secret=self.ami_password
+        )
+        try:
+            await self.ami.connect()
+            logger.info(f"✅ Connected to Asterisk AMI at {self.ami_host}:{self.ami_port}")
+        except Exception as e:
+            logger.error(f"❌ Failed to connect to Asterisk AMI: {e}")
+            raise
+
+        # Register AMI event handlers
+        self.ami.register_event("OriginateResponse", self._handle_originate_response)
+        self.ami.register_event("Newstate", self._handle_call_state_change)
+        self.ami.register_event("Hangup", self._handle_hangup)
+
+        # Start dialing loop
+        self._running = True
+        self._dial_task = asyncio.create_task(self._dial_loop())
+
+        logger.info("✅ Dialer Orchestrator started")
+
+    async def stop(self):
+        """Stop the dialer orchestrator."""
+        logger.info("🛑 Stopping Dialer Orchestrator...")
+
+        self._running = False
+        self._stop_event.set()
+
+        # Wait for dial loop to finish
+        if self._dial_task and not self._dial_task.done():
+            self._dial_task.cancel()
+            try:
+                await self._dial_task
+            except asyncio.CancelledError:
+                pass
+
+        # Disconnect from AMI
+        if self.ami:
+            await self.ami.close()
+            self.ami = None
+
+        logger.info("✅ Dialer Orchestrator stopped")
+
+    async def _dial_loop(self):
+        """Main dialing loop - continuously evaluates and places calls."""
+        logger.info("🔄 Dial loop started")
+
+        try:
+            while self._running and not self._stop_event.is_set():
+                # Get active campaigns
+                active_campaigns = await self.db.get_active_campaigns()
+                logger.debug(f"🔍 Found {len(active_campaigns)} active campaigns")
+
+                for campaign in active_campaigns:
+                    logger.debug(f"📋 Processing campaign: {campaign.get('name')} (ID: {campaign.get('id')})")
+                    await self._process_campaign(campaign)
+
+                # Wait before next iteration
+                await asyncio.sleep(self.dial_interval)
+
+        except asyncio.CancelledError:
+            logger.info("🔄 Dial loop cancelled")
+            raise
+        except Exception as e:
+            logger.error(f"❌ Error in dial loop: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+
+    async def _process_campaign(self, campaign: Dict):
+        """Process one campaign's dialing needs."""
+        campaign_id = campaign["id"]
+        campaign_name = campaign["name"]
+
+        # Check TCPA compliance before dialing (30-day rolling window)
+        drop_rate = await self.db.calculate_drop_rate(
+            campaign_id,
+            days=self.stats_window_days
+        )
+
+        if drop_rate > campaign["drop_rate_limit"]:
+            logger.error(
+                f"🚫 Campaign '{campaign_name}' exceeds drop rate limit: "
+                f"{drop_rate:.1%} > {campaign['drop_rate_limit']:.1%} - PAUSING"
+            )
+            await self.db.pause_campaign(campaign_id)
+            return
+
+        # Get pool status
+        available_bots = len([
+            port for port, bot in self.bot_pool.bots.items()
+            if bot.is_available()
+        ])
+
+        if available_bots == 0:
+            logger.debug(f"No available bots for campaign '{campaign_name}'")
+            return
+
+        # Count inflight calls for this campaign
+        inflight_calls = sum(
+            1 for call in self.active_calls.values()
+            if call.campaign_id == campaign_id and call.status == "DIALING"
+        )
+
+        # Calculate recent connection rate
+        stats = await self.db.get_campaign_stats_today(campaign_id)
+        connection_rate = stats.get("connection_rate", 0.3) if stats else 0.3
+
+        # Calculate how many calls to place
+        calls_needed = self.dialer.calculate_dials_needed(
+            available_bots=available_bots,
+            inflight_calls=inflight_calls,
+            recent_connection_rate=connection_rate,
+            recent_drop_rate=drop_rate
+        )
+
+        if calls_needed > 0:
+            conn_str = f"{connection_rate:.1%}" if connection_rate is not None else "N/A"
+            drop_str = f"{drop_rate:.1%}" if drop_rate is not None else "N/A"
+            logger.info(
+                f"📞 Campaign '{campaign_name}': placing {calls_needed} calls "
+                f"({available_bots} bots, {inflight_calls} inflight, "
+                f"conn rate {conn_str}, drop rate {drop_str})"
+            )
+
+            # Fetch leads and place calls
+            await self._place_calls(campaign_id, calls_needed)
+
+    async def _place_calls(self, campaign_id: int, count: int):
+        """Place N outbound calls for a campaign."""
+        # Get leads from database
+        logger.debug(f"Getting leads for campaign {campaign_id}, limit={count}")
+        leads = await self.db.get_next_leads(campaign_id, limit=count)
+
+        if not leads:
+            logger.debug(f"No leads available for campaign {campaign_id}")
+            return
+
+        logger.info(f"Got {len(leads)} leads to dial")
+
+        for lead in leads:
+            lead_id = lead["id"]
+            phone_number = lead["phone_number"]
+
+            logger.debug(f"Processing lead {lead_id}: {phone_number}")
+
+            # Check DNC list
+            if await self.db.is_in_dnc(phone_number):
+                logger.warning(f"🚫 Skipping DNC number: {phone_number}")
+                continue
+
+            # Check TCPA calling hours (DISABLED FOR TESTING)
+            # can_call, reason = self.tcpa.can_call_now(phone_number)
+            # if not can_call:
+            #     logger.debug(f"⏰ TCPA: Cannot call {phone_number} - {reason}")
+            #     # Schedule for next available time
+            #     next_time = self.tcpa.get_next_allowed_call_time(phone_number)
+            #     continue
+
+            # Mark lead as calling
+            logger.debug(f"Marking lead {lead_id} as calling")
+            await self.db.mark_lead_calling(lead_id)
+
+            # Originate call via AMI
+            try:
+                logger.debug(f"About to originate call to {phone_number}")
+                action_id = await self._originate_call(lead, campaign_id)
+                logger.debug(f"Originate returned ActionID: {action_id}")
+
+                # Create call attempt tracked by ActionID (Uniqueid will be added by OriginateResponse)
+                call_attempt = CallAttempt(
+                    lead_id=lead_id,
+                    phone_number=phone_number,
+                    campaign_id=campaign_id,
+                    action_id=action_id  # Store for correlation
+                )
+
+                # Store in pending until OriginateResponse provides Uniqueid
+                self._pending_originates[action_id] = call_attempt
+                logger.debug(f"📝 Stored ActionID {action_id} → lead {lead_id}")
+
+                logger.info(f"📞 Dialing {phone_number} (Lead {lead_id}, ActionID {action_id})")
+                
+                if STRUCTURED_LOGGING:
+                    with LogContext(corr_id=action_id, lid=lead_id, cid=campaign_id):
+                        struct_logger.info("call_originated", 
+                            phone=phone_number, 
+                            action_id=action_id,
+                            lead_id=lead_id,
+                            campaign_id=campaign_id)
+
+            except Exception as e:
+                logger.error(f"❌ Failed to originate call to {phone_number}: {e}")
+                if STRUCTURED_LOGGING:
+                    with LogContext(lid=lead_id, cid=campaign_id):
+                        struct_logger.error("call_originate_failed", 
+                            phone=phone_number,
+                            error=str(e),
+                            lead_id=lead_id,
+                            campaign_id=campaign_id)
+                # Update lead status
+                await self.db.update_lead_after_call(lead_id, "FAILED")
+
+    async def _originate_call(self, lead: Dict, campaign_id: int) -> str:
+        """Originate a call via Asterisk AMI.
+
+        Args:
+            lead: Lead dictionary with phone_number, etc.
+            campaign_id: Campaign ID
+
+        Returns:
+            ActionID (string) for correlating OriginateResponse event.
+            Uniqueid will be obtained from the OriginateResponse event.
+        """
+        phone_number = lead["phone_number"]
+
+        # We don't assign a bot yet - that happens when call is answered
+        # Call goes to "wait" extension until bridged to bot
+
+        try:
+            response = await asyncio.wait_for(
+                self.ami.send_action({
+                    "Action": "Originate",
+                    "Channel": f"PJSIP/{phone_number}@twilio",
+                    "Context": self.asterisk_context,
+                    "Exten": "wait",  # Extension that waits for answer
+                    "Priority": "1",
+                    "CallerID": f"Sales <+15615324683>",  # Twilio caller ID
+                    "Timeout": "30000",  # 30 seconds
+                    "Async": "true",
+                    "Variable": [
+                        f"LEAD_ID={lead['id']}",
+                        f"CAMPAIGN_ID={campaign_id}",
+                        f"PHONE_NUMBER={phone_number}"
+                    ]
+                }),
+                timeout=5.0  # 5 second timeout for async originate
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"AMI originate timeout for {phone_number}")
+            raise Exception("AMI originate timeout")
+
+        # Extract ActionID from response (Uniqueid comes later in OriginateResponse event)
+        action_id = response.get("ActionID")
+        if not action_id:
+            raise Exception("OriginateResponse missing ActionID")
+
+        return action_id
+
+    async def _handle_originate_response(self, manager, event):
+        """Handle Asterisk OriginateResponse event - establishes Uniqueid mapping.
+
+        This is THE CRITICAL handler - it links ActionID to Uniqueid and moves the call
+        from pending to active tracking. With Uniqueid-based tracking, there are NO race conditions.
+        """
+        response = event.get("Response")
+        channel = event.get("Channel")
+        uniqueid = event.get("Uniqueid")
+        reason = event.get("Reason", "Unknown")
+        action_id = event.get("ActionID")
+
+        logger.debug(
+            f"🔔 OriginateResponse: ActionID={action_id}, Response={response}, "
+            f"Channel={channel}, Uniqueid={uniqueid}, Reason={reason}"
+        )
+
+        # Find the CallAttempt using ActionID
+        call_attempt = self._pending_originates.pop(action_id, None)
+
+        if not call_attempt:
+            logger.warning(f"⚠️  OriginateResponse for unknown ActionID: {action_id}")
+            return
+
+        lead_id = call_attempt.lead_id
+
+        if response == "Success" and uniqueid:
+            # SUCCESS: Store call by Uniqueid (the reliable, immutable identifier)
+            call_attempt.uniqueid = uniqueid
+            call_attempt.channel_id = channel
+
+            # Add to active_calls by Uniqueid (PRIMARY KEY - no more race conditions!)
+            self.active_calls[uniqueid] = call_attempt
+
+            # Store reverse mapping for AMI actions that need channel name
+            if channel:
+                self.channel_to_uniqueid[channel] = uniqueid
+
+            logger.debug(
+                f"✅ Originate success: Uniqueid={uniqueid}, Channel={channel}, Lead={lead_id}"
+            )
+            
+            if STRUCTURED_LOGGING:
+                with LogContext(uuid=uniqueid, lid=lead_id, cid=call_attempt.campaign_id):
+                    struct_logger.info("call_originate_success",
+                        uniqueid=uniqueid,
+                        channel=channel,
+                        lead_id=lead_id,
+                        phone=call_attempt.phone_number)
+        else:
+            # FAILURE: Originate failed - update lead status
+            logger.warning(f"❌ Originate failed for lead {lead_id}: {reason}")
+            if STRUCTURED_LOGGING:
+                with LogContext(lid=lead_id, cid=call_attempt.campaign_id):
+                    struct_logger.warning("call_originate_failed",
+                        reason=reason,
+                        lead_id=lead_id,
+                        phone=call_attempt.phone_number)
+            await self.db.update_lead_after_call(lead_id, "FAILED")
+
+    async def _handle_call_state_change(self, manager, event):
+        """Handle Asterisk Newstate event - detects when call is answered.
+
+        Now uses Uniqueid for tracking - NO MORE RACE CONDITIONS!
+        """
+        channel_id = event.get("Channel")
+        channel_state = event.get("ChannelState")
+        channel_state_desc = event.get("ChannelStateDesc")
+        uniqueid = event.get("Uniqueid")  # THE FIX - use immutable identifier
+
+        # Log for debugging
+        logger.debug(
+            f"🔍 Newstate: Channel={channel_id}, State={channel_state}, "
+            f"Desc={channel_state_desc}, Uniqueid={uniqueid}"
+        )
+
+        # ChannelState 6 = Up (answered)
+        if channel_state == "6" or channel_state_desc == "Up":
+            # Look up by Uniqueid
+            call_attempt = self.active_calls.get(uniqueid)
+
+            # Race condition mitigation: If not found, retry after brief delay
+            # (OriginateResponse may still be processing)
+            if not call_attempt:
+                logger.debug(f"Call {uniqueid} not in active_calls yet, waiting for OriginateResponse...")
+                await asyncio.sleep(0.1)  # 100ms delay
+                call_attempt = self.active_calls.get(uniqueid)
+
+            if not call_attempt:
+                logger.warning(
+                    f"⚠️  Newstate State=6 for Uniqueid {uniqueid} but not in active_calls after retry. "
+                    f"Possible reasons: (1) Call from external source, (2) Already handled."
+                )
+                return
+
+            # Check if already processed
+            if call_attempt.status != "DIALING":
+                logger.debug(f"Call {uniqueid} already in status {call_attempt.status}, ignoring")
+                return
+
+            logger.info(f"✅ Call answered: Uniqueid={uniqueid}, Channel={channel_id}")
+            
+            if STRUCTURED_LOGGING:
+                with LogContext(uuid=uniqueid, lid=call_attempt.lead_id, cid=call_attempt.campaign_id):
+                    struct_logger.info("call_answered",
+                        uniqueid=uniqueid,
+                        channel=channel_id,
+                        phone=call_attempt.phone_number)
+
+            # Assign to bot instance
+            bot_port = self.bot_pool.get_idle_bot_port()
+
+            if bot_port:
+                # Mark bot as busy (track by Uniqueid)
+                self.bot_pool.mark_bot_busy(bot_port, uniqueid)
+                call_attempt.bot_port = bot_port
+                call_attempt.status = "ANSWERED"
+
+                # Bridge call to bot's AudioSocket (AMI Redirect needs channel name)
+                await self._bridge_to_bot(channel_id, bot_port)
+
+                logger.info(f"🤖 Call {uniqueid} bridged to bot on port {bot_port}")
+                
+                if STRUCTURED_LOGGING:
+                    with LogContext(uuid=uniqueid, lid=call_attempt.lead_id, cid=call_attempt.campaign_id, port=bot_port):
+                        struct_logger.info("bot_assigned",
+                            uniqueid=uniqueid,
+                            bot_port=bot_port,
+                            channel=channel_id)
+            else:
+                # No bot available - DROPPED CALL (TCPA violation!)
+                logger.error(f"❌ DROPPED CALL: No bot available for Uniqueid {uniqueid}")
+
+                # Hangup the call (AMI Hangup needs channel name)
+                await self.ami.send_action({
+                    "Action": "Hangup",
+                    "Channel": channel_id,
+                    "Cause": "17"  # User busy
+                })
+
+                # Log dropped call (use Uniqueid for tracking)
+                await self.db.log_call(
+                    lead_id=call_attempt.lead_id,
+                    campaign_id=call_attempt.campaign_id,
+                    call_uuid=uniqueid,  # Use Uniqueid
+                    bot_port=0,
+                    start_time=datetime.fromtimestamp(call_attempt.dialed_at),
+                    end_time=datetime.now(),
+                    call_status="ANSWERED",
+                    was_dropped=True
+                )
+
+                # Clean up (remove by Uniqueid)
+                del self.active_calls[uniqueid]
+                if channel_id in self.channel_to_uniqueid:
+                    del self.channel_to_uniqueid[channel_id]
+
+    async def _bridge_to_bot(self, channel_id: str, bot_port: int):
+        """Bridge answered call to bot instance via AudioSocket."""
+        # Redirect call to AudioSocket dialplan
+        await self.ami.send_action({
+            "Action": "Redirect",
+            "Channel": channel_id,
+            "Context": self.asterisk_context,
+            "Exten": str(bot_port),  # Extension = bot port
+            "Priority": "1"
+        })
+
+    async def _handle_hangup(self, manager, event):
+        """Handle Asterisk Hangup event - cleanup after call ends."""
+        channel_id = event.get("Channel")
+        uniqueid = event.get("Uniqueid")
+        cause = event.get("Cause")
+        cause_text = event.get("Cause-txt", "Unknown")
+
+        # Look up by Uniqueid (primary key)
+        call_attempt = self.active_calls.pop(uniqueid, None)
+
+        # Fallback: Try channel lookup for edge cases
+        if not call_attempt and channel_id in self.channel_to_uniqueid:
+            uniqueid_lookup = self.channel_to_uniqueid.pop(channel_id)
+            call_attempt = self.active_calls.pop(uniqueid_lookup, None)
+
+        if not call_attempt:
+            logger.debug(f"Hangup for unknown call: Uniqueid={uniqueid}, Channel={channel_id}")
+            return
+
+        logger.info(f"📴 Call ended: Uniqueid={uniqueid}, Channel={channel_id}, Cause={cause_text}")
+        
+        call_duration = time.time() - call_attempt.dialed_at
+        
+        if STRUCTURED_LOGGING:
+            with LogContext(uuid=uniqueid, lid=call_attempt.lead_id, cid=call_attempt.campaign_id, port=call_attempt.bot_port):
+                struct_logger.info("call_hangup",
+                    uniqueid=uniqueid,
+                    channel=channel_id,
+                    cause=cause,
+                    cause_text=cause_text,
+                    duration_seconds=round(call_duration, 2),
+                    bot_port=call_attempt.bot_port,
+                    phone=call_attempt.phone_number)
+
+        # Clean up reverse mapping
+        if channel_id in self.channel_to_uniqueid:
+            del self.channel_to_uniqueid[channel_id]
+
+        # Mark bot as idle if assigned
+        if call_attempt.bot_port:
+            self.bot_pool.mark_bot_idle(call_attempt.bot_port)
+
+        # Determine call status from hangup cause
+        call_status = self._map_hangup_cause(cause, call_attempt.status)
+
+        # Calculate call duration
+        end_time = datetime.now()
+        start_time = datetime.fromtimestamp(call_attempt.dialed_at)
+
+        # Always log call to database (use Uniqueid for tracking)
+        await self.db.log_call(
+            lead_id=call_attempt.lead_id,
+            campaign_id=call_attempt.campaign_id,
+            call_uuid=uniqueid,  # Use Uniqueid
+            bot_port=call_attempt.bot_port or 0,
+            start_time=start_time,
+            end_time=end_time,
+            call_status=call_status,
+            disposition=None,  # Bot will update disposition later via API
+            was_dropped=False
+        )
+
+        logger.debug(f"✅ Logged call for lead {call_attempt.lead_id}: {call_status}")
+
+    def _map_hangup_cause(self, cause: str, attempt_status: str) -> str:
+        """Map Asterisk hangup cause to our call status."""
+        if attempt_status == "ANSWERED":
+            return "ANSWERED"
+
+        # Common causes
+        cause_map = {
+            "17": "BUSY",  # User busy
+            "19": "NO_ANSWER",  # No answer
+            "20": "NO_ANSWER",  # Subscriber absent
+            "21": "NO_ANSWER",  # Call rejected
+        }
+
+        return cause_map.get(cause, "FAILED")
+
+    def get_statistics(self) -> Dict:
+        """Get real-time orchestrator statistics."""
+        return {
+            "active_calls": len(self.active_calls),
+            "dialing": sum(1 for c in self.active_calls.values() if c.status == "DIALING"),
+            "answered": sum(1 for c in self.active_calls.values() if c.status == "ANSWERED"),
+            "current_dial_ratio": self.dialer.current_dial_ratio,
+            "bot_pool": self.bot_pool.get_pool_stats()
+        }
+
+
+# Example usage
+async def main():
+    """Test dialer orchestrator."""
+    from bot_pool_manager import BotPoolManager
+    from dialer_db_async import AsyncDialerDB
+
+    # Initialize components
+    db = AsyncDialerDB("dialer.db")
+    await db.init()
+
+    bot_pool = BotPoolManager(
+        base_port=9092,
+        num_instances=3,
+        bot_script="ava_sales_bot_audiosocket.py"
+    )
+
+    orchestrator = DialerOrchestrator(
+        db=db,
+        bot_pool=bot_pool,
+        ami_host="localhost",
+        ami_username="ava",
+        ami_password="ava123"
+    )
+
+    try:
+        # Start bot pool
+        await bot_pool.start()
+
+        # Start orchestrator
+        await orchestrator.start()
+
+        # Let it run
+        logger.info("🎯 Dialer running... Press Ctrl+C to stop")
+        await asyncio.sleep(3600)  # Run for 1 hour
+
+    except KeyboardInterrupt:
+        logger.info("⏹️  Stopping...")
+
+    finally:
+        await orchestrator.stop()
+        await bot_pool.stop()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

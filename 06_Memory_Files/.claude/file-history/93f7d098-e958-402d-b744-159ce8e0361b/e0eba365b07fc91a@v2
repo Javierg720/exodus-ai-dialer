@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""
+ETH Balance Checker - Native Ethereum Only
+Scans addresses for ETH balance >= 0.00000001 ETH
+"""
+
+import requests
+import time
+import csv
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
+
+# === CONFIG ===
+API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImQwODc3ODUyLTcxMzctNGUzMy05Y2RhLWEyOGYzZTYwZWVhNSIsIm9yZ0lkIjoiNDc5NTMzIiwidXNlcklkIjoiNDkzMzQxIiwidHlwZUlkIjoiMGYzOTBmNGUtMjc1Ni00ZTY5LTg1ZWYtN2VjNTQwYjljYzVjIiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NjIyODQ1NzQsImV4cCI6NDkxODA0NDU3NH0.2Qfq2GjUDwkcDZw8yx8m4HCSmbwBPNFLAptKqhITKHg"
+WALLET_FILE = "/home/user/mariohits_40k.txt"
+OUTPUT_FILE = f"/home/user/eth_balances_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+MIN_ETH_BALANCE = 0.00000001  # Minimum balance in ETH
+MAX_WORKERS = 4  # Conservative to avoid rate limits
+RATE_LIMIT_DELAY = 0.3  # 300ms between requests (slower)
+# ==============
+
+headers = {
+    "Accept": "application/json",
+    "X-API-Key": API_KEY
+}
+
+# Stats tracking
+total_addresses = 0
+processed = 0
+found_balances = 0
+errors = 0
+start_time = time.time()
+
+def load_addresses():
+    """Load wallet addresses from file"""
+    print(f"Loading addresses from {WALLET_FILE}...")
+    with open(WALLET_FILE, 'r') as f:
+        addresses = [line.strip() for line in f if line.strip().startswith('0x')]
+    print(f"Loaded {len(addresses):,} addresses")
+    return addresses
+
+def check_eth_balance(address):
+    """Check ETH balance for a single address"""
+    global processed, found_balances, errors
+
+    url = f"https://deep-index.moralis.io/api/v2.2/{address}/balance"
+    params = {"chain": "eth"}
+
+    try:
+        time.sleep(RATE_LIMIT_DELAY)  # Rate limiting
+        response = requests.get(url, headers=headers, params=params, timeout=10)
+
+        if response.status_code == 200:
+            data = response.json()
+
+            # Balance comes in wei (1 ETH = 10^18 wei)
+            balance_wei = int(data.get('balance', 0))
+            balance_eth = balance_wei / 1e18
+
+            processed += 1
+
+            # Progress update every 50 addresses
+            if processed % 50 == 0:
+                elapsed = time.time() - start_time
+                rate = processed / elapsed if elapsed > 0 else 0
+                eta_seconds = (total_addresses - processed) / rate if rate > 0 else 0
+                eta_hours = eta_seconds / 3600
+
+                print(f"[{processed:,}/{total_addresses:,}] "
+                      f"Found: {found_balances:,} | "
+                      f"Rate: {rate:.1f} addr/sec | "
+                      f"ETA: {eta_hours:.2f}h | "
+                      f"Errors: {errors}")
+
+            # Check if balance meets minimum
+            if balance_eth >= MIN_ETH_BALANCE:
+                found_balances += 1
+                return {
+                    'address': address,
+                    'balance_eth': balance_eth,
+                    'balance_wei': balance_wei
+                }
+            return None
+
+        elif response.status_code == 429:
+            # Rate limited - wait and retry
+            errors += 1
+            print(f"⚠️  Rate limited on {address}, waiting 10s...")
+            time.sleep(10)
+            return check_eth_balance(address)  # Retry
+
+        else:
+            errors += 1
+            if errors % 50 == 0:
+                print(f"⚠️  Error {response.status_code} for {address}: {response.text[:100]}")
+            return None
+
+    except Exception as e:
+        errors += 1
+        if errors % 50 == 0:
+            print(f"⚠️  Exception for {address}: {str(e)[:100]}")
+        return None
+
+def main():
+    global total_addresses
+
+    print("="*80)
+    print("ETH Balance Checker (Native Ethereum Only)")
+    print(f"Minimum Balance: {MIN_ETH_BALANCE} ETH")
+    print(f"Max Workers: {MAX_WORKERS}")
+    print("="*80)
+
+    # Load addresses
+    addresses = load_addresses()
+    total_addresses = len(addresses)
+
+    # Prepare CSV output
+    csv_file = open(OUTPUT_FILE, 'w', newline='', encoding='utf-8')
+    csv_writer = csv.writer(csv_file)
+    csv_writer.writerow(['wallet_address', 'balance_eth', 'balance_wei'])
+
+    print(f"\nStarting scan of {total_addresses:,} addresses...")
+    print(f"Results will be saved to: {OUTPUT_FILE}\n")
+
+    # Process with limited workers
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = {executor.submit(check_eth_balance, addr): addr for addr in addresses}
+
+        for future in as_completed(futures):
+            result = future.result()
+
+            # Write result if balance found
+            if result:
+                csv_writer.writerow([
+                    result['address'],
+                    f"{result['balance_eth']:.18f}",
+                    result['balance_wei']
+                ])
+                csv_file.flush()  # Ensure data is written immediately
+
+                # Show found wallet immediately
+                print(f"✅ FOUND: {result['address']} = {result['balance_eth']:.8f} ETH")
+
+    csv_file.close()
+
+    # Final report
+    elapsed = time.time() - start_time
+    print("\n" + "="*80)
+    print("SCAN COMPLETE!")
+    print("="*80)
+    print(f"Total addresses scanned: {processed:,}")
+    print(f"Wallets with balance >= {MIN_ETH_BALANCE} ETH: {found_balances:,}")
+    print(f"Errors encountered: {errors:,}")
+    print(f"Time elapsed: {elapsed/60:.1f} minutes ({elapsed/3600:.2f} hours)")
+    print(f"Average rate: {processed/elapsed:.2f} addresses/second")
+    print(f"\nResults saved to: {OUTPUT_FILE}")
+    print("="*80)
+
+if __name__ == "__main__":
+    main()

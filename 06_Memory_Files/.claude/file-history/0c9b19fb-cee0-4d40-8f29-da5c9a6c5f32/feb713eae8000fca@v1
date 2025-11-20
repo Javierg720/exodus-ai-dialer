@@ -1,0 +1,88 @@
+;================================ TRANSPORTS ==
+[transport-tcp]
+type=transport
+protocol=tcp
+bind=0.0.0.0:5060
+
+; Single transport - NAT settings only apply to external IPs
+[transport-udp]
+type=transport
+protocol=udp
+bind=0.0.0.0:5060
+local_net=10.0.0.0/24
+external_media_address=73.139.162.13
+external_signaling_address=73.139.162.13
+
+;================================ TEMPLATES ==
+[webrtc-template](!)
+type=endpoint
+transport=transport-udp
+context=ava-context
+disallow=all
+allow=ulaw
+allow=alaw
+dtmf_mode=rfc4733
+language=en
+rtp_symmetric=yes
+direct_media=no
+force_rport=yes
+rewrite_contact=yes
+timers=no             ; CRITICAL: Disable session timers for AI calls (prevents 408 timeout at ~50s)
+; QUALITY OPTIMIZATION: QoS for voice prioritization
+tos_audio=ef          ; DSCP 46 (Expedited Forwarding) - highest voice priority
+cos_audio=5           ; 802.1p Layer 2 priority
+rtp_timeout=0         ; DISABLED - don't timeout on silence (AI calls have long pauses)
+rtp_timeout_hold=0    ; DISABLED
+
+;================================ TEST PHONE ==
+; SIP Phone for testing - Extension 1000
+[1000](webrtc-template)
+auth=1000
+aors=1000
+
+[1000]
+type=auth
+auth_type=userpass
+username=1000
+password=testpass1000
+
+[1000]
+type=aor
+max_contacts=1
+remove_existing=yes
+
+;================================ TWILIO TRUNK ==
+; Twilio SIP Trunk for outbound calling (MyDialer - TK5c562d7ae76a9650412dbc07c026f11b)
+[twilio-trunk]
+type=endpoint
+context=ava-context
+transport=transport-udp
+disallow=all
+allow=ulaw
+allow=alaw
+from_user=+19544668818
+from_domain=mydialer123.pstn.twilio.com
+outbound_auth=twilio-trunk-auth
+aors=twilio-trunk-aor
+; QUALITY OPTIMIZATION: QoS for trunk
+tos_audio=ef
+cos_audio=5
+rtp_symmetric=yes
+direct_media=no
+
+[twilio-trunk-auth]
+type=auth
+auth_type=userpass
+username=exodus_dialer
+password=ExodusDialer2024!@#$
+
+[twilio-trunk-aor]
+type=aor
+contact=sip:TK087fe28b7b9b187d7d170358d3007bb6.pstn.twilio.com
+
+[twilio-trunk-identify]
+type=identify
+endpoint=twilio-trunk
+match=54.172.60.0/23
+match=54.244.51.0/24
+match=177.71.206.0/23

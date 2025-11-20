@@ -1,0 +1,92 @@
+"""
+Edge TTS Service for Pipecat
+Simple wrapper for Microsoft Edge TTS
+"""
+
+import asyncio
+import io
+from typing import AsyncGenerator
+import edge_tts
+from pydub import AudioSegment
+from pipecat.frames.frames import Frame, TTSAudioRawFrame, TTSStartedFrame, TTSStoppedFrame
+from pipecat.services.tts_service import TTSService
+from loguru import logger
+
+
+class EdgeTTSService(TTSService):
+    """Edge TTS service implementation"""
+
+    def __init__(
+        self,
+        *,
+        voice: str = "en-US-AriaNeural",
+        rate: str = "+0%",
+        pitch: str = "+0Hz",
+        aggregate_sentences: bool = True,
+        **kwargs
+    ):
+        # Default aggregator handles sentence boundaries
+        super().__init__(
+            aggregate_sentences=aggregate_sentences,
+            **kwargs
+        )
+        self.voice = voice
+        self.rate = rate
+        self.pitch = pitch
+        logger.info(f"Initialized Edge TTS with voice={voice}, rate={rate}, pitch={pitch}, sentence aggregation={aggregate_sentences}")
+
+    async def run_tts(self, text: str) -> AsyncGenerator[Frame, None]:
+        """Generate audio from text using Edge TTS"""
+
+        try:
+            logger.debug(f"Generating TTS for: {text[:50]}...")
+
+            # Create communicate object
+            communicate = edge_tts.Communicate(
+                text=text,
+                voice=self.voice,
+                rate=self.rate,
+                pitch=self.pitch
+            )
+
+            # Yield start frame
+            yield TTSStartedFrame()
+
+            # Collect all audio chunks (MP3 format)
+            audio_buffer = bytearray()
+
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    audio_buffer.extend(chunk["data"])
+
+            # Convert MP3 to raw PCM using pydub
+            if len(audio_buffer) > 0:
+                # Load MP3 from bytes
+                audio_segment = AudioSegment.from_mp3(io.BytesIO(bytes(audio_buffer)))
+
+                # Convert to 16kHz, mono, 16-bit PCM
+                audio_segment = audio_segment.set_frame_rate(16000).set_channels(1).set_sample_width(2)
+
+                # Get raw PCM data
+                pcm_data = audio_segment.raw_data
+
+                # Yield audio in chunks (avoid huge frames)
+                chunk_size = 8192  # bytes
+                for i in range(0, len(pcm_data), chunk_size):
+                    chunk = pcm_data[i:i + chunk_size]
+                    yield TTSAudioRawFrame(
+                        audio=chunk,
+                        sample_rate=16000,
+                        num_channels=1
+                    )
+                    logger.info(f"🔊 YIELDING TTSAudioRawFrame: {len(chunk)} bytes")
+
+            # Yield stop frame
+            yield TTSStoppedFrame()
+
+            logger.debug(f"TTS complete for: {text[:50]}...")
+
+        except Exception as e:
+            logger.error(f"Edge TTS error: {e}")
+            logger.exception(e)
+            yield TTSStoppedFrame()

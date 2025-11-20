@@ -1,0 +1,245 @@
+[DEBUG] Watching for changes in setting files /home/user/.claude/settings.json, /home/user/.claude/settings.json, /home/user/.claude/settings.local.json...
+[DEBUG] Applying permission update: Adding 29 allow rule(s) to destination 'localSettings': ["WebSearch","WebFetch(domain:docs.pipecat.ai)","WebFetch(domain:github.com)","WebFetch(domain:console.groq.com)","Bash(pkill:*)","WebFetch(domain:www.daily.co)","Bash(source:*)","Bash(edge-tts:*)","Bash(paplay:*)","Bash(aplay:*)","Bash(mpg123:*)","Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/pip list)","Bash(python3:*)","Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/python3 -c \"from pipecat.transports.network.fastapi_websocket import FastAPIWebsocketTransport, FastAPIWebsocketParams; from pipecat.serializers.twilio import TwilioFrameSerializer; print(''Pipecat Twilio WebSocket support available'')\")","Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/python3 -c \"import pipecat.serializers.twilio; import inspect; print(inspect.getsourcefile(pipecat.serializers.twilio))\")","WebFetch(domain:livekit.io)","WebFetch(domain:docs.livekit.io)","WebFetch(domain:docs.bolna.ai)","WebFetch(domain:www.bolna.ai)","WebFetch(domain:community.asterisk.org)","WebFetch(domain:www.agentvoiceresponse.com)","WebFetch(domain:demo.agentvoiceresponse.com)","Bash(docker exec:*)","Read(//etc/**)","Bash(sqlite3:*)","WebFetch(domain:viciwiki.com)","Read(//tmp/**)","WebFetch(domain:docs.asterisk.org)","WebFetch(domain:caruizdiaz.com)"]
+[DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+[DEBUG] Creating shell snapshot for zsh (/usr/bin/zsh)
+[DEBUG] Looking for shell config file: /home/user/.zshrc
+[DEBUG] Snapshots directory: /home/user/.claude/shell-snapshots
+[DEBUG] Creating snapshot at: /home/user/.claude/shell-snapshots/snapshot-zsh-1762371852563-hnh9lv.sh
+[DEBUG] Shell binary exists: true
+[DEBUG] Execution timeout: 10000ms
+[DEBUG] Writing to temp file: /home/user/.claude/todos/8499d5fd-3c2c-4586-9e49-2e8f857bdd86-agent-8499d5fd-3c2c-4586-9e49-2e8f857bdd86.json.tmp.96222.1762371852576
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Renaming /home/user/.claude/todos/8499d5fd-3c2c-4586-9e49-2e8f857bdd86-agent-8499d5fd-3c2c-4586-9e49-2e8f857bdd86.json.tmp.96222.1762371852576 to /home/user/.claude/todos/8499d5fd-3c2c-4586-9e49-2e8f857bdd86-agent-8499d5fd-3c2c-4586-9e49-2e8f857bdd86.json
+[DEBUG] File /home/user/.claude/todos/8499d5fd-3c2c-4586-9e49-2e8f857bdd86-agent-8499d5fd-3c2c-4586-9e49-2e8f857bdd86.json written atomically
+[DEBUG] Registered 0 hooks from 0 plugins
+[DEBUG] Loading skills from directories: managed=/etc/claude-code/.claude/skills, user=/home/user/.claude/skills, project=/home/user/.claude/skills
+[DEBUG] Loaded 0 skills total (managed: 0, user: 0, project: 0)
+[DEBUG] Total plugin commands loaded: 0
+[DEBUG] Total plugin skills loaded: 0
+[DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/usr/local/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+[DEBUG] Shell snapshot created successfully (9233 bytes)
+[DEBUG] Summarizing last 4 of 42 messages (~117737 tokens)
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.96222.1762371852945
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 427015 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.96222.1762371852945 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.96222.1762371853121
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 427015 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.96222.1762371853121 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] rg error (signal=undefined, code=ERR_CHILD_PROCESS_STDIO_MAXBUFFER, stderr: ), 178517 results
+[ERROR] RangeError: RangeError [ERR_CHILD_PROCESS_STDIO_MAXBUFFER]: stdout maxBuffer length exceeded
+    at Socket.onChildStdout (node:child_process:490:14)
+    at Socket.emit (node:events:524:28)
+    at Socket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:191:23)
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.96222.1762371853402
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 427015 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.96222.1762371853402 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Executing hooks for SessionStart:startup
+[DEBUG] Getting matching hook commands for SessionStart with query: startup
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.96222.1762371853542
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 426910 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.96222.1762371853542 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.96222.1762371853581
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 426910 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.96222.1762371853581 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] performStartupChecks called, ENABLE_PLUGINS=undefined
+[DEBUG] Skipping plugin installations - ENABLE_PLUGINS not set
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.96222.1762371853633
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 427015 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.96222.1762371853633 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Executing hooks for UserPromptSubmit
+[DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] FileHistory: Added snapshot for 939eba65-3c7c-4cc5-a47c-e63c7ec38e6e, tracking 0 files
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.96222.1762371855926
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 427307 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.96222.1762371855926 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Executing hooks for PreToolUse:Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Executing hooks for PostToolUse:Read
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.96222.1762371893111
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 427307 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.96222.1762371893111 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Executing hooks for Stop
+[DEBUG] Getting matching hook commands for Stop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.96222.1762371893158
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 427307 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.96222.1762371893158 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Executing hooks for UserPromptSubmit
+[DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] FileHistory: Making snapshot for message 8b5f0baf-a204-4df6-8914-fb2f3bd02d34
+[DEBUG] FileHistory: Added snapshot for 8b5f0baf-a204-4df6-8914-fb2f3bd02d34, tracking 0 files
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.96222.1762371985441
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 427329 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.96222.1762371985441 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[ERROR] Error: Error: Language not supported while highlighting code, falling back to markdown: 
+    at CK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:1218)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:946
+    at Array.map (<anonymous>)
+    at hX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:937)
+    at WOB (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:12993)
+    at EC (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:32:19415)
+    at Cp (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:42814)
+    at G9 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38355)
+    at Lh (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38283)
+    at _C (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38137)
+[ERROR] Error: Error: Language not supported while highlighting code, falling back to markdown: 
+    at CK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:1218)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:946
+    at Array.map (<anonymous>)
+    at hX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:937)
+    at WOB (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:12993)
+    at EC (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:32:19415)
+    at Cp (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:42814)
+    at G9 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38355)
+    at Lh (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38283)
+    at _C (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38137)
+[ERROR] Error: Error: Language not supported while highlighting code, falling back to markdown: 
+    at CK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:1218)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:946
+    at Array.map (<anonymous>)
+    at hX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:937)
+    at WOB (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:12993)
+    at EC (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:32:19415)
+    at Cp (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:42814)
+    at G9 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38355)
+    at Lh (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38283)
+    at _C (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38137)
+[ERROR] Error: Error: Language not supported while highlighting code, falling back to markdown: 
+    at CK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:1218)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:946
+    at Array.map (<anonymous>)
+    at hX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:937)
+    at WOB (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:12993)
+    at EC (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:32:19415)
+    at Cp (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:42814)
+    at G9 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38355)
+    at Lh (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38283)
+    at _C (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38137)
+[ERROR] Error: Error: Language not supported while highlighting code, falling back to markdown: 
+    at CK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:1218)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:946
+    at Array.map (<anonymous>)
+    at hX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:937)
+    at WOB (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:12993)
+    at EC (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:32:19415)
+    at Cp (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:42814)
+    at G9 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38355)
+    at Lh (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38283)
+    at _C (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38137)
+[ERROR] Error: Error: Language not supported while highlighting code, falling back to markdown: 
+    at CK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:1218)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:946
+    at Array.map (<anonymous>)
+    at hX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:937)
+    at WOB (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2218:12993)
+    at EC (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:32:19415)
+    at Cp (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:42814)
+    at G9 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38355)
+    at Lh (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38283)
+    at _C (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:34:38137)
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.96222.1762372001588
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 427329 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.96222.1762372001588 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Executing hooks for Stop
+[DEBUG] Getting matching hook commands for Stop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.96222.1762372001656
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 427329 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.96222.1762372001656 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically

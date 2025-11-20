@@ -1,0 +1,205 @@
+#!/usr/bin/env python3
+"""
+Dumb Ava: Prompt-Box Sales Bot
+No LLM, no context, no repeats—just reads lines from a script list.
+Using AudioSocket for Asterisk.
+"""
+
+import asyncio
+import os
+import sys
+import logging
+from dotenv import load_dotenv
+
+from pipecat.pipeline.pipeline import Pipeline
+from pipecat.pipeline.runner import PipelineRunner
+from pipecat.pipeline.task import PipelineTask, PipelineParams
+from pipecat.processors.frame_processor import FrameProcessor
+from pipecat.frames.frames import TextFrame, StartFrame, EndFrame, TranscriptionFrame, InputAudioRawFrame
+from pipecat.audio.vad.silero import SileroVADAnalyzer
+from pipecat.audio.vad.vad_analyzer import VADParams
+from pipecat.services.groq import GroqSTTService
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from edge_tts_service import EdgeTTSService
+from audiosocket_transport import AudioSocketTransport, AudioSocketParams, AudioSocketCallbacks
+
+load_dotenv()
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
+
+# YOUR SCRIPT LINES HERE—paste/edit this list. {{contactFirstName}} auto-replaces.
+SCRIPT_LINES = [
+    "Hey {{contactFirstName}}, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?",
+    "How much money can the business use right now?",
+    "What will that money help with?",
+    "When do you need it?",
+    "What's the gross revenue of the business?",
+    "Any existing loans or advances? How many, total balance, current on payments?",
+    "Great. I'll send the one-page app. Get it back with four recent months of bank statements—approved in hours. {{contactFirstName}}? I'll make the numbers work. Best email?",
+    # Objections—add more if needed, but this is dumb mode: she reads next on any input.
+    "Fair enough—most say that till they see the terms. What's holding you back right now?",
+    "Credit's not our game—we underwrite on business performance. Got programs for that. What's your gross revenue?",
+    "Smart move. Send me your docs—I'll beat their terms, longer payoff, lower rates. How much are you seeking?",
+    "Got it, but credit's irrelevant—revenue's king. What's your gross monthly?",
+    "If I pay that off, stack more capital, cut payments—game changer? Ignoring that balance, how much more can you deploy?",
+    "Best email for the app? I'll get it approved fast."
+]
+
+class BotLineProcessor(FrameProcessor):
+    """Snags TextFrames (bot lines) and sends to TTS directly—bypasses STT."""
+    async def process_frame(self, frame, direction):
+        if isinstance(frame, TextFrame) and frame.text.strip():
+            logger.info(f"📣 Queuing bot line: {frame.text[:50]}...")
+            # Push to TTS (downstream)
+            await self.push_frame(frame, direction)
+            return
+        if isinstance(frame, InputAudioRawFrame):
+            logger.debug(f"🎵 Passing user audio frame: {len(frame.audio)} bytes")
+        await self.push_frame(frame, direction)
+
+class DumbLineAggregator(FrameProcessor):
+    """On user trans, queue next script line as TextFrame."""
+    def __init__(self, script_lines, contact_name):
+        super().__init__()
+        self.script_lines = script_lines
+        self.contact_name = contact_name
+        self.current_line = 0
+
+    async def process_frame(self, frame, direction):
+        if isinstance(frame, TranscriptionFrame) and frame.text.strip():
+            logger.info(f"👤 USER: '{frame.text}' → Next line: {self.current_line + 1}")
+            if self.current_line < len(self.script_lines):
+                line = self.script_lines[self.current_line].replace("{{contactFirstName}}", self.contact_name)
+                await self.push_frame(TextFrame(text=line), direction)
+                self.current_line += 1
+            else:
+                logger.info("Script end—closing call")
+                await self.push_frame(EndFrame(), direction)
+        await self.push_frame(frame, direction)
+
+async def main(contact_name: str = "there", host: str = "0.0.0.0", port: int = 9092):
+    logger.info("=" * 60)
+    logger.info("🤖 DUMB AVA - PROMPT-BOX MODE")
+    logger.info("=" * 60)
+    logger.info(f"📞 Contact: {contact_name}")
+    logger.info(f"🎧 Port: {port}")
+    logger.info(f"📜 Script lines: {len(SCRIPT_LINES)}")
+    logger.info("🧠 Brain: NONE (line reader)")
+    logger.info("🔁 Repeats: IMPOSSIBLE (no context)")
+    logger.info("=" * 60)
+
+    # Pipeline state
+    call_uuid = None
+    pipeline_task = None
+
+    # 🎯 Callback: When Asterisk connects with a call
+    async def on_call_connected(uuid: str):
+        nonlocal call_uuid, pipeline_task
+        call_uuid = uuid
+        logger.info(f"✅ Call connected: {uuid}")
+
+        if pipeline_task:
+            logger.info("🎬 Sending StartFrame to initialize pipeline")
+            await pipeline_task.queue_frames([StartFrame()])
+            await asyncio.sleep(2.0)  # STT warm-up
+
+            # Queue opening pitch immediately (line 0)
+            opening = SCRIPT_LINES[0].replace("{{contactFirstName}}", contact_name)
+            logger.info(f"📣 Queuing opener: {opening[:50]}...")
+            await pipeline_task.queue_frames([TextFrame(text=opening)])
+
+    # 📴 Callback: When call ends
+    async def on_call_disconnected(uuid: str):
+        logger.info(f"📴 Call ended: {uuid}")
+
+    # 🎙️ Callback: Server ready
+    async def on_server_ready():
+        logger.info(f"💡 Server ready on {host}:{port}—dial from Asterisk to test")
+
+    # VAD for basic speech detection
+    vad = SileroVADAnalyzer(
+        params=VADParams(
+            start_secs=0.3,
+            stop_secs=1.2,
+            confidence=0.6,
+            min_volume=0.4
+        )
+    )
+    logger.info("✅ VAD configured")
+
+    # Transport
+    transport = AudioSocketTransport(
+        host=host, port=port,
+        params=AudioSocketParams(
+            audio_out_enabled=True,
+            audio_in_enabled=True,
+            audio_in_passthrough=True,
+            vad_enabled=True,
+            vad_analyzer=vad
+        ),
+        callbacks=AudioSocketCallbacks(
+            on_call_connected=on_call_connected,
+            on_call_disconnected=on_call_disconnected,
+            on_server_ready=on_server_ready
+        )
+    )
+
+    # STT: Groq
+    groq_key = os.getenv("GROQ_API_KEY")
+    if not groq_key:
+        logger.error("❌ GROQ_API_KEY not found in .env")
+        sys.exit(1)
+    stt = GroqSTTService(api_key=groq_key, model="whisper-large-v3-turbo")
+    logger.info("✅ Groq Whisper Turbo STT active")
+
+    # TTS: Edge (immediate, no aggregation)
+    tts = EdgeTTSService(
+        voice="en-US-AvaMultilingualNeural",
+        rate="+10%",
+        aggregate_sentences=False
+    )
+    logger.info("✅ Edge TTS (immediate delivery—no buffering)")
+
+    # Dumb aggregator: Script line reader
+    dumb_agg = DumbLineAggregator(SCRIPT_LINES, contact_name)
+    # Start at line 1 since we queue line 0 manually
+    dumb_agg.current_line = 1
+    logger.info("✅ Dumb aggregator initialized")
+
+    # Bot line processor: Bypasses STT for bot TextFrames
+    bot_processor = BotLineProcessor()
+
+    # Pipeline: Input → Bot Processor → STT → Dumb Agg → TTS → Output
+    pipeline = Pipeline([
+        transport.input(),
+        bot_processor,  # Routes TextFrames to TTS, passes audio
+        stt,
+        dumb_agg,
+        tts,
+        transport.output()
+    ])
+
+    # Run—no interruptions
+    task = PipelineTask(
+        pipeline,
+        params=PipelineParams(
+            allow_interruptions=False,
+            enable_metrics=False
+        )
+    )
+
+    pipeline_task = task
+
+    runner = PipelineRunner()
+    logger.info("🚀 Starting Dumb Ava (prompt-box mode)...")
+    await runner.run(task)
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Dumb Ava Prompt-Box Bot")
+    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=9092)
+    parser.add_argument("--contact-name", default="there")
+    args = parser.parse_args()
+    asyncio.run(main(args.contact_name, args.host, args.port))

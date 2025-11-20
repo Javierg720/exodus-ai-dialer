@@ -1,0 +1,236 @@
+#!/usr/bin/env python3
+"""
+AVR Bot Pool Manager - Minimal state tracker for AVR containerized bots.
+
+Unlike bot_pool_manager.py which spawns Python bot processes, this manager
+assumes bots are already running in Docker containers (AVR agents) and only
+tracks which ports are busy/idle.
+
+Compatible with dialer_orchestrator.py - drop-in replacement for BotPoolManager.
+"""
+
+import asyncio
+import time
+from dataclasses import dataclass, field
+from typing import Optional, Dict
+from enum import Enum
+from loguru import logger
+
+
+class BotStatus(Enum):
+    """Bot instance status."""
+    IDLE = "idle"
+    BUSY = "busy"
+
+
+@dataclass
+class BotInstance:
+    """Represents an AVR bot running in Docker."""
+    port: int
+    status: BotStatus = BotStatus.IDLE
+    current_call_uuid: Optional[str] = None
+    busy_since: Optional[float] = None
+    wrap_up_end_time: Optional[float] = None  # 5-second cooldown after call
+
+    def is_available(self) -> bool:
+        """Check if this bot is available (not busy, not in wrap-up).
+
+        Returns:
+            True if bot is available
+        """
+        now = time.time()
+        in_wrap_up = self.wrap_up_end_time and now < self.wrap_up_end_time
+        return self.status == BotStatus.IDLE and not in_wrap_up
+
+
+class AVRBotPoolManager:
+    """Lightweight manager for pre-running AVR Docker bot containers.
+
+    AVR bots are managed externally by docker-compose. This class only:
+    - Tracks which ports are busy/idle
+    - Implements round-robin assignment
+    - Enforces wrap-up time after calls
+    """
+
+    def __init__(
+        self,
+        base_port: int = 9092,
+        num_instances: int = 20,
+        wrap_up_time: float = 5.0,  # Seconds
+        **kwargs  # Accept and ignore bot_script, config_path, etc.
+    ):
+        self.base_port = base_port
+        self.num_instances = num_instances
+        self.wrap_up_time = wrap_up_time
+
+        # Create bot instances (Docker containers assumed to be running)
+        self.bots: Dict[int, BotInstance] = {}
+        for i in range(num_instances):
+            port = base_port + i
+            self.bots[port] = BotInstance(port=port)
+
+        # Lock for thread-safe bot assignment
+        self._lock = asyncio.Lock()
+        self._next_bot_index = 0
+
+        logger.info(f"🐳 AVR Bot Pool Manager initialized: {num_instances} instances, "
+                   f"ports {base_port}-{base_port + num_instances - 1}")
+        logger.info("💡 Assumes AVR Docker containers are already running")
+
+    async def start(self):
+        """Start monitoring (no-op for AVR - containers managed externally)."""
+        logger.info("🚀 AVR Bot Pool ready (containers managed by docker-compose)")
+        logger.info(f"✅ Tracking {len(self.bots)} bot ports: {self.base_port}-{self.base_port + self.num_instances - 1}")
+
+    async def stop(self):
+        """Stop monitoring (no-op for AVR)."""
+        logger.info("🛑 AVR Bot Pool manager stopped (containers remain running)")
+
+    async def get_idle_bot_port(self, call_uuid: str) -> Optional[int]:
+        """Get an idle bot port using round-robin assignment.
+
+        Args:
+            call_uuid: Unique call identifier for tracking
+
+        Returns:
+            Port number of assigned bot, or None if all busy
+        """
+        async with self._lock:
+            now = time.time()
+
+            # Check wrap-up times first
+            for bot in self.bots.values():
+                if bot.wrap_up_end_time and now >= bot.wrap_up_end_time:
+                    bot.wrap_up_end_time = None
+                    if bot.status == BotStatus.BUSY and not bot.current_call_uuid:
+                        bot.status = BotStatus.IDLE
+                        logger.debug(f"🔓 Bot {bot.port} wrap-up complete, now IDLE")
+
+            # Find idle bots (round-robin)
+            available_bots = [
+                bot for bot in self.bots.values()
+                if bot.status == BotStatus.IDLE and bot.wrap_up_end_time is None
+            ]
+
+            if not available_bots:
+                logger.warning("⚠️  No idle bots available!")
+                return None
+
+            # Round-robin selection
+            selected_bot = available_bots[self._next_bot_index % len(available_bots)]
+            self._next_bot_index += 1
+
+            # Mark busy
+            selected_bot.status = BotStatus.BUSY
+            selected_bot.current_call_uuid = call_uuid
+            selected_bot.busy_since = now
+
+            logger.info(f"📞 POOL: Bot {selected_bot.port} ATOMICALLY assigned to call {call_uuid}")
+            return selected_bot.port
+
+    def mark_bot_idle(self, port: int):
+        """Mark a bot as idle with wrap-up time.
+
+        Args:
+            port: Bot port number
+        """
+        if port not in self.bots:
+            logger.error(f"❌ Attempted to mark unknown bot {port} as idle")
+            return
+
+        bot = self.bots[port]
+        bot.current_call_uuid = None
+        bot.wrap_up_end_time = time.time() + self.wrap_up_time
+
+        logger.info(f"🔒 Bot {port} entering {self.wrap_up_time}s wrap-up period")
+
+    def get_pool_stats(self) -> dict:
+        """Get current pool statistics.
+
+        Returns:
+            Dict with bot counts by status
+        """
+        now = time.time()
+        idle_count = sum(
+            1 for bot in self.bots.values()
+            if bot.status == BotStatus.IDLE and (not bot.wrap_up_end_time or now >= bot.wrap_up_end_time)
+        )
+        busy_count = sum(
+            1 for bot in self.bots.values()
+            if bot.status == BotStatus.BUSY or (bot.wrap_up_end_time and now < bot.wrap_up_end_time)
+        )
+
+        return {
+            "total": len(self.bots),
+            "idle": idle_count,
+            "busy": busy_count,
+            "base_port": self.base_port,
+            "wrap_up_time": self.wrap_up_time
+        }
+
+    def get_bot_status(self, port: int) -> Optional[BotStatus]:
+        """Get status of a specific bot.
+
+        Args:
+            port: Bot port number
+
+        Returns:
+            BotStatus or None if port not found
+        """
+        bot = self.bots.get(port)
+        return bot.status if bot else None
+
+    def is_available(self, port: int) -> bool:
+        """Check if a bot is available (not busy, not in wrap-up).
+
+        Args:
+            port: Bot port number
+
+        Returns:
+            True if bot is available
+        """
+        bot = self.bots.get(port)
+        if not bot:
+            return False
+
+        now = time.time()
+        in_wrap_up = bot.wrap_up_end_time and now < bot.wrap_up_end_time
+        return bot.status == BotStatus.IDLE and not in_wrap_up
+
+
+# Alias for drop-in compatibility with dialer_orchestrator
+BotPoolManager = AVRBotPoolManager
+
+
+if __name__ == "__main__":
+    async def test():
+        """Test the AVR bot pool manager."""
+        pool = AVRBotPoolManager(base_port=9092, num_instances=20)
+        await pool.start()
+
+        # Test assignment
+        bot1 = await pool.get_idle_bot_port("test-call-1")
+        print(f"Assigned bot: {bot1}")
+        print(f"Pool stats: {pool.get_pool_stats()}")
+
+        # Mark idle and check wrap-up
+        pool.mark_bot_idle(bot1)
+        print(f"Bot {bot1} marked idle (in wrap-up)")
+        print(f"Pool stats: {pool.get_pool_stats()}")
+
+        # Try to reassign immediately (should get different bot)
+        bot2 = await pool.get_idle_bot_port("test-call-2")
+        print(f"Second bot: {bot2} (should be different from {bot1})")
+
+        # Wait for wrap-up
+        print(f"Waiting {pool.wrap_up_time}s for wrap-up...")
+        await asyncio.sleep(pool.wrap_up_time + 0.1)
+
+        # Now bot1 should be available again
+        bot3 = await pool.get_idle_bot_port("test-call-3")
+        print(f"Third bot: {bot3} (bot {bot1} should be available again)")
+        print(f"Pool stats: {pool.get_pool_stats()}")
+
+        await pool.stop()
+
+    asyncio.run(test())

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Recording Test</title>
+</head>
+<body>
+    <h1>Recording Playback Test</h1>
+    
+    <h2>Test 1: Direct Audio Element</h2>
+    <audio controls src="http://localhost:8000/api/recording/1763557898.0"></audio>
+    
+    <h2>Test 2: With JavaScript</h2>
+    <button onclick="testRecording()">Test Recording API</button>
+    <div id="result"></div>
+    
+    <h2>Test 3: Fetch and Play</h2>
+    <button onclick="fetchAndPlay()">Fetch & Play</button>
+    <audio id="player" controls></audio>
+    
+    <script>
+        async function testRecording() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/recording/1763557898.0');
+                resultDiv.innerHTML = `
+                    Status: ${response.status}<br>
+                    Content-Type: ${response.headers.get('Content-Type')}<br>
+                    Content-Length: ${response.headers.get('Content-Length')}<br>
+                    CORS: ${response.headers.get('Access-Control-Allow-Origin')}<br>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `Error: ${error.message}`;
+            }
+        }
+        
+        async function fetchAndPlay() {
+            const player = document.getElementById('player');
+            try {
+                const response = await fetch('http://localhost:8000/api/recording/1763557898.0');
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                player.src = url;
+                player.play();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

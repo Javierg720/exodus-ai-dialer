@@ -1,0 +1,22 @@
+[
+  {
+    "content": "Debug why Exodus leads go NEW → COMPLETED without calls",
+    "status": "completed",
+    "activeForm": "Debugging why Exodus leads go NEW → COMPLETED without calls"
+  },
+  {
+    "content": "Found issue: AMI connection has integer overflow (Read/Write counters at max int)",
+    "status": "completed",
+    "activeForm": "Found issue: AMI connection has integer overflow"
+  },
+  {
+    "content": "Restart Asterisk to clear AMI overflow",
+    "status": "completed",
+    "activeForm": "Restarting Asterisk to clear AMI overflow"
+  },
+  {
+    "content": "Test calls after Asterisk restart",
+    "status": "in_progress",
+    "activeForm": "Testing calls after Asterisk restart"
+  }
+]

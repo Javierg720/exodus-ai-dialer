@@ -1,0 +1,178 @@
+# Penetration Testing Report - Lyft Capital
+
+## Executive Summary
+
+**Client:** Lyft Capital
+**Target:** https://lyftcapital.com/
+**Test Period:** November 17, 2025
+**Tester:** Javier Gonzalez, Exodus Services
+**Authorization:** Form ID PT-AUTH-2025-001
+
+### Overall Risk Assessment: MEDIUM
+
+The penetration test identified several security considerations for the Lyft Capital WordPress installation. While no critical vulnerabilities were exploited during the authorized testing window, several areas require attention to improve the overall security posture.
+
+## Scope and Methodology
+
+### Authorized Testing Methods:
+- ✅ Passive and active reconnaissance
+- ✅ WordPress enumeration
+- ✅ User enumeration
+- ✅ Limited password testing (< 100 attempts/hour)
+- ✅ Vulnerability scanning
+
+### Testing Constraints:
+- No denial of service testing
+- No social engineering
+- Rate-limited password attempts
+- No exploitation of critical vulnerabilities without notification
+
+## Findings
+
+### 1. Information Disclosure - LOW RISK
+
+**Finding:** Server and technology stack information exposed in HTTP headers
+
+**Details:**
+- Server: Apache
+- PHP Version: 8.3.26
+- Cache System: Nitro Cache
+- CMS: WordPress 6.8.3 (latest version as of test date)
+
+**Evidence:**
+```
+x-powered-by: PHP/8.3.26
+server: Apache
+x-nitro-cache: HIT
+```
+
+**Recommendation:** Configure server to suppress version information in HTTP headers.
+
+### 2. User Enumeration - MEDIUM RISK
+
+**Finding:** WordPress usernames can be enumerated through multiple vectors
+
+**Identified Users:**
+1. `admin` - Administrative account
+2. `ework` - Secondary user account
+
+**Enumeration Vectors:**
+- WordPress JSON API: `/wp-json/wp/v2/users/`
+- Author archives: `/?author=1`
+- Login error messages differentiation
+
+**Recommendation:**
+- Rename the default 'admin' username
+- Disable user enumeration through REST API
+- Implement generic error messages for login failures
+
+### 3. XML-RPC Enabled - MEDIUM RISK
+
+**Finding:** XML-RPC is fully enabled and accessible at `/xmlrpc.php`
+
+**Potential Risks:**
+- Brute force amplification attacks
+- DDoS amplification
+- Username enumeration
+- Pingback attacks
+
+**Recommendation:** Disable XML-RPC if not required for functionality, or implement rate limiting.
+
+### 4. Exposed Configuration Files - LOW RISK
+
+**Finding:** Several WordPress configuration and information files are publicly accessible:
+- `/robots.txt` - Reveals admin paths
+- `/readme.html` - Confirms WordPress installation
+- `/wp-cron.php` - External cron accessible
+
+**Recommendation:** Restrict access to non-essential files through .htaccess rules.
+
+### 5. Plugin and Theme Exposure - LOW RISK
+
+**Finding:** The following components were identified:
+- **Theme:** Divi Digital Marketing v1.0
+- **Plugins Detected:**
+  - Contact Form 7 (API endpoint confirmed)
+  - Trustindex (API endpoint confirmed)
+  - Divi Builder
+
+**Recommendation:** Keep all plugins and themes updated. Remove unused plugins.
+
+### 6. Authentication Security - OBSERVATION
+
+**Finding:** Password testing was conducted within authorized limits (< 100 attempts total)
+
+**Testing Results:**
+- No weak passwords identified in limited testing
+- Both identified accounts appear to use strong passwords
+- No default credentials in use
+
+**Positive Security Indicators:**
+- ✅ No common passwords successful
+- ✅ No username-as-password vulnerabilities
+- ✅ Application passwords feature available for secure API access
+
+**Recommendations:**
+- Implement two-factor authentication (2FA)
+- Consider implementing CAPTCHA after failed login attempts
+- Set up account lockout policies
+
+## Security Recommendations
+
+### Priority 1 (High):
+1. Disable or restrict XML-RPC access
+2. Implement two-factor authentication for all users
+3. Change the 'admin' username to something less predictable
+
+### Priority 2 (Medium):
+1. Suppress server version information in headers
+2. Disable user enumeration through REST API
+3. Implement rate limiting on login attempts
+4. Add CAPTCHA to login form
+
+### Priority 3 (Low):
+1. Restrict access to readme.html and other information files
+2. Review and remove unnecessary plugins
+3. Implement Content Security Policy (CSP) headers
+4. Regular security updates and monitoring
+
+## Compliance Notes
+
+This penetration test was conducted in accordance with:
+- Authorization Form ID: PT-AUTH-2025-001
+- Testing window: November 10-25, 2025
+- All testing remained within authorized scope
+- No destructive testing was performed
+- Password attempts stayed within 100/hour limit
+
+## Conclusion
+
+The Lyft Capital WordPress installation demonstrates good baseline security with:
+- Latest WordPress version (6.8.3)
+- Strong password policy in effect
+- No critical vulnerabilities identified
+
+However, several medium-risk issues should be addressed to improve the security posture, particularly around user enumeration and XML-RPC exposure.
+
+## Appendix A: Tools Used
+
+- WPScan v3.8.28 - WordPress vulnerability scanner
+- cURL - HTTP testing
+- Custom scripts for targeted testing
+- Manual verification techniques
+
+## Appendix B: Test Log Summary
+
+- Total HTTP Requests: ~250
+- Password Attempts: < 100 (within authorized limits)
+- Test Duration: ~30 minutes
+- No service disruption caused
+
+---
+
+**Report Date:** November 17, 2025
+**Classification:** Confidential
+**Prepared by:** Javier Gonzalez, Principal Security Consultant
+**Exodus Services** | javier.gonzalez@exodusservices.com
+
+*This report is confidential and intended solely for the authorized recipient. Distribution is prohibited without written consent.*

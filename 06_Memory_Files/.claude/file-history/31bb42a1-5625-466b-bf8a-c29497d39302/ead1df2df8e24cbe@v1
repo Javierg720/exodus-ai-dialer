@@ -1,0 +1,16 @@
+# JWT Security
+JWT_SECRET_KEY=CHANGE_THIS_TO_RANDOM_STRING_IN_PRODUCTION
+ADMIN_PASSWORD=changeme123
+
+# Asterisk AMI (move from code)
+AMI_HOST=localhost
+AMI_USERNAME=ava
+AMI_PASSWORD=ava123
+
+# Database
+DATABASE_PATH=dialer.db
+
+# STT/LLM API Keys
+DEEPGRAM_API_KEY=your_key_here
+GROQ_API_KEY=your_key_here
+CEREBRAS_API_KEY=your_key_here

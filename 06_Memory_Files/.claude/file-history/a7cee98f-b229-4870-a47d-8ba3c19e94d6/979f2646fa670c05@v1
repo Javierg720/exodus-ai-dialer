@@ -1,0 +1,174 @@
+import React, { useMemo } from 'react';
+
+// Color interpolation function
+const interpolateColor = (color1, color2, factor) => {
+    const result = color1.slice();
+    for (let i = 0; i < 3; i++) {
+        result[i] = Math.round(result[i] + factor * (color2[i] - result[i]));
+    }
+    return `rgb(${result[0]}, ${result[1]}, ${result[2]})`;
+};
+
+const hexToRgb = (hex) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? [
+        parseInt(result[1], 16),
+        parseInt(result[2], 16),
+        parseInt(result[3], 16)
+    ] : [0, 0, 0];
+};
+
+const ExodusAiLogo = ({ width = "100%", height = "100%", showText = true, compact = false }) => {
+    const sphereConfig = compact ? {
+        cx: 50,
+        cy: 50,
+        radius: 35,
+        numPoints: 10,
+        rotation: -Math.PI / 10
+    } : {
+        cx: 150,
+        cy: 150,
+        radius: 100,
+        numPoints: 10,
+        rotation: -Math.PI / 10
+    };
+
+    const points = useMemo(() => {
+        const pts = [];
+        for (let i = 0; i < sphereConfig.numPoints; i++) {
+            const angle = (i / sphereConfig.numPoints) * 2 * Math.PI + sphereConfig.rotation;
+            pts.push({
+                x: sphereConfig.cx + sphereConfig.radius * Math.cos(angle),
+                y: sphereConfig.cy + sphereConfig.radius * Math.sin(angle),
+            });
+        }
+        return pts;
+    }, [sphereConfig.cx, sphereConfig.cy, sphereConfig.radius, sphereConfig.numPoints, sphereConfig.rotation]);
+    
+    // Create all possible line pairs (edges of a complete graph K10)
+    const lines = useMemo(() => {
+        const lns = [];
+        for (let i = 0; i < points.length; i++) {
+            for (let j = i + 1; j < points.length; j++) {
+                lns.push({ p1: points[i], p2: points[j] });
+            }
+        }
+        return lns;
+    }, [points]);
+
+    const colorStops = {
+        grey: '#888888',
+        blue: '#00B2FF'
+    };
+    
+    const rgbColors = useMemo(() => ({
+        grey: hexToRgb(colorStops.grey),
+        blue: hexToRgb(colorStops.blue),
+    }), []);
+
+    // Function to get color for points based on their x-position
+    const getPointColor = (point) => {
+        const minX = sphereConfig.cx - sphereConfig.radius;
+        const maxX = sphereConfig.cx + sphereConfig.radius;
+        const factor = Math.max(0, Math.min(1, (point.x - minX) / (maxX - minX)));
+        return interpolateColor(rgbColors.grey, rgbColors.blue, factor);
+    };
+
+    const viewBox = compact ? "0 0 100 100" : (showText ? "0 0 550 300" : "0 0 300 300");
+
+    return (
+        <svg 
+            viewBox={viewBox} 
+            width={width} 
+            height={height} 
+            xmlns="http://www.w3.org/2000/svg" 
+            aria-label="Exodus AI Logo"
+        >
+            <defs>
+                <linearGradient 
+                    id="lineGradient" 
+                    x1={sphereConfig.cx - sphereConfig.radius}
+                    y1={sphereConfig.cy}
+                    x2={sphereConfig.cx + sphereConfig.radius}
+                    y2={sphereConfig.cy}
+                    gradientUnits="userSpaceOnUse"
+                >
+                    <stop offset="0%" stopColor={colorStops.grey} />
+                    <stop offset="50%" stopColor="#AEAEAE" />
+                    <stop offset="100%" stopColor={colorStops.blue} />
+                </linearGradient>
+
+                <filter id="drop-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+                    <feOffset dx="1" dy="2" result="offsetblur"/>
+                    <feComponentTransfer>
+                        <feFuncA type="linear" slope="0.2" />
+                    </feComponentTransfer>
+                    <feMerge>
+                        <feMergeNode />
+                        <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                </filter>
+            </defs>
+
+            {/* Transparent background */}
+            {!compact && <rect width="100%" height="100%" fill="transparent" />}
+
+            <g id="logo-sphere" filter="url(#drop-shadow)">
+                {lines.map((line, index) => (
+                    <line
+                        key={index}
+                        x1={line.p1.x}
+                        y1={line.p1.y}
+                        x2={line.p2.x}
+                        y2={line.p2.y}
+                        stroke="url(#lineGradient)"
+                        strokeWidth={compact ? 0.8 : 1.5}
+                        strokeLinecap="round"
+                    />
+                ))}
+
+                {points.map((point, index) => (
+                    <circle
+                        key={index}
+                        cx={point.x}
+                        cy={point.y}
+                        r={compact ? 3 : 5}
+                        fill={getPointColor(point)}
+                    />
+                ))}
+            </g>
+            
+            {showText && !compact && (
+                <g id="logo-text" transform="translate(250, 135)">
+                    <text
+                        x="0"
+                        y="0"
+                        fontFamily="sans-serif"
+                        fontSize="48"
+                        fontWeight="600"
+                        fill="#495057"
+                        letterSpacing="2"
+                        aria-label="EXODUS"
+                    >
+                        EXODUS
+                    </text>
+                    <text
+                        x="2"
+                        y="28"
+                        fontFamily="sans-serif"
+                        fontSize="14"
+                        fontWeight="normal"
+                        fill="#6c757d"
+                        letterSpacing="4"
+                        aria-label="Predictive AI"
+                    >
+                        PREDICTIVE AI
+                    </text>
+                </g>
+            )}
+        </svg>
+    );
+};
+
+export default ExodusAiLogo;

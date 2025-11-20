@@ -1,0 +1,604 @@
+[DEBUG] Watching for changes in setting files /home/user/.claude/settings.json, /home/user/.claude/settings.json, /home/user/.claude/settings.local.json...
+[DEBUG] Applying permission update: Adding 29 allow rule(s) to destination 'localSettings': ["WebSearch","WebFetch(domain:docs.pipecat.ai)","WebFetch(domain:github.com)","WebFetch(domain:console.groq.com)","Bash(pkill:*)","WebFetch(domain:www.daily.co)","Bash(source:*)","Bash(edge-tts:*)","Bash(paplay:*)","Bash(aplay:*)","Bash(mpg123:*)","Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/pip list)","Bash(python3:*)","Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/python3 -c \"from pipecat.transports.network.fastapi_websocket import FastAPIWebsocketTransport, FastAPIWebsocketParams; from pipecat.serializers.twilio import TwilioFrameSerializer; print(''Pipecat Twilio WebSocket support available'')\")","Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/python3 -c \"import pipecat.serializers.twilio; import inspect; print(inspect.getsourcefile(pipecat.serializers.twilio))\")","WebFetch(domain:livekit.io)","WebFetch(domain:docs.livekit.io)","WebFetch(domain:docs.bolna.ai)","WebFetch(domain:www.bolna.ai)","WebFetch(domain:community.asterisk.org)","WebFetch(domain:www.agentvoiceresponse.com)","WebFetch(domain:demo.agentvoiceresponse.com)","Bash(docker exec:*)","Read(//etc/**)","Bash(sqlite3:*)","WebFetch(domain:viciwiki.com)","Read(//tmp/**)","WebFetch(domain:docs.asterisk.org)","WebFetch(domain:caruizdiaz.com)"]
+[DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+[DEBUG] Creating shell snapshot for zsh (/usr/bin/zsh)
+[DEBUG] Looking for shell config file: /home/user/.zshrc
+[DEBUG] Snapshots directory: /home/user/.claude/shell-snapshots
+[DEBUG] Creating snapshot at: /home/user/.claude/shell-snapshots/snapshot-zsh-1761794539811-iar9fk.sh
+[DEBUG] Shell binary exists: true
+[DEBUG] Execution timeout: 10000ms
+[DEBUG] Writing to temp file: /home/user/.claude/todos/6243f091-ec26-4135-b698-70dfc9162843-agent-6243f091-ec26-4135-b698-70dfc9162843.json.tmp.816705.1761794539821
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Renaming /home/user/.claude/todos/6243f091-ec26-4135-b698-70dfc9162843-agent-6243f091-ec26-4135-b698-70dfc9162843.json.tmp.816705.1761794539821 to /home/user/.claude/todos/6243f091-ec26-4135-b698-70dfc9162843-agent-6243f091-ec26-4135-b698-70dfc9162843.json
+[DEBUG] File /home/user/.claude/todos/6243f091-ec26-4135-b698-70dfc9162843-agent-6243f091-ec26-4135-b698-70dfc9162843.json written atomically
+[DEBUG] Registered 0 hooks from 0 plugins
+[DEBUG] Loading skills from directories: managed=/etc/claude-code/.claude/skills, user=/home/user/.claude/skills, project=/home/user/.claude/skills
+[DEBUG] Loaded 0 skills total (managed: 0, user: 0, project: 0)
+[DEBUG] Total plugin commands loaded: 0
+[DEBUG] Total plugin skills loaded: 0
+[DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/usr/local/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+[DEBUG] Shell snapshot created successfully (9233 bytes)
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.816705.1761794540035
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 219734 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.816705.1761794540035 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] rg error (signal=undefined, code=ERR_CHILD_PROCESS_STDIO_MAXBUFFER, stderr: ), 208300 results
+[ERROR] RangeError: RangeError [ERR_CHILD_PROCESS_STDIO_MAXBUFFER]: stdout maxBuffer length exceeded
+    at Socket.onChildStdout (node:child_process:490:14)
+    at Socket.emit (node:events:524:28)
+    at Socket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:191:23)
+[DEBUG] Failed to fetch Grove notice config: AxiosError: Request failed with status code 401
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.816705.1761794540731
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 219734 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.816705.1761794540731 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Executing hooks for SessionStart:startup
+[DEBUG] Getting matching hook commands for SessionStart with query: startup
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.816705.1761794540870
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 219629 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.816705.1761794540870 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.816705.1761794540879
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 219629 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.816705.1761794540879 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] performStartupChecks called, ENABLE_PLUGINS=undefined
+[DEBUG] Skipping plugin installations - ENABLE_PLUGINS not set
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.816705.1761794540917
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 219734 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.816705.1761794540917 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[ERROR] AxiosError: AxiosError: Request failed with status code 401
+    at pN (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:713:1075)
+    at IncomingMessage.<anonymous> (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:714:9910)
+    at IncomingMessage.emit (node:events:536:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at cQ1.request (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:716:2078)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async lIA (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:877:25947)
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.816705.1761794541025
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 219734 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.816705.1761794541025 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.816705.1761794541167
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 219734 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.816705.1761794541167 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Executing hooks for UserPromptSubmit
+[DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] FileHistory: Added snapshot for 7bdfe57d-e0e1-46cf-8462-186b5cfc348a, tracking 0 files
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.816705.1761794548006
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 219698 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.816705.1761794548006 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[ERROR] Error: Error: 401 {"type":"error","error":{"type":"authentication_error","message":"Invalid OAuth token. The provided token was not found or is malformed."},"request_id":"req_011CUcfY6TndgcBoddNRLHRa"}
+    at i9.generate (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:881:18745)
+    at bP.makeStatusError (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1026:2117)
+    at bP.makeRequest (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1026:5330)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async vZ1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1034:9556)
+    at async YF1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3198:143)
+    at async Rc1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3198:342)
+    at async VfB (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3208:485)
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: xrandr --query
+[DEBUG] Bash tool description: Check connected displays and current configuration
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: ls -la /sys/class/drm/card*/status 2>/dev/null | head -20
+[DEBUG] Bash tool description: Check DRM display connection status
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: lspci | grep -i vga
+[DEBUG] Bash tool description: Check graphics card information
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[ERROR] Error: Error: 401 {"type":"error","error":{"type":"authentication_error","message":"Invalid OAuth token. The provided token was not found or is malformed."},"request_id":"req_011CUcfYy6JYF3wmmTFbWvyM"}
+    at i9.generate (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:881:18745)
+    at bP.makeStatusError (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1026:2117)
+    at bP.makeRequest (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1026:5330)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async vZ1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1034:9556)
+    at async YF1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3198:143)
+    at async Rc1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3198:342)
+    at async VfB (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3208:485)
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: xrandr --output HDMI-1-0 --mode 1920x1080 --rate 60.00 --right-of eDP
+[DEBUG] Bash tool description: Enable HDMI display at 1920x1080 60Hz
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: xrandr --output HDMI-1-0 --auto
+[DEBUG] Bash tool description: Auto-configure HDMI display
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: xrandr --listproviders
+[DEBUG] Bash tool description: Check available graphics providers
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[ERROR] Error: Error: 401 {"type":"error","error":{"type":"authentication_error","message":"Invalid OAuth token. The provided token was not found or is malformed."},"request_id":"req_011CUcfaZdipcC7KbqkLfHGx"}
+    at i9.generate (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:881:18745)
+    at bP.makeStatusError (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1026:2117)
+    at bP.makeRequest (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1026:5330)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async vZ1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1034:9556)
+    at async YF1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3198:143)
+    at async Rc1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3198:342)
+    at async VfB (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3208:485)
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: xrandr --setprovideroutputsource NVIDIA-G0 AMD
+[DEBUG] Bash tool description: Set NVIDIA as output source for AMD
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: xrandr --query | grep -A1 "HDMI"
+[DEBUG] Bash tool description: Check if HDMI is now visible
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[ERROR] Error: Error: 401 {"type":"error","error":{"type":"authentication_error","message":"Invalid OAuth token. The provided token was not found or is malformed."},"request_id":"req_011CUcfbKjpzLiwUKHAwYbu1"}
+    at i9.generate (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:881:18745)
+    at bP.makeStatusError (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1026:2117)
+    at bP.makeRequest (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1026:5330)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async vZ1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1034:9556)
+    at async YF1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3198:143)
+    at async Rc1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3198:342)
+    at async VfB (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3208:485)
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: xrandr --setprovideroutputsource 1 0
+[DEBUG] Bash tool description: Set NVIDIA (provider 1) as output source
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: xrandr --query | head -30
+[DEBUG] Bash tool description: Check updated display configuration
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: xrandr --output HDMI-1-0 --auto --right-of eDP
+[DEBUG] Bash tool description: Enable HDMI with auto-detect resolution
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[ERROR] Error: Error: 401 {"type":"error","error":{"type":"authentication_error","message":"Invalid OAuth token. The provided token was not found or is malformed."},"request_id":"req_011CUcfcSo1t3Xui6VeeiDNJ"}
+    at i9.generate (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:881:18745)
+    at bP.makeStatusError (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1026:2117)
+    at bP.makeRequest (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1026:5330)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async vZ1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1034:9556)
+    at async YF1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3198:143)
+    at async Rc1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3198:342)
+    at async VfB (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3208:485)
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: xrandr --output eDP --off && xrandr --output HDMI-1-0 --mode 1920x1080 --rate 60.00
+[DEBUG] Bash tool description: Disable laptop display and enable HDMI
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[ERROR] Error: Error: 401 {"type":"error","error":{"type":"authentication_error","message":"Invalid OAuth token. The provided token was not found or is malformed."},"request_id":"req_011CUcfdAr6nXNNSDCQ3dLM4"}
+    at i9.generate (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:881:18745)
+    at bP.makeStatusError (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1026:2117)
+    at bP.makeRequest (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1026:5330)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async vZ1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1034:9556)
+    at async YF1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3198:143)
+    at async Rc1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3198:342)
+    at async VfB (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3208:485)
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: lsmod | grep -E "nvidia|nouveau|amdgpu"
+[DEBUG] Bash tool description: Check loaded graphics drivers
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: nvidia-smi 2>&1 | head -15
+[DEBUG] Bash tool description: Check NVIDIA driver status
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: cat /var/log/Xorg.0.log | grep -E "NVIDIA|AMD|HDMI" | tail -20
+[DEBUG] Bash tool description: Check X11 log for graphics issues
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: echo $XDG_SESSION_TYPE
+[DEBUG] Bash tool description: Check if running Wayland or X11
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: groups
+[DEBUG] Bash tool description: Check user group memberships
+[DEBUG] Bash tool invoked with command: ls -la /dev/dri/
+[DEBUG] Bash tool description: Check DRM device permissions
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: xrandr --output eDP --auto
+[DEBUG] Bash tool description: Re-enable laptop display
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: whoami && id -nG | grep -o render
+[DEBUG] Bash tool description: Check if user is in render group
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: echo "0000" | sudo -S usermod -a -G render user
+[DEBUG] Bash tool description: Add user to render group
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: which nvidia-settings
+[DEBUG] Bash tool description: Check if nvidia-settings is installed
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[ERROR] Error: Error: 401 {"type":"error","error":{"type":"authentication_error","message":"Invalid OAuth token. The provided token was not found or is malformed."},"request_id":"req_011CUcfgR1itbjd9D3DV5hzg"}
+    at i9.generate (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:881:18745)
+    at bP.makeStatusError (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1026:2117)
+    at bP.makeRequest (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1026:5330)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async vZ1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1034:9556)
+    at async YF1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3198:143)
+    at async Rc1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3198:342)
+    at async VfB (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3208:485)
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: cat > /tmp/10-nvidia-drm-outputclass.conf << 'EOF'
+Section "OutputClass"
+    Identifier "nvidia"
+    MatchDriver "nvidia-drm"
+    Driver "nvidia"
+    Option "AllowEmptyInitialConfiguration"
+    Option "PrimaryGPU" "yes"
+    ModulePath "/usr/lib/x86_64-linux-gnu/nvidia/xorg"
+EndSection
+EOF
+cat /tmp/10-nvidia-drm-outputclass.conf
+[DEBUG] Bash tool description: Create NVIDIA X11 output configuration
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: echo "0000" | sudo -S cp /tmp/10-nvidia-drm-outputclass.conf /etc/X11/xorg.conf.d/ 2>&1
+[DEBUG] Bash tool description: Install NVIDIA X11 configuration
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: which prime-select
+[DEBUG] Bash tool description: Check if PRIME GPU switching is available
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: systemctl status display-manager 2>&1 | head -5
+[DEBUG] Bash tool description: Check which display manager is running
+[DEBUG] Executing hooks for PostToolUse:Bash
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Slash commands included in SlashCommand tool:
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Executing hooks for PreToolUse:Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Bash tool invoked with command: echo "0000" | sudo -S systemctl restart gdm
+[DEBUG] Bash tool description: Restart GNOME Display Manager
+[DEBUG] Bash tool timeout: 5000ms

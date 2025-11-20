@@ -1,0 +1,19 @@
+#!/bin/bash
+# Test script for z.ai version of the bot
+
+echo "🚀 Starting z.ai Bot Test on port 9999"
+echo "✨ Using z.ai GLM-4.5-Flash (FREE version)"
+echo "📞 Bot will listen on port 9999"
+echo ""
+
+# Activate virtual environment
+source /home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/activate
+
+# Set STT provider to Groq (cheaper than Deepgram)
+export STT_PROVIDER=groq
+
+# Run the z.ai bot on port 9999 (test port)
+python /home/user/Desktop/exodus-kali-deploy/ava_sales_bot_zai.py --port 9999 --contact-name "Test"
+
+echo ""
+echo "✅ z.ai bot test complete"

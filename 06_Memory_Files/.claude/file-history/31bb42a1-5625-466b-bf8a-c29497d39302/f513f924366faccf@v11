@@ -1,0 +1,1576 @@
+#!/usr/bin/env python3
+"""
+Dialer API - FastAPI REST backend for Exodus Dialer
+
+Provides REST endpoints for:
+- Campaign management (CRUD operations)
+- Lead management (import, view, update)
+- Real-time statistics and monitoring
+- Bot pool status
+- Call logs and history
+- DNC list management
+- TCPA compliance monitoring
+
+Used by dashboard.html frontend for dialer control panel.
+"""
+
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict
+from datetime import datetime, timedelta
+import asyncio
+import json
+import os
+from jose import jwt
+from jose.exceptions import JWTError
+from passlib.context import CryptContext
+
+from loguru import logger
+
+from dialer_db_async import AsyncDialerDB
+from bot_pool_manager import BotPoolManager, BotStatus
+from dialer_orchestrator import DialerOrchestrator
+
+try:
+    from dialer_logging import setup_logging, get_logger
+    setup_logging(json_output=False)
+    api_logger = get_logger("dialer_api")
+    STRUCTURED_LOGGING = True
+except ImportError:
+    STRUCTURED_LOGGING = False
+    api_logger = None
+
+try:
+    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+    from dialer_metrics import metrics, registry
+    PROMETHEUS_ENABLED = True
+except ImportError:
+    PROMETHEUS_ENABLED = False
+    metrics = None
+    registry = None
+
+
+# ============================================================================
+# Security Configuration
+# ============================================================================
+
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "CHANGE_THIS_IN_PRODUCTION_USE_ENV_VAR")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 480
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer()
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Optional[str] = None
+
+class User(BaseModel):
+    username: str
+    disabled: Optional[bool] = None
+
+class UserInDB(User):
+    hashed_password: str
+
+# Temporarily disabled authentication for testing
+USERS_DB = {
+    "admin": {
+        "username": "admin",
+        "hashed_password": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LeehbQiRk/SzKzKz",
+        "disabled": False
+    }
+}
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+def get_user(username: str):
+    if username in USERS_DB:
+        user_dict = USERS_DB[username]
+        return UserInDB(**user_dict)
+    return None
+
+def authenticate_user(username: str, password: str):
+    user = get_user(username)
+    if not user:
+        return False
+    if not verify_password(password, user.hashed_password):
+        return False
+    return user
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = TokenData(username=username)
+    except JWTError:
+        raise credentials_exception
+    user = get_user(username=token_data.username)
+    if user is None:
+        raise credentials_exception
+    return user
+
+async def get_current_active_user(current_user: User = Depends(get_current_user)):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+# ============================================================================
+# Pydantic Models (Request/Response schemas)
+# ============================================================================
+
+class CampaignCreate(BaseModel):
+    """Request model for creating a campaign."""
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str = ""
+    dial_method: str = Field(default="PROGRESSIVE", pattern="^(PROGRESSIVE|PREDICTIVE|POWER|PREVIEW)$")
+    dial_ratio: float = Field(default=3.0, ge=1.0, le=10.0)
+    max_dial_ratio: float = Field(default=5.0, ge=1.0, le=10.0)
+    stt_provider: str = Field(default="deepgram", pattern="^(deepgram|groq)$")
+    enable_recording: bool = False
+
+
+class LeadCreate(BaseModel):
+    """Request model for adding a lead."""
+    campaign_id: int
+    phone_number: str = Field(..., min_length=10, max_length=20)
+    first_name: str = ""
+    last_name: str = ""
+    email: str = ""
+    company: str = ""
+    city: str = ""
+    state: str = ""
+    zip_code: str = ""
+    timezone: str = "America/New_York"
+    custom_data: Optional[Dict] = None
+
+
+class LeadBulkImport(BaseModel):
+    """Request model for bulk lead import."""
+    campaign_id: int
+    leads: List[Dict]
+
+
+class DNCAdd(BaseModel):
+    """Request model for adding to DNC list."""
+    phone_number: str = Field(..., min_length=10, max_length=20)
+    reason: str = "Manual addition"
+
+
+class CallOriginate(BaseModel):
+    """Request model for originating a manual call."""
+    phone_number: str = Field(..., min_length=10, max_length=20)
+    lead_id: Optional[int] = None
+    caller_id: str = "Sales <+15615324683>"
+
+
+# ============================================================================
+# FastAPI Application
+# ============================================================================
+
+app = FastAPI(
+    title="Exodus Dialer API",
+    description="REST API for predictive dialer system",
+    version="1.0.0"
+)
+
+# CORS middleware for dashboard access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Custom validation exception handler to log errors
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+import time
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+import json
+
+class LoggingMiddleware(BaseHTTPMiddleware):
+    """Middleware to log all requests and responses."""
+
+    async def dispatch(self, request: Request, call_next):
+        # Start timer
+        start_time = time.time()
+
+        # Log request details
+        client_host = request.client.host if request.client else "unknown"
+        logger.info(f"📥 REQUEST: {request.method} {request.url.path} from {client_host}")
+
+        # Log query parameters if present
+        if request.query_params:
+            logger.debug(f"   Query params: {dict(request.query_params)}")
+
+        # Log request headers (excluding sensitive ones)
+        safe_headers = {k: v for k, v in request.headers.items()
+                       if k.lower() not in ['authorization', 'cookie']}
+        logger.debug(f"   Headers: {safe_headers}")
+
+        # Get request body for POST/PUT/PATCH
+        if request.method in ["POST", "PUT", "PATCH"]:
+            try:
+                body = await request.body()
+                if body:
+                    try:
+                        body_json = json.loads(body)
+                        logger.debug(f"   Body: {body_json}")
+                    except json.JSONDecodeError:
+                        logger.debug(f"   Body (raw): {body[:200]}...")  # First 200 chars
+            except Exception as e:
+                logger.debug(f"   Body read error: {e}")
+
+        # Process request
+        response = await call_next(request)
+
+        # Calculate processing time
+        process_time = time.time() - start_time
+
+        # Log response
+        logger.info(f"📤 RESPONSE: {response.status_code} for {request.method} {request.url.path} ({process_time:.3f}s)")
+
+        # Add custom headers
+        response.headers["X-Process-Time"] = str(process_time)
+
+        return response
+
+# Add the logging middleware
+app.add_middleware(LoggingMiddleware)
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    """Log validation errors for debugging."""
+    logger.error(f"❌ VALIDATION ERROR on {request.method} {request.url.path}")
+    logger.error(f"   Error details: {exc.errors()}")
+
+    # Try to get body
+    try:
+        body = await request.body()
+        if body:
+            try:
+                body_json = json.loads(body)
+                logger.error(f"   Request body: {body_json}")
+            except:
+                logger.error(f"   Request body (raw): {body[:500]}")
+    except:
+        pass
+
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()}
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request, exc):
+    """Log all unhandled exceptions."""
+    logger.error(f"💥 UNHANDLED EXCEPTION on {request.method} {request.url.path}")
+    logger.error(f"   Exception type: {type(exc).__name__}")
+    logger.error(f"   Exception: {str(exc)}", exc_info=True)
+
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {str(exc)}"}
+    )
+
+# Mount static files for React dashboard
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Global instances (initialized on startup)
+db: Optional[AsyncDialerDB] = None
+bot_pool: Optional[BotPoolManager] = None
+orchestrator: Optional[DialerOrchestrator] = None
+
+# WebSocket connections for real-time updates
+active_websockets: List[WebSocket] = []
+
+
+# ============================================================================
+# Startup/Shutdown Events
+# ============================================================================
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize dialer components on startup."""
+    global db, bot_pool, orchestrator
+
+    logger.info("🚀 Starting Exodus Dialer API...")
+
+    try:
+        # Initialize async database
+        db = AsyncDialerDB("dialer.db")
+        await db.init()
+        logger.info("✅ Async database initialized")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize database: {e}")
+        raise RuntimeError(f"Database initialization failed: {e}")
+
+    try:
+        # Initialize bot pool
+        bot_pool = BotPoolManager(
+            base_port=9092,
+            num_instances=20,
+            bot_script="ava_sales_bot_audiosocket.py",
+            python_path="pipecat_env_new/bin/python3"
+        )
+        await bot_pool.start()
+        logger.info("✅ Bot pool started")
+    except Exception as e:
+        logger.error(f"❌ Failed to start bot pool: {e}")
+        raise RuntimeError(f"Bot pool initialization failed: {e}")
+
+    try:
+        # Initialize orchestrator
+        orchestrator = DialerOrchestrator(
+            db=db,
+            bot_pool=bot_pool,
+            ami_host=os.getenv("AMI_HOST", "localhost"),
+            ami_username=os.getenv("AMI_USERNAME", "ava"),
+            ami_password=os.getenv("AMI_PASSWORD", "ava123")
+        )
+        await orchestrator.start()
+        logger.info("✅ Dialer orchestrator started")
+    except Exception as e:
+        logger.error(f"❌ Failed to start orchestrator: {e}")
+        raise RuntimeError(f"Orchestrator initialization failed: {e}")
+
+    try:
+        # Start WebSocket broadcast task
+        asyncio.create_task(broadcast_stats_loop())
+    except Exception as e:
+        logger.error(f"❌ Failed to start WebSocket broadcast: {e}")
+
+    logger.info("🎯 Exodus Dialer API ready")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown."""
+    global orchestrator, bot_pool, db
+
+    logger.info("🛑 Shutting down Exodus Dialer API...")
+
+    try:
+        if orchestrator:
+            await orchestrator.stop()
+            logger.info("✅ Orchestrator stopped")
+    except Exception as e:
+        logger.error(f"❌ Error stopping orchestrator: {e}")
+
+    try:
+        if bot_pool:
+            await bot_pool.stop()
+            logger.info("✅ Bot pool stopped")
+    except Exception as e:
+        logger.error(f"❌ Error stopping bot pool: {e}")
+    
+    try:
+        if db:
+            db.dispose_pool()
+            logger.info("✅ Database connection pool disposed")
+    except Exception as e:
+        logger.error(f"❌ Error disposing database pool: {e}")
+
+    logger.info("✅ Shutdown complete")
+
+
+# ============================================================================
+# Health Check
+# ============================================================================
+
+@app.get("/api")
+async def api_info():
+    """API info endpoint."""
+    return {
+        "service": "Exodus Dialer API",
+        "version": "1.0.0",
+        "status": "running"
+    }
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {
+        "status": "healthy",
+        "database": db is not None,
+        "bot_pool": bot_pool is not None,
+        "orchestrator": orchestrator is not None
+    }
+
+
+# ============================================================================
+# Authentication Endpoints
+# ============================================================================
+
+@app.post("/auth/login", response_model=Token)
+async def login(username: str, password: str):
+    """Login endpoint to obtain JWT token."""
+    user = authenticate_user(username, password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    logger.info(f"User {username} logged in successfully")
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+# ============================================================================
+# Campaign Endpoints
+# ============================================================================
+
+@app.post("/campaigns", status_code=201)
+async def create_campaign(campaign: CampaignCreate):
+    """Create a new campaign."""
+    logger.info(f"🔵 CREATE CAMPAIGN: Request to create campaign '{campaign.name}'")
+    logger.debug(f"   Campaign details: dial_method={campaign.dial_method}, "
+                f"dial_ratio={campaign.dial_ratio}, max_dial_ratio={campaign.max_dial_ratio}, "
+                f"stt_provider={campaign.stt_provider}, enable_recording={campaign.enable_recording}")
+    try:
+        campaign_id = await db.create_campaign(
+            name=campaign.name,
+            description=campaign.description,
+            dial_method=campaign.dial_method,
+            dial_ratio=campaign.dial_ratio,
+            max_dial_ratio=campaign.max_dial_ratio,
+            stt_provider=campaign.stt_provider,
+            enable_recording=campaign.enable_recording
+        )
+        logger.info(f"✅ CREATE CAMPAIGN: Successfully created campaign '{campaign.name}' with ID={campaign_id}")
+        return {"campaign_id": campaign_id, "message": "Campaign created successfully"}
+    except Exception as e:
+        logger.error(f"❌ CREATE CAMPAIGN: Failed to create campaign '{campaign.name}'")
+        logger.error(f"   Error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/campaigns")
+async def list_campaigns():
+    """List all campaigns with their statistics."""
+    logger.info("📋 LIST CAMPAIGNS: Request to list all campaigns with statistics")
+    try:
+        async with db.db.execute("""
+            SELECT
+                c.*,
+                COUNT(DISTINCT l.id) as total_leads,
+                COUNT(DISTINCT CASE WHEN l.status = 'NEW' THEN l.id END) as new_leads,
+                COUNT(DISTINCT CASE WHEN l.status = 'COMPLETED' THEN l.id END) as completed_leads
+            FROM campaigns c
+            LEFT JOIN leads l ON c.id = l.campaign_id
+            GROUP BY c.id
+            ORDER BY c.created_at DESC
+        """) as cursor:
+            rows = await cursor.fetchall()
+            campaigns = [dict(row) for row in rows]
+            logger.info(f"✅ LIST CAMPAIGNS: Retrieved {len(campaigns)} campaigns")
+            for camp in campaigns:
+                logger.debug(f"   Campaign: ID={camp['id']}, Name={camp['name']}, Status={camp['status']}, Leads={camp['total_leads']}")
+            return campaigns
+    except Exception as e:
+        logger.error(f"❌ LIST CAMPAIGNS: Failed to list campaigns - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/campaigns/active")
+async def list_active_campaigns():
+    """List active campaigns."""
+    logger.info("🔴 LIST ACTIVE CAMPAIGNS: Request to list active campaigns")
+    try:
+        campaigns = await db.get_active_campaigns()
+        logger.info(f"✅ LIST ACTIVE CAMPAIGNS: Found {len(campaigns)} active campaigns")
+        for camp in campaigns:
+            logger.debug(f"   Active Campaign: ID={camp['id']}, Name={camp['name']}, Dial Ratio={camp.get('dial_ratio', 'N/A')}")
+        return campaigns
+    except Exception as e:
+        logger.error(f"❌ LIST ACTIVE CAMPAIGNS: Failed - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/campaigns/{campaign_id}")
+async def get_campaign(campaign_id: int):
+    """Get campaign details."""
+    logger.info(f"🔍 GET CAMPAIGN: Request for campaign ID={campaign_id}")
+    try:
+        campaign = await db.get_campaign(campaign_id)
+        if not campaign:
+            logger.warning(f"⚠️ GET CAMPAIGN: Campaign ID={campaign_id} not found")
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        logger.info(f"✅ GET CAMPAIGN: Retrieved campaign ID={campaign_id}, Name={campaign['name']}, Status={campaign['status']}")
+        logger.debug(f"   Details: Dial Method={campaign.get('dial_method')}, Dial Ratio={campaign.get('dial_ratio')}")
+        return campaign
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ GET CAMPAIGN: Failed for ID={campaign_id} - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/campaigns/{campaign_id}")
+async def update_campaign(campaign_id: int, campaign_data: dict):
+    """Update campaign details."""
+    logger.info(f"📝 UPDATE CAMPAIGN: Request to update campaign ID={campaign_id}")
+    logger.debug(f"   Update data: {campaign_data}")
+
+    campaign = await db.get_campaign(campaign_id)
+    if not campaign:
+        logger.warning(f"⚠️ UPDATE CAMPAIGN: Campaign ID={campaign_id} not found")
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    try:
+        # Log what fields are being updated
+        updated_fields = list(campaign_data.keys())
+        logger.info(f"   Updating fields: {', '.join(updated_fields)}")
+
+        await db.update_campaign(campaign_id, campaign_data)
+        logger.info(f"✅ UPDATE CAMPAIGN: Campaign ID={campaign_id} updated successfully")
+        logger.debug(f"   Campaign '{campaign['name']}' updated with {len(updated_fields)} field(s)")
+        return {"message": f"Campaign {campaign_id} updated successfully"}
+    except Exception as e:
+        logger.error(f"❌ UPDATE CAMPAIGN: Failed for ID={campaign_id} - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/campaigns/{campaign_id}")
+async def delete_campaign(campaign_id: int):
+    """Delete a campaign."""
+    logger.info(f"🗑️ DELETE CAMPAIGN: Request to delete campaign ID={campaign_id}")
+
+    campaign = await db.get_campaign(campaign_id)
+    if not campaign:
+        logger.warning(f"⚠️ DELETE CAMPAIGN: Campaign ID={campaign_id} not found")
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    try:
+        campaign_name = campaign['name']
+        logger.info(f"   Deleting campaign '{campaign_name}' and all associated leads")
+
+        await db.delete_campaign(campaign_id)
+        logger.info(f"✅ DELETE CAMPAIGN: Campaign ID={campaign_id} ('{campaign_name}') deleted successfully")
+        return {"message": f"Campaign {campaign_id} deleted successfully"}
+    except Exception as e:
+        logger.error(f"❌ DELETE CAMPAIGN: Failed for ID={campaign_id} - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/campaigns/{campaign_id}/start")
+async def start_campaign(campaign_id: int):
+    """Start a campaign."""
+    logger.info(f"▶️ START CAMPAIGN: Request to start campaign ID={campaign_id}")
+
+    campaign = await db.get_campaign(campaign_id)
+    if not campaign:
+        logger.warning(f"⚠️ START CAMPAIGN: Campaign ID={campaign_id} not found")
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    try:
+        current_status = campaign['status']
+        logger.info(f"   Current status: {current_status}, Campaign: '{campaign['name']}'")
+
+        await db.start_campaign(campaign_id)
+        logger.info(f"✅ START CAMPAIGN: Campaign ID={campaign_id} ('{campaign['name']}') started successfully")
+        logger.debug(f"   Dial Method: {campaign.get('dial_method')}, Dial Ratio: {campaign.get('dial_ratio')}")
+        return {"message": f"Campaign {campaign_id} started"}
+    except Exception as e:
+        logger.error(f"❌ START CAMPAIGN: Failed for ID={campaign_id} - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/campaigns/{campaign_id}/pause")
+async def pause_campaign(campaign_id: int):
+    """Pause a campaign."""
+    logger.info(f"⏸️ PAUSE CAMPAIGN: Request to pause campaign ID={campaign_id}")
+
+    campaign = await db.get_campaign(campaign_id)
+    if not campaign:
+        logger.warning(f"⚠️ PAUSE CAMPAIGN: Campaign ID={campaign_id} not found")
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    try:
+        current_status = campaign['status']
+        logger.info(f"   Current status: {current_status}, Campaign: '{campaign['name']}'")
+
+        await db.pause_campaign(campaign_id)
+        logger.info(f"✅ PAUSE CAMPAIGN: Campaign ID={campaign_id} ('{campaign['name']}') paused successfully")
+        return {"message": f"Campaign {campaign_id} paused"}
+    except Exception as e:
+        logger.error(f"❌ PAUSE CAMPAIGN: Failed for ID={campaign_id} - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/campaigns/{campaign_id}/status")
+async def update_campaign_status(campaign_id: int, status: str):
+    """Update campaign status via query parameter."""
+    logger.info(f"🔄 UPDATE CAMPAIGN STATUS: Request to update campaign ID={campaign_id} to status={status}")
+
+    campaign = await db.get_campaign(campaign_id)
+    if not campaign:
+        logger.warning(f"⚠️ UPDATE CAMPAIGN STATUS: Campaign ID={campaign_id} not found")
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    status = status.upper()
+    logger.debug(f"   Normalized status: {status}, Current status: {campaign['status']}")
+
+    if status not in ["ACTIVE", "PAUSED", "COMPLETED", "DRAFT"]:
+        logger.warning(f"⚠️ UPDATE CAMPAIGN STATUS: Invalid status '{status}' for campaign ID={campaign_id}")
+        raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
+
+    try:
+        logger.info(f"   Updating campaign '{campaign['name']}' from {campaign['status']} to {status}")
+
+        if status == "ACTIVE":
+            await db.start_campaign(campaign_id)
+        elif status == "PAUSED":
+            await db.pause_campaign(campaign_id)
+        else:
+            # For COMPLETED and DRAFT, just update the status field
+            await db.update_campaign(campaign_id, {"status": status})
+
+        logger.info(f"✅ UPDATE CAMPAIGN STATUS: Campaign ID={campaign_id} status updated to {status}")
+        return {"message": f"Campaign {campaign_id} status updated to {status}"}
+    except Exception as e:
+        logger.error(f"❌ UPDATE CAMPAIGN STATUS: Failed for ID={campaign_id} - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/campaigns/{campaign_id}/stats")
+async def get_campaign_stats(campaign_id: int):
+    """Get statistics for a specific campaign."""
+    logger.info(f"📊 GET CAMPAIGN STATS: Request for campaign ID={campaign_id}")
+
+    try:
+        stats = await db.get_campaign_stats_today(campaign_id)
+        if stats:
+            logger.info(f"✅ GET CAMPAIGN STATS: Retrieved stats for campaign ID={campaign_id}")
+            logger.debug(f"   Total Calls: {stats.get('total_calls', 0)}, Answered: {stats.get('answered_calls', 0)}, Drop Rate: {stats.get('drop_rate', 0):.2%}")
+        else:
+            logger.info(f"   No stats available for campaign ID={campaign_id}")
+        return {"campaign_id": campaign_id, "stats": stats}
+    except Exception as e:
+        logger.error(f"❌ GET CAMPAIGN STATS: Failed for ID={campaign_id} - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/campaigns/{campaign_id}/leads")
+async def get_campaign_leads(campaign_id: int, limit: int = 100, offset: int = 0):
+    """Get all leads for a specific campaign."""
+    logger.info(f"📋 GET CAMPAIGN LEADS: Request for campaign ID={campaign_id}, limit={limit}, offset={offset}")
+
+    try:
+        leads = await db.get_leads_by_campaign(campaign_id, limit=limit, offset=offset)
+        total = await db.get_campaign_lead_count(campaign_id)
+
+        logger.info(f"✅ GET CAMPAIGN LEADS: Retrieved {len(leads)} of {total} total leads for campaign ID={campaign_id}")
+        if leads:
+            logger.debug(f"   Sample lead: {leads[0].get('phone_number', 'N/A')} - Status: {leads[0].get('status', 'N/A')}")
+
+        return {
+            "campaign_id": campaign_id,
+            "leads": leads,
+            "total": total,
+            "limit": limit,
+            "offset": offset
+        }
+    except Exception as e:
+        logger.error(f"❌ GET CAMPAIGN LEADS: Failed for campaign ID={campaign_id} - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/leads/{lead_id}/disposition")
+async def update_lead_disposition(lead_id: int, disposition_data: dict):
+    """Update the disposition/status of a lead."""
+    logger.info(f"📝 UPDATE LEAD DISPOSITION: Request for lead ID={lead_id}")
+    logger.debug(f"   Disposition data: {disposition_data}")
+
+    try:
+        disposition = disposition_data.get("disposition", "").upper()
+        if not disposition:
+            logger.warning(f"⚠️ UPDATE LEAD DISPOSITION: No disposition provided for lead ID={lead_id}")
+            raise HTTPException(status_code=400, detail="Disposition is required")
+
+        # Validate disposition
+        valid_dispositions = ['NEW', 'CALLING', 'ANSWERED', 'NO_ANSWER', 'BUSY', 'FAILED', 'COMPLETED', 'CALLBACK', 'DNC']
+        if disposition not in valid_dispositions:
+            logger.warning(f"⚠️ UPDATE LEAD DISPOSITION: Invalid disposition '{disposition}' for lead ID={lead_id}")
+            raise HTTPException(status_code=400, detail=f"Invalid disposition. Must be one of: {', '.join(valid_dispositions)}")
+
+        logger.info(f"   Updating lead ID={lead_id} to disposition: {disposition}")
+
+        # Update the lead
+        await db.update_lead_after_call(lead_id, disposition)
+
+        logger.info(f"✅ UPDATE LEAD DISPOSITION: Lead ID={lead_id} updated to {disposition}")
+        if disposition == "DNC":
+            logger.warning(f"   🚫 Lead ID={lead_id} added to DNC list")
+        elif disposition == "CALLBACK":
+            logger.info(f"   📅 Lead ID={lead_id} scheduled for callback")
+
+        return {"message": f"Lead {lead_id} disposition updated to {disposition}"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ UPDATE LEAD DISPOSITION: Failed for lead ID={lead_id} - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/leads")
+async def get_leads(campaign_id: Optional[int] = None, status: Optional[str] = None, limit: int = 100, offset: int = 0):
+    """Get leads, optionally filtered by campaign and/or status."""
+    logger.info(f"📋 GET LEADS: Request with filters - campaign_id={campaign_id}, status={status}, limit={limit}, offset={offset}")
+
+    try:
+        # Build query with optional filters
+        where_clauses = []
+        params = []
+
+        if campaign_id:
+            where_clauses.append("campaign_id = ?")
+            params.append(campaign_id)
+            logger.debug(f"   Filtering by campaign ID: {campaign_id}")
+
+        if status:
+            where_clauses.append("status = ?")
+            params.append(status.upper())
+            logger.debug(f"   Filtering by status: {status.upper()}")
+
+        where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+        # Get leads with filters
+        query = f"""
+            SELECT id, campaign_id, phone_number, first_name, last_name, email, company,
+                   city, state, zip_code, timezone, status, attempts, max_attempts,
+                   last_call_time, next_call_time, created_at, updated_at
+            FROM leads
+            {where_sql}
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+        """
+        params.extend([limit, offset])
+
+        async with db.db.execute(query, tuple(params)) as cursor:
+            rows = await cursor.fetchall()
+            columns = [desc[0] for desc in cursor.description]
+            leads = [dict(zip(columns, row)) for row in rows]
+
+        logger.info(f"✅ GET LEADS: Retrieved {len(leads)} leads")
+        if leads:
+            statuses = {}
+            for lead in leads:
+                status = lead.get('status', 'UNKNOWN')
+                statuses[status] = statuses.get(status, 0) + 1
+            logger.debug(f"   Status breakdown: {statuses}")
+
+        # Return just the array for frontend compatibility
+        return leads
+    except Exception as e:
+        logger.error(f"❌ GET LEADS: Failed - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/leads", status_code=201)
+async def create_lead(lead: LeadCreate):
+    """Create a single lead."""
+    logger.info(f"➕ CREATE LEAD: Request to add lead for campaign ID={lead.campaign_id}")
+    logger.debug(f"   Lead details: Phone={lead.phone_number}, Name={lead.first_name} {lead.last_name}, Timezone={lead.timezone}")
+
+    try:
+        campaign = await db.get_campaign(lead.campaign_id)
+        if not campaign:
+            logger.warning(f"⚠️ CREATE LEAD: Campaign ID={lead.campaign_id} not found")
+            raise HTTPException(status_code=404, detail="Campaign not found")
+
+        logger.info(f"   Adding lead to campaign '{campaign['name']}'")
+
+        lead_id = await db.add_lead(
+            campaign_id=lead.campaign_id,
+            phone_number=lead.phone_number,
+            first_name=lead.first_name,
+            last_name=lead.last_name,
+            email=lead.email,
+            company=lead.company,
+            city=lead.city,
+            state=lead.state,
+            zip_code=lead.zip_code,
+            timezone=lead.timezone,
+            custom_data=lead.custom_data
+        )
+
+        if lead_id is None:
+            logger.warning(f"🚫 CREATE LEAD: Phone {lead.phone_number} is in DNC list, rejected")
+            raise HTTPException(status_code=400, detail="Phone number is in DNC list")
+
+        logger.info(f"✅ CREATE LEAD: Successfully created lead ID={lead_id} for campaign ID={lead.campaign_id}")
+        logger.debug(f"   Lead {lead.phone_number} added with status 'NEW'")
+
+        return {
+            "lead_id": lead_id,
+            "message": "Lead created successfully"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ CREATE LEAD: Failed for campaign ID={lead.campaign_id} - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/leads/bulk", status_code=201)
+async def bulk_import_leads(import_data: LeadBulkImport):
+    """Bulk import leads for a campaign."""
+    logger.info(f"📦 BULK IMPORT LEADS: Request to import {len(import_data.leads)} leads for campaign ID={import_data.campaign_id}")
+
+    try:
+        campaign = await db.get_campaign(import_data.campaign_id)
+        if not campaign:
+            logger.warning(f"⚠️ BULK IMPORT LEADS: Campaign ID={import_data.campaign_id} not found")
+            raise HTTPException(status_code=404, detail="Campaign not found")
+
+        logger.info(f"   Importing leads into campaign '{campaign['name']}'")
+        logger.debug(f"   Processing {len(import_data.leads)} leads...")
+
+        imported = await db.bulk_import_leads(import_data.campaign_id, import_data.leads)
+
+        logger.info(f"✅ BULK IMPORT LEADS: Successfully imported {imported} of {len(import_data.leads)} leads")
+        if imported < len(import_data.leads):
+            rejected = len(import_data.leads) - imported
+            logger.warning(f"   ⚠️ {rejected} leads rejected (likely DNC or duplicates)")
+
+        return {
+            "message": f"Successfully imported {imported} leads",
+            "campaign_id": import_data.campaign_id,
+            "imported_count": imported,
+            "total_submitted": len(import_data.leads)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ BULK IMPORT LEADS: Failed for campaign ID={import_data.campaign_id} - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/bots")
+async def get_bots():
+    """Get all bot instances and their status."""
+    logger.info("🤖 GET BOTS: Request to list all bot instances")
+
+    try:
+        bots_list = []
+        status_counts = {"idle": 0, "busy": 0, "crashed": 0, "stopped": 0}
+
+        for port, bot in bot_pool.bots.items():
+            bot_info = {
+                "port": port,
+                "status": bot.status.value,
+                "running": bot.status in [BotStatus.IDLE, BotStatus.BUSY],
+                "pid": bot.process.pid if bot.process else None,
+                "calls_handled": getattr(bot, 'calls_handled', 0),
+                "last_activity": None
+            }
+            bots_list.append(bot_info)
+
+            # Count statuses for summary
+            if bot.status == BotStatus.IDLE:
+                status_counts["idle"] += 1
+            elif bot.status == BotStatus.BUSY:
+                status_counts["busy"] += 1
+            elif bot.status == BotStatus.CRASHED:
+                status_counts["crashed"] += 1
+            else:
+                status_counts["stopped"] += 1
+
+        logger.info(f"✅ GET BOTS: Retrieved {len(bots_list)} bots")
+        logger.debug(f"   Status breakdown: {status_counts['idle']} idle, {status_counts['busy']} busy, {status_counts['crashed']} crashed, {status_counts['stopped']} stopped")
+
+        return bots_list
+    except Exception as e:
+        logger.error(f"❌ GET BOTS: Failed - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/bots/adjust-pool")
+async def adjust_bot_pool(request: dict):
+    """Adjust the number of running bots."""
+    target_count = request.get("target_count", 20)
+    logger.info(f"🔧 ADJUST BOT POOL: Request to adjust bot pool to {target_count} bots")
+
+    try:
+        current_count = len([b for b in bot_pool.bots.values() if b.status not in [BotStatus.CRASHED, BotStatus.STOPPED]])
+        logger.debug(f"   Current running bots: {current_count}, Target: {target_count}")
+
+        if target_count > current_count:
+            # Start more bots
+            started = 0
+            ports_started = []
+            for port in range(9092, 9112):
+                if started >= (target_count - current_count):
+                    break
+                if port not in bot_pool.bots or bot_pool.bots[port].status in [BotStatus.CRASHED, BotStatus.STOPPED]:
+                    logger.debug(f"   Starting bot on port {port}")
+                    await bot_pool._spawn_bot(port)
+                    started += 1
+                    ports_started.append(port)
+            logger.info(f"✅ ADJUST BOT POOL: Started {started} additional bots on ports {ports_started}")
+            return {"message": f"Started {started} additional bots", "total_running": target_count}
+        elif target_count < current_count:
+            # Stop some bots
+            stopped = 0
+            ports_stopped = []
+            for port in sorted(bot_pool.bots.keys(), reverse=True):
+                if stopped >= (current_count - target_count):
+                    break
+                bot = bot_pool.bots[port]
+                if bot.status == BotStatus.IDLE:
+                    if bot.process:
+                        logger.debug(f"   Stopping bot on port {port}")
+                        bot.process.terminate()
+                        bot.status = BotStatus.STOPPED
+                    stopped += 1
+                    ports_stopped.append(port)
+            logger.info(f"✅ ADJUST BOT POOL: Stopped {stopped} bots on ports {ports_stopped}")
+            return {"message": f"Stopped {stopped} bots", "total_running": target_count}
+        else:
+            logger.info(f"ℹ️ ADJUST BOT POOL: Already at target count of {current_count} bots")
+            return {"message": "Bot pool already at target count", "total_running": current_count}
+    except Exception as e:
+        logger.error(f"❌ ADJUST BOT POOL: Failed - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/bots/{port}/start")
+async def start_bot(port: int):
+    """Start a specific bot instance."""
+    logger.info(f"▶️ START BOT: Request to start bot on port {port}")
+
+    try:
+        # Check if bot already exists
+        if port in bot_pool.bots:
+            bot = bot_pool.bots[port]
+            logger.debug(f"   Bot exists with status: {bot.status.value}")
+            if bot.status in [BotStatus.CRASHED, BotStatus.STOPPED]:
+                # Restart crashed or stopped bot
+                logger.info(f"   Restarting {bot.status.value} bot on port {port}")
+                await bot_pool._restart_bot(port)
+                logger.info(f"✅ START BOT: Bot on port {port} restarted successfully")
+                return {"message": f"Bot on port {port} restarted successfully"}
+            else:
+                logger.info(f"ℹ️ START BOT: Bot on port {port} is already running with status {bot.status.value}")
+                return {"message": f"Bot on port {port} is already running"}
+
+        logger.info(f"   Spawning new bot on port {port}")
+        await bot_pool._spawn_bot(port)
+        logger.info(f"✅ START BOT: Bot on port {port} started successfully")
+        return {"message": f"Bot on port {port} started successfully"}
+    except Exception as e:
+        logger.error(f"❌ START BOT: Failed for port {port} - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/bots/{port}/restart")
+async def restart_bot(port: int):
+    """Restart a specific bot instance."""
+    logger.info(f"🔄 RESTART BOT: Request to restart bot on port {port}")
+
+    try:
+        if port in bot_pool.bots:
+            bot = bot_pool.bots[port]
+            logger.debug(f"   Current status: {bot.status.value}, PID: {bot.process.pid if bot.process else 'None'}")
+
+        await bot_pool._restart_bot(port)
+        logger.info(f"✅ RESTART BOT: Bot on port {port} restarted successfully")
+        return {"message": f"Bot on port {port} restarted successfully"}
+    except Exception as e:
+        logger.error(f"❌ RESTART BOT: Failed for port {port} - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/bots/{port}/stop")
+async def stop_bot(port: int):
+    """Stop a specific bot instance."""
+    logger.info(f"⏹️ STOP BOT: Request to stop bot on port {port}")
+
+    try:
+        if port not in bot_pool.bots:
+            logger.warning(f"⚠️ STOP BOT: Bot on port {port} not found")
+            raise HTTPException(status_code=404, detail=f"Bot on port {port} not found")
+
+        bot = bot_pool.bots[port]
+        logger.debug(f"   Current status: {bot.status.value}")
+
+        if bot.status == BotStatus.STOPPED:
+            logger.info(f"ℹ️ STOP BOT: Bot on port {port} is already stopped")
+            return {"message": f"Bot on port {port} is already stopped"}
+
+        await bot_pool._terminate_bot(port)
+        bot.status = BotStatus.STOPPED
+        logger.info(f"✅ STOP BOT: Bot on port {port} stopped successfully")
+        return {"message": f"Bot on port {port} stopped successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ STOP BOT: Failed for port {port} - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Orchestrator Endpoints
+# ============================================================================
+
+@app.get("/stats")
+async def get_stats():
+    """Get real-time dialer statistics."""
+    logger.info("📊 GET STATS: Request for real-time dialer statistics")
+    try:
+        stats = orchestrator.get_statistics()
+        logger.debug(f"   Active Calls: {stats.get('active_calls', 0)}, Total Calls: {stats.get('total_calls', 0)}")
+        logger.debug(f"   Connection Rate: {stats.get('connection_rate', 0):.1%}, Drop Rate: {stats.get('drop_rate', 0):.2%}")
+        return stats
+    except Exception as e:
+        logger.error(f"❌ GET STATS: Failed - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/dialer/stats")
+async def get_dialer_stats():
+    """Get real-time dialer statistics."""
+    logger.info("📊 GET DIALER STATS: Request for real-time dialer statistics")
+    try:
+        stats = orchestrator.get_statistics()
+        logger.debug(f"   Dial Ratio: {stats.get('dial_ratio', 0)}, Bots Available: {stats.get('bots_available', 0)}")
+        return stats
+    except Exception as e:
+        logger.error(f"❌ GET DIALER STATS: Failed - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# DNC List Endpoints
+# ============================================================================
+
+@app.post("/dnc", status_code=201)
+async def add_to_dnc(dnc_entry: DNCAdd):
+    """Add phone number to DNC list."""
+    logger.info(f"🚫 ADD TO DNC: Request to add {dnc_entry.phone_number} to DNC list")
+    logger.debug(f"   Reason: {dnc_entry.reason}")
+
+    try:
+        await db.add_to_dnc(dnc_entry.phone_number, dnc_entry.reason)
+        logger.info(f"✅ ADD TO DNC: Successfully added {dnc_entry.phone_number} to DNC list")
+        return {"message": f"Added {dnc_entry.phone_number} to DNC list"}
+    except Exception as e:
+        logger.error(f"❌ ADD TO DNC: Failed for {dnc_entry.phone_number} - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/dnc/{phone_number}")
+async def check_dnc(phone_number: str):
+    """Check if phone number is in DNC list."""
+    logger.info(f"🔍 CHECK DNC: Checking if {phone_number} is in DNC list")
+
+    try:
+        is_dnc = await db.is_in_dnc(phone_number)
+        logger.info(f"   Result: {phone_number} {'IS' if is_dnc else 'is NOT'} in DNC list")
+        return {"phone_number": phone_number, "is_dnc": is_dnc}
+    except Exception as e:
+        logger.error(f"❌ CHECK DNC: Failed for {phone_number} - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/dnc")
+async def list_dnc(limit: int = 100, offset: int = 0):
+    """List all numbers in DNC list."""
+    logger.info(f"📋 LIST DNC: Request to list DNC entries, limit={limit}, offset={offset}")
+
+    try:
+        async with db.db.execute(
+            """
+            SELECT * FROM dnc_list
+            ORDER BY added_at DESC
+            LIMIT ? OFFSET ?
+            """,
+            (limit, offset)
+        ) as cursor:
+            rows = await cursor.fetchall()
+
+        logger.info(f"✅ LIST DNC: Retrieved {len(rows)} DNC entries")
+        if rows and len(rows) > 0:
+            logger.debug(f"   Most recent: {dict(rows[0]).get('phone_number', 'N/A')}")
+
+        # Return just the array for frontend compatibility
+        return [dict(row) for row in rows]
+    except Exception as e:
+        logger.error(f"❌ LIST DNC: Failed - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Disposition Endpoints
+# ============================================================================
+
+@app.get("/dispositions")
+async def get_dispositions():
+    """Get all available disposition codes."""
+    logger.info("📋 GET DISPOSITIONS: Request for all disposition codes")
+
+    try:
+        async with db.db.execute(
+            """
+            SELECT code, description, category, terminates_lead,
+                   requires_callback, callback_delay_days
+            FROM dispositions
+            ORDER BY category, code
+            """
+        ) as cursor:
+            rows = await cursor.fetchall()
+            dispositions = [dict(row) for row in rows]
+
+        logger.info(f"✅ GET DISPOSITIONS: Retrieved {len(dispositions)} disposition codes")
+        # Count by category for debug logging
+        categories = {}
+        for d in dispositions:
+            cat = d.get('category', 'UNKNOWN')
+            categories[cat] = categories.get(cat, 0) + 1
+        logger.debug(f"   Categories: {categories}")
+
+        return {"dispositions": dispositions}
+    except Exception as e:
+        logger.error(f"❌ GET DISPOSITIONS: Failed - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/leads/{lead_id}/callback")
+async def schedule_callback(lead_id: int, data: dict):
+    """Schedule a callback for a specific lead.
+
+    Args:
+        lead_id: Lead ID
+        data: {
+            "callback_date": "2025-10-20T14:30:00",  # ISO format or
+            "callback_delay_days": 3  # Days from now
+        }
+    """
+    logger.info(f"📅 SCHEDULE CALLBACK: Request for lead ID={lead_id}")
+    logger.debug(f"   Data: {data}")
+
+    try:
+        callback_date_str = data.get("callback_date")
+        callback_delay_days = data.get("callback_delay_days")
+
+        if callback_date_str:
+            # Parse ISO format date
+            from datetime import datetime
+            callback_time = datetime.fromisoformat(callback_date_str.replace('Z', '+00:00'))
+            logger.info(f"   Scheduling callback at specific time: {callback_time}")
+        elif callback_delay_days:
+            # Calculate from delay
+            from datetime import datetime, timedelta
+            callback_time = datetime.now() + timedelta(days=callback_delay_days)
+            logger.info(f"   Scheduling callback in {callback_delay_days} days: {callback_time}")
+        else:
+            logger.warning(f"⚠️ SCHEDULE CALLBACK: Missing required parameters for lead ID={lead_id}")
+            raise HTTPException(
+                status_code=400,
+                detail="Must provide either callback_date or callback_delay_days"
+            )
+
+        # Update lead with callback time
+        await db.db.execute(
+            "UPDATE leads SET next_call_time = ?, status = 'ANSWERED' WHERE id = ?",
+            (callback_time, lead_id)
+        )
+        await db.db.commit()
+
+        logger.info(f"✅ SCHEDULE CALLBACK: Lead ID={lead_id} scheduled for {callback_time.isoformat()}")
+
+        return {
+            "message": "Callback scheduled",
+            "lead_id": lead_id,
+            "callback_time": callback_time.isoformat()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ SCHEDULE CALLBACK: Failed for lead ID={lead_id} - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Call Log Endpoints
+# ============================================================================
+
+@app.get("/calls/active")
+async def get_active_calls():
+    """Get currently active calls."""
+    logger.info("📞 GET ACTIVE CALLS: Request for currently active calls")
+
+    try:
+        # Return list of active call objects, not just the count
+        active_calls_dict = orchestrator.active_calls
+        # Convert CallAttempt objects to dicts
+        active_calls = [
+            {
+                "uniqueid": uniqueid,
+                "lead_id": call.lead_id,
+                "campaign_id": call.campaign_id,
+                "bot_port": call.bot_port,
+                "status": call.status,
+                "channel_id": call.channel_id,
+                "start_time": call.start_time.isoformat() if call.start_time else None,
+            }
+            for uniqueid, call in active_calls_dict.items()
+        ]
+
+        logger.info(f"✅ GET ACTIVE CALLS: Found {len(active_calls)} active calls")
+        if active_calls:
+            logger.debug(f"   Sample call: Bot port {active_calls[0]['bot_port']}, Status: {active_calls[0]['status']}")
+
+        return active_calls
+    except Exception as e:
+        logger.error(f"❌ GET ACTIVE CALLS: Failed - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/calls/originate", status_code=201)
+async def originate_call(call: CallOriginate):
+    """Manually originate a call to a phone number."""
+    logger.info(f"☎️ ORIGINATE CALL: Request to call {call.phone_number}")
+    logger.debug(f"   Caller ID: {call.caller_id}, Campaign ID: {call.campaign_id}, Lead ID: {call.lead_id}")
+
+    try:
+        # Get an available bot port
+        bot_port = bot_pool.get_idle_bot_port()
+        if not bot_port:
+            logger.warning("⚠️ ORIGINATE CALL: No bots available")
+            raise HTTPException(status_code=503, detail="No bots available")
+
+        logger.info(f"   Assigned bot on port {bot_port}")
+
+        # Use AMI to originate the call
+        try:
+            logger.debug(f"   Sending AMI Originate action to Asterisk")
+            response = await orchestrator.ami.send_action_async({
+                "Action": "Originate",
+                "Channel": f"PJSIP/{call.phone_number}@twilio-trunk",
+                "Context": "audiosocket-dial",
+                "Exten": str(bot_port),
+                "Priority": "1",
+                "CallerID": call.caller_id,
+                "Timeout": "30000",
+                "Async": "true",
+            })
+
+            action_id = response.get("ActionID", "unknown")
+            logger.info(f"✅ ORIGINATE CALL: Call initiated to {call.phone_number}, ActionID: {action_id}")
+
+            return {
+                "message": f"Call originated successfully to {call.phone_number}",
+                "bot_port": bot_port,
+                "action_id": action_id,
+                "lead_id": call.lead_id
+            }
+        except Exception as e:
+            logger.error(f"❌ ORIGINATE CALL: AMI action failed - {str(e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to originate call: {str(e)}")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ ORIGINATE CALL: Failed - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/calls/history")
+async def get_call_history(limit: int = 100, campaign_id: Optional[int] = None):
+    """Get call history with optional campaign filter."""
+    logger.info(f"📜 GET CALL HISTORY: Request for call history, limit={limit}, campaign_id={campaign_id}")
+
+    try:
+        query = """
+            SELECT
+                cl.*,
+                l.phone_number,
+                l.first_name,
+                l.last_name,
+                c.name as campaign_name
+            FROM call_log cl
+            JOIN leads l ON cl.lead_id = l.id
+            JOIN campaigns c ON cl.campaign_id = c.id
+        """
+        params = []
+
+        if campaign_id:
+            query += " WHERE cl.campaign_id = ?"
+            params.append(campaign_id)
+            logger.debug(f"   Filtering by campaign ID: {campaign_id}")
+
+        query += " ORDER BY cl.start_time DESC LIMIT ?"
+        params.append(limit)
+
+        async with db.db.execute(query, params) as cursor:
+            rows = await cursor.fetchall()
+            calls = [dict(row) for row in rows]
+
+        logger.info(f"✅ GET CALL HISTORY: Retrieved {len(calls)} call records")
+        if calls:
+            # Summarize disposition statistics
+            dispositions = {}
+            for call in calls:
+                disp = call.get('disposition', 'UNKNOWN')
+                dispositions[disp] = dispositions.get(disp, 0) + 1
+            logger.debug(f"   Disposition breakdown: {dispositions}")
+
+        # Return just the array for frontend compatibility
+        return calls
+    except Exception as e:
+        logger.error(f"❌ GET CALL HISTORY: Failed - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/calls/transcript")
+async def save_call_transcript(data: dict):
+    """Save call transcript and disposition."""
+    call_uuid = data.get("call_uuid")
+    transcript = data.get("transcript")
+    disposition = data.get("disposition")
+    duration = data.get("duration", 0)
+
+    logger.info(f"📝 SAVE TRANSCRIPT: Request for call UUID={call_uuid}, disposition={disposition}")
+    logger.debug(f"   Transcript length: {len(transcript) if transcript else 0} chars, Duration: {duration}s")
+
+    try:
+        # Update call_log table with transcript and disposition
+        await db.update_call_transcript(call_uuid, transcript, disposition)
+        logger.info(f"✅ SAVE TRANSCRIPT: Successfully saved transcript for call {call_uuid}")
+        return {"message": "Transcript saved successfully"}
+    except Exception as e:
+        logger.error(f"❌ SAVE TRANSCRIPT: Failed for call {call_uuid} - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/calls/monitor")
+async def start_call_monitoring(data: dict):
+    """Start live call monitoring session via ChanSpy.
+
+    Args:
+        monitor_phone: Phone number to call for monitoring (SIP device)
+        mode: "all" (cycle through all), "bot1", "bot2", "bot3", or "whisper"
+
+    Example:
+        POST /calls/monitor
+        {
+            "monitor_phone": "sip:supervisor@192.168.1.100",
+            "mode": "all"
+        }
+    """
+    monitor_phone = data.get("monitor_phone")
+    mode = data.get("mode", "all")
+
+    logger.info(f"👂 START CALL MONITORING: Request from {monitor_phone}, mode={mode}")
+
+    try:
+        # Map mode to extension
+        extension_map = {
+            "all": "700",    # Cycle through all channels
+            "bot1": "701",   # Monitor bot 1
+            "bot2": "702",   # Monitor bot 2
+            "bot3": "703",   # Monitor bot 3
+            "whisper": "710" # Whisper mode
+        }
+
+        extension = extension_map.get(mode, "700")
+        logger.debug(f"   Using extension {extension} for mode '{mode}'")
+
+        # Originate call to supervisor's phone, then connect to monitoring extension
+        await orchestrator.ami.send_action({
+            "Action": "Originate",
+            "Channel": monitor_phone,
+            "Context": "ava-context",
+            "Exten": extension,
+            "Priority": "1",
+            "CallerID": "Call Monitor <9999>",
+            "Async": "true"
+        })
+
+        logger.info(f"✅ START CALL MONITORING: Session started - {mode} mode to {monitor_phone}")
+
+        return {
+            "message": "Monitoring session started",
+            "mode": mode,
+            "extension": extension
+        }
+    except Exception as e:
+        logger.error(f"❌ START CALL MONITORING: Failed - {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# WebSocket for Real-Time Updates
+# ============================================================================
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for real-time statistics updates."""
+    await websocket.accept()
+    active_websockets.append(websocket)
+
+    try:
+        while True:
+            # Keep connection alive
+            await websocket.receive_text()
+
+    except WebSocketDisconnect:
+        active_websockets.remove(websocket)
+        logger.info("WebSocket disconnected")
+
+
+@app.websocket("/ws/stats")
+async def websocket_stats(websocket: WebSocket):
+    """WebSocket endpoint for real-time statistics updates."""
+    await websocket.accept()
+    active_websockets.append(websocket)
+
+    try:
+        while True:
+            # Keep connection alive
+            await websocket.receive_text()
+
+    except WebSocketDisconnect:
+        active_websockets.remove(websocket)
+        logger.info("WebSocket disconnected")
+
+
+async def broadcast_stats_loop():
+    """Continuously broadcast statistics to all connected WebSocket clients."""
+    while True:
+        await asyncio.sleep(2)  # Update every 2 seconds
+
+        if not active_websockets:
+            continue
+
+        # Gather statistics
+        try:
+            stats = {
+                "timestamp": datetime.now().isoformat(),
+                "bot_pool": bot_pool.get_pool_stats() if bot_pool else {},
+                "orchestrator": orchestrator.get_statistics() if orchestrator else {},
+                "active_campaigns": await db.get_active_campaigns() if db else []
+            }
+
+            # Broadcast to all connected clients
+            disconnected = []
+            for ws in active_websockets:
+                try:
+                    await ws.send_json(stats)
+                except Exception as e:
+                    logger.warning(f"WebSocket send error: {e}")
+                    disconnected.append(ws)
+
+            # Remove disconnected clients
+            for ws in disconnected:
+                active_websockets.remove(ws)
+
+        except Exception as e:
+            logger.error(f"Error broadcasting stats: {e}")
+
+
+# ============================================================================
+# Prometheus Metrics Endpoint
+# ============================================================================
+
+@app.get("/metrics")
+async def prometheus_metrics():
+    """Prometheus metrics endpoint for scraping.
+    
+    Returns metrics in Prometheus text format.
+    """
+    if not PROMETHEUS_ENABLED:
+        raise HTTPException(status_code=501, detail="Prometheus metrics not enabled")
+    
+    try:
+        # Update all metrics before returning
+        if metrics and db and bot_pool:
+            metrics.update_bot_metrics(bot_pool)
+            await metrics.update_campaign_metrics(db)
+            await metrics.update_db_pool_metrics(db)
+            metrics.update_system_uptime()
+        
+        # Generate Prometheus text format
+        from fastapi.responses import Response
+        return Response(content=generate_latest(registry), media_type=CONTENT_TYPE_LATEST)
+    except Exception as e:
+        logger.error(f"Error generating metrics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Serve Dashboard (Static Files)
+# ============================================================================
+
+@app.get("/", response_class=HTMLResponse)
+async def serve_root():
+    """Serve the React dashboard at root."""
+    try:
+        with open("index.html", "r") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Dashboard not found")
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def serve_dashboard():
+    """Serve the enhanced dialer dashboard HTML."""
+    try:
+        with open("index.html", "r") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Dashboard not found")
+
+
+# ============================================================================
+# Run Server
+# ============================================================================
+
+if __name__ == "__main__":
+    import uvicorn
+
+    logger.info("🚀 Starting Exodus Dialer API server...")
+
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        log_level="info"
+    )

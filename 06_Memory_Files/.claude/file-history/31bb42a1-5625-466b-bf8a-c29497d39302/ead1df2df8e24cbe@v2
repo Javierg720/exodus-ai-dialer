@@ -1,0 +1,44 @@
+# Exodus AI Dialer - Complete Configuration Template
+# Copy this to .env and add your actual API keys
+
+# ==============================================================================
+# SPEECH-TO-TEXT (Choose one)
+# ==============================================================================
+STT_PROVIDER=groq  # "groq" (cheap) or "deepgram" (quality)
+DEEPGRAM_API_KEY=d8191f0f92502c50e9058bfa15a17f8fac916feb
+GROQ_API_KEY=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
+
+# ==============================================================================
+# LANGUAGE MODELS
+# ==============================================================================
+CEREBRAS_API_KEY=csk_cn2tvnjpx4ey8xvpdffjpyhe3t4twn4ddnyx3m5xmr5fc88w
+OPENAI_API_KEY=sk-proj-w7OBqBVvSs-6F7RQNPPHd55nPvLt0cMKqQdwxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+ZAI_API_KEY=73fdff33d97e4cf9a2dce9cc781bdce7.wZijjBFhgI2xxcwj
+ZAI_BASE_URL=https://api.zukijourney.com/v1
+
+# ==============================================================================
+# TELEPHONY
+# ==============================================================================
+TWILIO_ACCOUNT_SID=AC6e3e1df2a2ae9171e5e52c093fee5d77
+TWILIO_PHONE_NUMBER=+19544668818
+
+# Asterisk AMI
+AMI_HOST=localhost
+AMI_PORT=5038
+AMI_USERNAME=admin
+AMI_PASSWORD=admin123
+
+# ==============================================================================
+# DATABASE & API
+# ==============================================================================
+DATABASE_PATH=dialer.db
+API_PORT=8000
+JWT_SECRET_KEY=CHANGE_THIS_TO_RANDOM_STRING_IN_PRODUCTION
+ADMIN_PASSWORD=changeme123
+
+# ==============================================================================
+# SYSTEM
+# ==============================================================================
+SUDO_PASSWORD=0000
+SIP_EXTENSION=1000
+SIP_PASSWORD=test1000

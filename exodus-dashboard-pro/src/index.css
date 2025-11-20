@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-dark-3;
+  }
+
+  body {
+    @apply bg-dark-1 text-white font-sf-pro;
+  }
+
+  /* Light mode */
+  body.light {
+    @apply bg-white text-gray-900;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-dark-5 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-dark-6;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-ios-blue/30;
+  }
+}
+
+@layer components {
+  /* Glass Card */
+  .glass-card {
+    @apply bg-dark-2/60 backdrop-blur-glass rounded-2xl border border-dark-3/50 shadow-glass;
+  }
+
+  .glass-card-hover {
+    @apply transition-all duration-300 hover:shadow-card-hover hover:border-dark-4/50 hover:scale-[1.01];
+  }
+
+  /* iOS Button */
+  .ios-button {
+    @apply px-6 py-3 rounded-xl font-semibold transition-all duration-200 active:scale-95;
+  }
+
+  .ios-button-primary {
+    @apply ios-button bg-ios-blue text-white hover:bg-ios-blue/90;
+  }
+
+  .ios-button-secondary {
+    @apply ios-button bg-dark-3 text-white hover:bg-dark-4;
+  }
+
+  /* Input */
+  .ios-input {
+    @apply w-full px-4 py-3 bg-dark-2 border border-dark-3 rounded-xl text-white placeholder-ios-gray-1 focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all;
+  }
+
+  /* Badge */
+  .ios-badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+  }
+
+  /* Skeleton */
+  .skeleton {
+    @apply animate-pulse bg-dark-3 rounded;
+  }
+}
+
+/* Custom animations */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.shimmer {
+  animation: shimmer 2s infinite;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(255, 255, 255, 0.03) 50%,
+    transparent 100%
+  );
+  background-size: 1000px 100%;
+}
+
+/* Waveform animation */
+.waveform-bar {
+  animation: waveform 1.2s ease-in-out infinite;
+}
+
+.waveform-bar:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.waveform-bar:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.waveform-bar:nth-child(4) {
+  animation-delay: 0.3s;
+}
+
+.waveform-bar:nth-child(5) {
+  animation-delay: 0.4s;
+}

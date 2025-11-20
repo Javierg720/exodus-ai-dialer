@@ -1,0 +1,353 @@
+import React, { useState, useEffect } from 'react';
+import { Upload, Download, User, Phone, Mail, MapPin, Calendar, Filter, Search, Plus } from 'lucide-react';
+import axios from 'axios';
+import './LeadManager.css';
+
+function LeadManager({ apiUrl }) {
+  const [leads, setLeads] = useState([]);
+  const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [filterCampaign, setFilterCampaign] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newLead, setNewLead] = useState({
+    phone_number: '',
+    first_name: '',
+    last_name: '',
+    campaign_id: ''
+  });
+
+  const fetchLeads = async () => {
+    setLoading(true);
+    try {
+      const params = {};
+      if (filterCampaign !== 'all') params.campaign_id = filterCampaign;
+      if (filterStatus !== 'all') params.status = filterStatus;
+
+      const response = await axios.get(`${apiUrl}/leads`, { params });
+      const leadsArray = response.data.leads || response.data;
+      setLeads(leadsArray);
+    } catch (error) {
+      console.error('Failed to fetch leads:', error);
+    }
+    setLoading(false);
+  };
+
+  const fetchCampaigns = async () => {
+    try {
+      const response = await axios.get(`${apiUrl}/campaigns`);
+      const campaignsArray = response.data.campaigns || response.data;
+      setCampaigns(campaignsArray);
+    } catch (error) {
+      console.error('Failed to fetch campaigns:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchLeads();
+    fetchCampaigns();
+  }, [apiUrl, filterCampaign, filterStatus]);
+
+  const addLead = async () => {
+    try {
+      await axios.post(`${apiUrl}/leads`, newLead);
+      setShowAddModal(false);
+      setNewLead({ phone_number: '', first_name: '', last_name: '', campaign_id: '' });
+      fetchLeads();
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Failed to add lead');
+    }
+  };
+
+  const handleImportCSV = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('campaign_id', filterCampaign === 'all' ? '1' : filterCampaign);
+      
+      try {
+        const response = await axios.post(`${apiUrl}/leads/import`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        alert(`Imported ${response.data.imported} leads successfully`);
+        fetchLeads();
+      } catch (error) {
+        alert('Failed to import CSV: ' + (error.response?.data?.detail || error.message));
+      }
+    };
+    input.click();
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      const params = {};
+      if (filterCampaign !== 'all') params.campaign_id = filterCampaign;
+      if (filterStatus !== 'all') params.status = filterStatus;
+      
+      const response = await axios.get(`${apiUrl}/leads/export`, { 
+        params,
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `leads_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      alert('Failed to export leads');
+    }
+  };
+
+  const callLead = async (leadId, phoneNumber) => {
+    try {
+      await axios.post(`${apiUrl}/calls/originate`, {
+        lead_id: leadId,
+        phone_number: phoneNumber
+      });
+      alert('Call initiated successfully');
+      fetchLeads();
+    } catch (error) {
+      alert('Failed to initiate call: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const editLead = (lead) => {
+    setNewLead({
+      phone_number: lead.phone_number,
+      first_name: lead.first_name || '',
+      last_name: lead.last_name || '',
+      campaign_id: lead.campaign_id
+    });
+    setShowAddModal(true);
+  };
+
+  const filteredLeads = leads.filter(lead => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      lead.phone_number?.includes(query) ||
+      lead.first_name?.toLowerCase().includes(query) ||
+      lead.last_name?.toLowerCase().includes(query)
+    );
+  });
+
+  const getStatusColor = (status) => {
+    const colors = {
+      'NEW': '#4CAF50',
+      'CALLING': '#2196F3',
+      'CALLED': '#9C27B0',
+      'COMPLETED': '#00BCD4',
+      'FAILED': '#F44336',
+      'NO_ANSWER': '#FF9800',
+      'BUSY': '#FFC107'
+    };
+    return colors[status] || '#666';
+  };
+
+  return (
+    <div className="lead-manager">
+      <div className="section-header">
+        <h2>Lead Management</h2>
+        <div className="header-actions">
+          <button className="btn-action" onClick={() => setShowAddModal(true)}>
+            <Plus size={16} />
+            Add Lead
+          </button>
+          <button className="btn-action" onClick={handleImportCSV}>
+            <Upload size={16} />
+            Import CSV
+          </button>
+          <button className="btn-action" onClick={handleExportCSV}>
+            <Download size={16} />
+            Export
+          </button>
+        </div>
+      </div>
+
+      <div className="filters-bar">
+        <div className="search-box">
+          <Search size={16} />
+          <input
+            type="text"
+            placeholder="Search by name or phone..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        <select
+          value={filterCampaign}
+          onChange={e => setFilterCampaign(e.target.value)}
+          className="filter-select"
+        >
+          <option value="all">All Campaigns</option>
+          {campaigns.map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+
+        <select
+          value={filterStatus}
+          onChange={e => setFilterStatus(e.target.value)}
+          className="filter-select"
+        >
+          <option value="all">All Status</option>
+          <option value="NEW">New</option>
+          <option value="CALLING">Calling</option>
+          <option value="CALLED">Called</option>
+          <option value="COMPLETED">Completed</option>
+          <option value="FAILED">Failed</option>
+          <option value="NO_ANSWER">No Answer</option>
+          <option value="BUSY">Busy</option>
+        </select>
+      </div>
+
+      <div className="leads-stats">
+        <div className="stat-card">
+          <span className="stat-label">Total Leads</span>
+          <span className="stat-value">{leads.length}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">New</span>
+          <span className="stat-value">{leads.filter(l => l.status === 'NEW').length}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">Called</span>
+          <span className="stat-value">{leads.filter(l => l.status === 'CALLED').length}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">Completed</span>
+          <span className="stat-value">{leads.filter(l => l.status === 'COMPLETED').length}</span>
+        </div>
+      </div>
+
+      <div className="leads-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Campaign</th>
+              <th>Status</th>
+              <th>Attempts</th>
+              <th>Last Called</th>
+              <th>Next Call</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan="8" className="loading-cell">Loading leads...</td>
+              </tr>
+            ) : filteredLeads.length === 0 ? (
+              <tr>
+                <td colSpan="8" className="empty-cell">No leads found</td>
+              </tr>
+            ) : (
+              filteredLeads.map(lead => (
+                <tr key={lead.id}>
+                  <td>
+                    <div className="lead-name">
+                      <User size={14} />
+                      {lead.first_name || lead.last_name ? 
+                        `${lead.first_name || ''} ${lead.last_name || ''}`.trim() : 
+                        'Unknown'}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="phone-cell">
+                      <Phone size={14} />
+                      {lead.phone_number}
+                    </div>
+                  </td>
+                  <td>{lead.campaign_name || '-'}</td>
+                  <td>
+                    <span 
+                      className="status-pill"
+                      style={{ backgroundColor: getStatusColor(lead.status) }}
+                    >
+                      {lead.status}
+                    </span>
+                  </td>
+                  <td>{lead.attempts || 0}</td>
+                  <td>{lead.last_called ? new Date(lead.last_called).toLocaleDateString() : '-'}</td>
+                  <td>{lead.next_dial_time ? new Date(lead.next_dial_time).toLocaleDateString() : '-'}</td>
+                  <td>
+                    <div className="lead-actions">
+                      <button 
+                        className="btn-call" 
+                        title="Call Now"
+                        onClick={() => callLead(lead.id, lead.phone_number)}
+                      >
+                        <Phone size={14} />
+                      </button>
+                      <button 
+                        className="btn-edit" 
+                        title="Edit"
+                        onClick={() => editLead(lead)}
+                      >
+                        <User size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {showAddModal && (
+        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>Add New Lead</h3>
+            <input
+              type="tel"
+              placeholder="Phone Number"
+              value={newLead.phone_number}
+              onChange={e => setNewLead({...newLead, phone_number: e.target.value})}
+            />
+            <input
+              type="text"
+              placeholder="First Name"
+              value={newLead.first_name}
+              onChange={e => setNewLead({...newLead, first_name: e.target.value})}
+            />
+            <input
+              type="text"
+              placeholder="Last Name"
+              value={newLead.last_name}
+              onChange={e => setNewLead({...newLead, last_name: e.target.value})}
+            />
+            <select
+              value={newLead.campaign_id}
+              onChange={e => setNewLead({...newLead, campaign_id: e.target.value})}
+            >
+              <option value="">Select Campaign</option>
+              {campaigns.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <div className="modal-actions">
+              <button onClick={addLead} className="btn-primary">Add Lead</button>
+              <button onClick={() => setShowAddModal(false)} className="btn-cancel">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default LeadManager;

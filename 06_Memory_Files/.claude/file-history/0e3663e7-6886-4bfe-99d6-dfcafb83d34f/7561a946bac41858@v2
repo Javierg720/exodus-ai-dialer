@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# Config
+SCRIPT="ava_sales_bot_audiosocket.py"
+PORT=9092
+LOGFILE="bot_9092.log"
+LOCKFILE="/tmp/ava_bot_$PORT.lock"  # Unique per port
+PYTHON_ENV="./pipecat_env_new/bin/python3"  # Your env path
+HOST="0.0.0.0"
+CONTACT_NAME="Javier"  # Or pass as arg
+
+# Function to kill existing bots (your current nuke)
+kill_bots() {
+    echo "🔪 Hunting duplicate bots..."
+    pkill -9 -f "$SCRIPT" 2>/dev/null || true
+    sleep 2  # Let 'em die
+    if ps aux | grep "$SCRIPT" | grep -v grep > /dev/null; then
+        echo "⚠️  Still some ghosts—manual kill needed?"
+    fi
+}
+
+# Check if already running via lock
+if [ -f "$LOCKFILE" ]; then
+    PID=$(cat "$LOCKFILE")
+    if ps -p $PID > /dev/null 2>&1; then
+        echo "🚫 Bot already running (PID $PID). Chill."
+        exit 1
+    else
+        echo "🧹 Stale lock found—cleaning up."
+        rm -f "$LOCKFILE"
+    fi
+fi
+
+# Nuke any leftovers
+kill_bots
+
+# Port check (bonus: confirm nothing's squatting)
+if lsof -i :$PORT > /dev/null 2>&1; then
+    echo "🚨 Port $PORT is taken—killing offender."
+    lsof -ti:$PORT | xargs kill -9 2>/dev/null || true
+    sleep 1
+fi
+
+# Start with flock (exclusive lock—only one at a time)
+(
+    # Capture PID
+    echo $$ > "$LOCKFILE"
+
+    echo "🚀 Starting Ava bot (PID $$)..."
+    nohup $PYTHON_ENV $SCRIPT --host $HOST --port $PORT --contact-name $CONTACT_NAME > $LOGFILE 2>&1 &
+    BOT_PID=$!
+
+    # Update lock with actual bot PID
+    echo $BOT_PID > "$LOCKFILE"
+
+    echo "✅ Bot launched (PID $BOT_PID). Tail logs: tail -f $LOGFILE"
+
+    # Verify bot is listening
+    sleep 2
+    if lsof -i :$PORT > /dev/null 2>&1; then
+        echo "🎧 Bot listening on port $PORT"
+    else
+        echo "❌ Bot failed to bind port $PORT"
+        rm -f "$LOCKFILE"
+        exit 1
+    fi
+) 0</dev/null < /dev/null  # Flock the whole subshell
+
+echo "💀 Done. Check logs: tail -f $LOGFILE"

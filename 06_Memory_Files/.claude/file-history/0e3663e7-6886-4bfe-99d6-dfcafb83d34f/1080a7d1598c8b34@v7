@@ -1,0 +1,453 @@
+#!/usr/bin/env python3
+"""
+Ava - Business Funding Specialist Bot (AudioSocket Version - Rewritten)
+Uses Asterisk AudioSocket for telephony integration
+
+🚨 KEY FIXES:
+- STTMuteFilter with MUTE_DURING_BOT_SPEAKING strategy (blocks echo, allows user input!)
+- audio_in_passthrough=True (required for STT to receive audio)
+- Opening pitch queues IMMEDIATELY on call connect
+- Transcript capture ACTUALLY WORKS now
+- VAD tuned for quick response (0.2s start, 1.0s stop)
+- Deepgram Nova-2 STT for echo/noise handling
+- Smart interruptions (min 2 words)
+"""
+
+import asyncio
+import os
+import sys
+import json
+import logging
+from dotenv import load_dotenv
+
+from pipecat.pipeline.pipeline import Pipeline
+from pipecat.pipeline.runner import PipelineRunner
+from pipecat.pipeline.task import PipelineTask, PipelineParams
+from pipecat.processors.frame_processor import FrameProcessor
+from pipecat.processors.aggregators.llm_response import (
+    LLMAssistantContextAggregator,
+    LLMUserContextAggregator,
+)
+from pipecat.frames.frames import (
+    EndFrame, TranscriptionFrame, StartFrame, BotStoppedSpeakingFrame,
+    TTSTextFrame, TTSSpeakFrame, TTSStartedFrame, TTSStoppedFrame,
+    LLMMessagesFrame, TextFrame, InputAudioRawFrame
+)
+from pipecat.audio.vad.silero import SileroVADAnalyzer
+from pipecat.audio.vad.vad_analyzer import VADParams
+from pipecat.audio.interruptions.min_words_interruption_strategy import MinWordsInterruptionStrategy
+from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
+from pipecat.processors.filters.stt_mute_filter import STTMuteFilter, STTMuteConfig, STTMuteStrategy
+from pipecat.services.groq import GroqSTTService
+from pipecat.services.deepgram import DeepgramSTTService
+
+# Local services
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from edge_tts_service import EdgeTTSService
+from pipecat.services.openai.llm import OpenAILLMService
+from audiosocket_transport import (
+    AudioSocketTransport,
+    AudioSocketParams,
+    AudioSocketCallbacks,
+)
+
+load_dotenv()
+
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+
+async def analyze_call_disposition(transcript: str) -> str:
+    """
+    Auto-analyze call outcome using LLM (Cerebras for speed).
+
+    Returns one of: INTERESTED, NOT_INTERESTED, CALLBACK, VOICEMAIL,
+                    NO_DECISION, SALE, WRONG_NUMBER
+    """
+    try:
+        from openai import AsyncOpenAI
+
+        client = AsyncOpenAI(
+            api_key=os.getenv("CEREBRAS_API_KEY"),
+            base_url="https://api.cerebras.ai/v1"
+        )
+
+        analysis_prompt = f"""Analyze this sales call transcript and determine the disposition.
+
+Transcript:
+{transcript}
+
+Possible dispositions:
+- INTERESTED: Lead showed interest, wants follow-up or more information
+- NOT_INTERESTED: Lead clearly not interested, declined offer
+- CALLBACK: Lead asked to call back later at specific time
+- VOICEMAIL: Got voicemail, no conversation
+- NO_DECISION: Lead needs time to think, no clear yes/no
+- SALE: Lead agreed to proceed, provided email for application
+- WRONG_NUMBER: Wrong number or person
+
+Return ONLY the disposition code, nothing else."""
+
+        response = await client.chat.completions.create(
+            model="llama3.3-70b",
+            messages=[{"role": "user", "content": analysis_prompt}],
+            temperature=0.1,
+            max_tokens=20
+        )
+
+        disposition = response.choices[0].message.content.strip()
+
+        valid_dispositions = ["INTERESTED", "NOT_INTERESTED", "CALLBACK", "VOICEMAIL",
+                             "NO_DECISION", "SALE", "WRONG_NUMBER"]
+        if disposition not in valid_dispositions:
+            logger.warning(f"Invalid disposition '{disposition}', defaulting to NO_DECISION")
+            return "NO_DECISION"
+
+        return disposition
+
+    except Exception as e:
+        logger.error(f"Error analyzing disposition: {e}")
+        return "NO_DECISION"
+
+
+def load_bot_config():
+    """Load bot configuration from bot_config.json"""
+    config_path = os.path.join(os.path.dirname(__file__), "bot_config.json")
+    try:
+        with open(config_path, "r") as f:
+            all_configs = json.load(f)
+            return all_configs.get("ava_sales_bot", {})
+    except Exception as e:
+        logger.error(f"Error loading bot config: {e}")
+        # Fallback config
+        return {
+            "llm": {
+                "provider": "cerebras",
+                "model": "llama-3.3-70b",
+                "temperature": 0.7,
+            },
+            "tts": {
+                "provider": "edge",
+                "voice": "en-US-AvaMultilingualNeural",
+                "rate": "+10%",
+            },
+            "pipeline": {"allow_interruptions": True, "enable_metrics": True},
+        }
+
+
+async def main(contact_name: str = "there", host: str = "0.0.0.0", port: int = 9092):
+    """
+    Run Ava sales bot with AudioSocket transport.
+
+    🎯 Flow:
+    1. Server starts, waits for Asterisk connection
+    2. Call connects -> send StartFrame to init services
+    3. Queue opening pitch immediately (no awkward silence!)
+    4. User speaks -> transcript capture -> LLM -> TTS -> user hears Ava
+    5. Call ends -> analyze disposition, save transcript
+    """
+
+    config = load_bot_config()
+    logger.info("✅ Loaded bot configuration")
+
+    # Pipeline state
+    call_uuid = None
+    pipeline_task = None
+    conversation_transcript = []
+    call_start_time = None
+
+    # 🎯 Callback: When Asterisk connects with a call
+    async def on_call_connected(uuid: str):
+        nonlocal call_uuid, pipeline_task, call_start_time
+        call_uuid = uuid
+        call_start_time = asyncio.get_event_loop().time()
+        logger.info(f"📞 Call connected: {uuid}")
+
+        if pipeline_task:
+            # 🚨 CRITICAL: Initialize services first
+            logger.info("🎬 Initializing pipeline (Groq STT, Cerebras LLM, Edge TTS)")
+            await pipeline_task.queue_frames([StartFrame()])
+
+            # Brief delay for STT connection
+            await asyncio.sleep(1.5)
+
+            # 🎙️ Queue opening pitch (NO SILENCE!)
+            opening = f"Hey {contact_name}, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?"
+            logger.info(f"💬 Queuing opening pitch: {opening[:50]}...")
+
+            # Save to transcript
+            conversation_transcript.append({
+                "role": "assistant",
+                "text": opening,
+                "timestamp": 0
+            })
+
+            # 🚀 Push opening through pipeline (TextFrame ensures TTS gets it)
+            await pipeline_task.queue_frames([
+                TextFrame(text=opening)
+            ])
+
+            # PROBE: Queue a silent "listen" frame to reset VAD sensitivity post-TTS
+            await asyncio.sleep(0.5)  # Tiny buffer
+            await pipeline_task.queue_frames([StartFrame()])  # Re-triggers input/STT wake-up
+            logger.info("🔄 VAD probe queued—mic hyper-sensitive now")
+
+    # 📴 Callback: When call ends
+    async def on_call_disconnected(uuid: str):
+        nonlocal conversation_transcript, call_start_time
+        logger.info(f"📴 Call ended: {uuid}")
+
+        if conversation_transcript:
+            import requests
+
+            # Build full transcript
+            full_transcript = "\n".join([
+                f"{msg['role'].upper()}: {msg['text']}"
+                for msg in conversation_transcript
+            ])
+
+            logger.info(f"📝 Transcript: {len(conversation_transcript)} messages, "
+                       f"{len(full_transcript)} chars")
+
+            # Auto-analyze disposition
+            try:
+                disposition = await analyze_call_disposition(full_transcript)
+                logger.info(f"🎯 Auto-disposition: {disposition}")
+
+                # Send to API (if available)
+                try:
+                    duration = asyncio.get_event_loop().time() - call_start_time if call_start_time else 0
+                    requests.post(
+                        "http://localhost:8000/calls/transcript",
+                        json={
+                            "call_uuid": uuid,
+                            "transcript": full_transcript,
+                            "disposition": disposition,
+                            "duration": duration
+                        },
+                        timeout=5
+                    )
+                    logger.info("✅ Transcript sent to API")
+                except Exception as e:
+                    logger.warning(f"⚠️  Failed to send transcript to API: {e}")
+
+            except Exception as e:
+                logger.error(f"❌ Error analyzing disposition: {e}")
+
+        conversation_transcript = []
+
+    # 🎙️ Callback: Server ready
+    async def on_server_ready():
+        logger.info(f"🎙️  AudioSocket server ready on {host}:{port}")
+        logger.info("💡 Dial from Asterisk to connect to Ava")
+
+    # 🎧 Initialize AudioSocket transport
+    vad = SileroVADAnalyzer(
+        params=VADParams(
+            start_secs=0.2,      # 🏃 Faster start - catches quick "yeah/no"
+            stop_secs=1.0,       # ⏸️  Natural pause detection
+            min_volume=0.4,      # 🔊 More sensitive for real calls
+            confidence=0.6       # ✅ Looser for real-world audio
+        )
+    )
+    logger.info("✅ VAD configured: 0.2s start, 1.0s stop, 0.6 confidence (looser for responsiveness)")
+
+    transport = AudioSocketTransport(
+        host=host,
+        port=port,
+        params=AudioSocketParams(
+            audio_out_enabled=True,
+            audio_in_enabled=True,
+            audio_in_passthrough=True,  # ✅ Required for STT—user audio flows to pipeline
+            vad_enabled=True,
+            vad_analyzer=vad,
+        ),
+        callbacks=AudioSocketCallbacks(
+            on_call_connected=on_call_connected,
+            on_call_disconnected=on_call_disconnected,
+            on_server_ready=on_server_ready,
+        ),
+    )
+    logger.info("🔄 Passthrough enabled for STT; echo muted during bot speech")
+
+    # 🎤 STT: Deepgram (echo/noise-proof; fallback from Groq)
+    stt = DeepgramSTTService(
+        api_key=os.getenv("DEEPGRAM_API_KEY"),
+        model="nova-2",
+        endpointing=200,  # 200ms auto-end speech (faster than Groq's)
+        interim_results=True,  # Partial transcripts for <1s latency
+        smart_format=True,  # Auto-punctuate/capitalize
+        vad_turn_margin=200  # Sync with our VAD (ms buffer)
+    )
+    logger.info("✅ Deepgram Nova-2 STT active (Groq swapped—echo/noise slayer)")
+
+    # 🧠 LLM: Cerebras (blazing fast, cheap)
+    llm_config = config.get("llm", {})
+    llm = OpenAILLMService(
+        model=llm_config.get("model", "llama-3.3-70b"),
+        api_key=os.getenv("CEREBRAS_API_KEY"),
+        base_url="https://api.cerebras.ai/v1",
+    )
+    temp = llm_config.get("temperature", 0.7)
+    logger.info(f"✅ Cerebras LLM (temp={temp}, max_tokens={llm_config.get('max_completion_tokens', 120)})")
+
+    # 🗣️ TTS: Edge TTS (free!)
+    tts_config = config.get("tts", {})
+    tts = EdgeTTSService(
+        voice=tts_config.get("voice", "en-US-AvaMultilingualNeural"),
+        rate=tts_config.get("rate", "+10%"),
+        pitch=tts_config.get("pitch", "+0Hz"),
+        aggregate_sentences=False,  # 🎯 Punchy delivery (no long pauses)
+    )
+    logger.info(f"✅ Edge TTS ({tts_config.get('voice')}, rate={tts_config.get('rate')})")
+
+    # 📋 LLM context with system prompt
+    script_config = config.get("script", {})
+    system_prompt = script_config.get("system_prompt", "You are Ava, a sales assistant.")
+    system_prompt += f"\n\nProspect's first name: {contact_name}"
+
+    messages = [{"role": "system", "content": system_prompt}]
+    context = OpenAILLMContext(messages=messages)
+    logger.info("✅ LLM context initialized with sales script")
+
+    # 🛑 Post-TTS Pause: 250ms cooldown after Ava speaks (prevents self-hearing)
+    class PostTTSPauseProcessor(FrameProcessor):
+        """Adds breathing room after Ava finishes speaking"""
+        async def process_frame(self, frame, direction):
+            await super().process_frame(frame, direction)
+
+            if isinstance(frame, BotStoppedSpeakingFrame):
+                logger.debug("🛑 Ava done speaking - 250ms pause")
+                await asyncio.sleep(0.25)
+
+            await self.push_frame(frame, direction)
+
+    post_tts_pause = PostTTSPauseProcessor()
+
+    # 🔇 Custom STT Mute: During-bot only (echo block, no perma-mute)
+    class DuringBotMuteChecker:
+        """Custom mute logic: Mute STT while bot is speaking (TTS active)"""
+        def __init__(self):
+            self.bot_speaking = False
+
+        def should_mute(self, frame):
+            if isinstance(frame, TTSSpeakFrame) or isinstance(frame, TTSStartedFrame):
+                self.bot_speaking = True
+                logger.debug("🔇 Custom mute: Bot started speaking—STT muted")
+                return True
+            if isinstance(frame, BotStoppedSpeakingFrame) or isinstance(frame, TTSStoppedFrame):
+                self.bot_speaking = False
+                logger.debug("✅ Custom mute: Bot stopped—STT unmuted")
+                return False
+            return self.bot_speaking  # Mute if still in bot turn
+
+    mute_checker = DuringBotMuteChecker()
+
+    stt_mute_filter = STTMuteFilter(
+        config=STTMuteConfig(
+            strategies={STTMuteStrategy.CUSTOM: mute_checker.should_mute}  # Function-based: during TTS only
+        )
+    )
+    logger.info("✅ Custom STT mute: During-bot speech only (echo killer + user flow)")
+
+    # 📝 Transcript-aware aggregators (captures EVERY message)
+    class TranscriptAwareUserAggregator(LLMUserContextAggregator):
+        """Captures user speech to transcript"""
+        async def process_frame(self, frame, direction):
+            nonlocal conversation_transcript, call_start_time
+
+            # DEBUG: Log ALL incoming audio to diagnose VAD/STT drops
+            if isinstance(frame, InputAudioRawFrame):
+                logger.debug(f"🎵 RAW USER AUDIO: {len(frame.audio)} bytes @ {frame.sample_rate}Hz (post-VAD)")
+
+            if isinstance(frame, TranscriptionFrame):
+                logger.info(f"👤 USER SAID: '{frame.text}' (confidence: {getattr(frame, 'confidence', 'N/A')})")
+                conversation_transcript.append({
+                    "role": "user",
+                    "text": frame.text,
+                    "timestamp": asyncio.get_event_loop().time() - call_start_time if call_start_time else 0
+                })
+            else:
+                logger.debug(f"🔍 USER AGG: {type(frame).__name__} (dir: {direction})")
+
+            return await super().process_frame(frame, direction)
+
+    class TranscriptAwareAssistantAggregator(LLMAssistantContextAggregator):
+        """Captures Ava's responses to transcript"""
+        async def process_frame(self, frame, direction):
+            nonlocal conversation_transcript, call_start_time
+
+            if isinstance(frame, TextFrame) and frame.text:
+                logger.info(f"🤖 AVA: {frame.text}")
+                conversation_transcript.append({
+                    "role": "assistant",
+                    "text": frame.text,
+                    "timestamp": asyncio.get_event_loop().time() - call_start_time if call_start_time else 0
+                })
+
+            return await super().process_frame(frame, direction)
+
+    user_aggregator = TranscriptAwareUserAggregator(context)
+    assistant_aggregator = TranscriptAwareAssistantAggregator(context)
+
+    # 🏗️ Build pipeline (mute filter after STT - blocks echo during bot speech only!)
+    pipeline = Pipeline([
+        transport.input(),      # 📞 AudioSocket input (8kHz -> 16kHz)
+        stt,                    # 🎤 Deepgram/Groq STT (audio -> text)
+        stt_mute_filter,        # 🔇 Mute during bot speech (echo killer)
+        user_aggregator,        # 📝 Capture user speech
+        llm,                    # 🧠 Cerebras LLM (text -> response)
+        tts,                    # 🗣️ Edge TTS (response -> audio)
+        post_tts_pause,         # 🛑 250ms pause after speech
+        transport.output(),     # 📞 AudioSocket output (16kHz -> 8kHz)
+        assistant_aggregator,   # 📝 Capture Ava's responses
+    ])
+    logger.info("🔇 STT mute added: during-bot only—no echo, full user flow")
+
+    # 🎯 Interruptions: Min 2 words to interrupt
+    interruption_strategy = MinWordsInterruptionStrategy(min_words=2)
+    logger.info("✅ Smart interruptions enabled (min 2 words)")
+
+    # 🚀 Create pipeline task
+    pipeline_config = config.get("pipeline", {})
+    task = PipelineTask(
+        pipeline,
+        params=PipelineParams(
+            allow_interruptions=True,  # 👂 User can interrupt
+            enable_metrics=pipeline_config.get("enable_metrics", True),
+            interruption_strategy=interruption_strategy,
+        ),
+        cancel_on_idle_timeout=False,  # 🔄 Keep running
+        idle_timeout_secs=None,        # ♾️  No timeout
+    )
+
+    # Make task available to callbacks
+    pipeline_task = task
+
+    # 🎬 Run the bot!
+    logger.info("🚀 Starting Ava sales bot...")
+    runner = PipelineRunner()
+    await runner.run(task)
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Ava Sales Bot - AudioSocket (Rewritten for reliability)"
+    )
+    parser.add_argument("--host", default="0.0.0.0", help="AudioSocket bind host")
+    parser.add_argument("--port", type=int, default=9092, help="AudioSocket bind port")
+    parser.add_argument("--contact-name", default="there", help="Prospect's first name")
+    args = parser.parse_args()
+
+    logger.info("=" * 60)
+    logger.info("🎯 AVA SALES BOT - REWRITTEN VERSION")
+    logger.info("=" * 60)
+    logger.info(f"📞 Contact: {args.contact_name}")
+    logger.info(f"🎧 AudioSocket: {args.host}:{args.port}")
+    logger.info("=" * 60)
+
+    asyncio.run(main(args.contact_name, args.host, args.port))

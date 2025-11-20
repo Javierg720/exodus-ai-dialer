@@ -1,0 +1,42 @@
+[
+  {
+    "content": "Create Groq LLM provider directory and files",
+    "status": "completed",
+    "activeForm": "Creating Groq LLM provider"
+  },
+  {
+    "content": "Build Groq Docker image",
+    "status": "completed",
+    "activeForm": "Building Groq Docker image"
+  },
+  {
+    "content": "Update docker-compose to use Groq LLM",
+    "status": "completed",
+    "activeForm": "Updating docker-compose for Groq"
+  },
+  {
+    "content": "Restart bot-9092 with Groq provider",
+    "status": "completed",
+    "activeForm": "Restarting bot with Groq"
+  },
+  {
+    "content": "Test call and verify LLM→TTS handoff works",
+    "status": "completed",
+    "activeForm": "Testing LLM→TTS handoff"
+  },
+  {
+    "content": "Scale to 20 bots",
+    "status": "completed",
+    "activeForm": "Scaling to 20 bots"
+  },
+  {
+    "content": "Add call recording with MixMonitor",
+    "status": "completed",
+    "activeForm": "Adding call recording"
+  },
+  {
+    "content": "Test multi-bot deployment",
+    "status": "pending",
+    "activeForm": "Testing multi-bot deployment"
+  }
+]

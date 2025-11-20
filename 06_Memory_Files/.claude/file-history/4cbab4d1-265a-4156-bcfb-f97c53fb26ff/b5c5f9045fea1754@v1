@@ -1,0 +1,344 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Activity, AlertTriangle, CheckCircle, RefreshCw, 
+  Server, Zap, TrendingUp, AlertCircle, Play, Pause, RotateCw
+} from 'lucide-react';
+import axios from 'axios';
+import './BotPoolManager.css';
+
+function BotPoolManager({ apiUrl }) {
+  const [bots, setBots] = useState([]);
+  const [desiredCount, setDesiredCount] = useState(0);
+  const [actualRunning, setActualRunning] = useState(0);
+  const [isAdjusting, setIsAdjusting] = useState(false);
+  const [systemHealth, setSystemHealth] = useState('healthy');
+  const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Fetch bot status
+  const fetchBotStatus = async () => {
+    try {
+      setError(null);
+      const response = await axios.get(`${apiUrl}/bots`);
+      setBots(response.data);
+      
+      // Count running bots
+      const running = response.data.filter(b => b.running).length;
+      setActualRunning(running);
+      setDesiredCount(running);
+      
+      // Check system health
+      const crashed = response.data.filter(b => b.status === 'CRASHED').length;
+      if (crashed > 2) {
+        setSystemHealth('critical');
+      } else if (crashed > 0) {
+        setSystemHealth('warning');
+      } else {
+        setSystemHealth('healthy');
+      }
+      
+      setLastUpdate(new Date());
+    } catch (error) {
+      console.error('Failed to fetch bot status:', error);
+      setError('Failed to fetch bot status');
+    }
+  };
+
+  // Adjust bot pool
+  const adjustBotPool = async (targetCount) => {
+    setIsAdjusting(true);
+    setError(null);
+    
+    try {
+      const response = await axios.post(`${apiUrl}/bots/adjust-pool`, {
+        target_count: targetCount
+      });
+      
+      // Show success message
+      if (response.data.final_count === targetCount) {
+        console.log(`Successfully adjusted to ${targetCount} bots`);
+      }
+      
+      // Refresh status after adjustment
+      setTimeout(() => {
+        fetchBotStatus();
+        setIsAdjusting(false);
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to adjust bot pool:', error);
+      setError('Failed to adjust bot pool');
+      setIsAdjusting(false);
+    }
+  };
+
+  // Restart crashed bot
+  const restartBot = async (port) => {
+    try {
+      await axios.post(`${apiUrl}/bots/${port}/restart`);
+      setTimeout(fetchBotStatus, 1000);
+    } catch (error) {
+      console.error(`Failed to restart bot ${port}:`, error);
+      setError(`Failed to restart bot ${port}`);
+    }
+  };
+
+  // Stop specific bot
+  const stopBot = async (port) => {
+    try {
+      await axios.post(`${apiUrl}/bots/${port}/stop`);
+      setTimeout(fetchBotStatus, 1000);
+    } catch (error) {
+      console.error(`Failed to stop bot ${port}:`, error);
+      setError(`Failed to stop bot ${port}`);
+    }
+  };
+
+  // Start specific bot
+  const startBot = async (port) => {
+    try {
+      await axios.post(`${apiUrl}/bots/${port}/start`);
+      setTimeout(fetchBotStatus, 1000);
+    } catch (error) {
+      console.error(`Failed to start bot ${port}:`, error);
+      setError(`Failed to start bot ${port}`);
+    }
+  };
+
+  // Auto-refresh
+  useEffect(() => {
+    fetchBotStatus();
+    const interval = setInterval(fetchBotStatus, 5000);
+    return () => clearInterval(interval);
+  }, [apiUrl]);
+
+  // Handle dropdown change
+  const handleCountChange = (e) => {
+    const count = parseInt(e.target.value);
+    setDesiredCount(count);
+  };
+
+  // Apply changes
+  const applyChanges = () => {
+    if (desiredCount !== actualRunning) {
+      adjustBotPool(desiredCount);
+    }
+  };
+
+  // Get status color
+  const getStatusColor = (status) => {
+    switch(status?.toUpperCase()) {
+      case 'IDLE': return 'green';
+      case 'BUSY': return 'blue';
+      case 'CRASHED': return 'red';
+      case 'STARTING': return 'yellow';
+      case 'STOPPING': return 'orange';
+      default: return 'gray';
+    }
+  };
+
+  // Calculate stats
+  const stats = {
+    total: bots.length,
+    running: bots.filter(b => b.running).length,
+    idle: bots.filter(b => b.status === 'IDLE').length,
+    busy: bots.filter(b => b.status === 'BUSY').length,
+    crashed: bots.filter(b => b.status === 'CRASHED').length
+  };
+
+  return (
+    <div className="bot-pool-manager">
+      <div className="manager-header">
+        <h2>Bot Pool Control Center</h2>
+        <div className="header-controls">
+          <button 
+            className="btn-refresh"
+            onClick={fetchBotStatus}
+            disabled={loading}
+          >
+            <RefreshCw size={16} className={loading ? 'spinning' : ''} />
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="error-banner">
+          <AlertTriangle size={16} />
+          {error}
+        </div>
+      )}
+
+      {/* Quick Stats */}
+      <div className="quick-stats">
+        <div className="stat-card">
+          <Server size={20} />
+          <div>
+            <span className="stat-value">{stats.total}</span>
+            <span className="stat-label">Total Bots</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <Activity size={20} />
+          <div>
+            <span className="stat-value">{stats.running}</span>
+            <span className="stat-label">Running</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <CheckCircle size={20} />
+          <div>
+            <span className="stat-value">{stats.idle}</span>
+            <span className="stat-label">Available</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <Zap size={20} />
+          <div>
+            <span className="stat-value">{stats.busy}</span>
+            <span className="stat-label">In Call</span>
+          </div>
+        </div>
+        {stats.crashed > 0 && (
+          <div className="stat-card error">
+            <AlertCircle size={20} />
+            <div>
+              <span className="stat-value">{stats.crashed}</span>
+              <span className="stat-label">Crashed</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Pool Adjustment Control */}
+      <div className="pool-control">
+        <div className="control-section">
+          <label>Active Bot Count:</label>
+          <div className="control-group">
+            <select 
+              value={desiredCount}
+              onChange={handleCountChange}
+              className="bot-count-select"
+              disabled={isAdjusting}
+            >
+              {[...Array(21).keys()].map(i => (
+                <option key={i} value={i}>
+                  {i} {i === 1 ? 'bot' : 'bots'}
+                </option>
+              ))}
+            </select>
+            <button
+              className={`btn-apply ${desiredCount !== actualRunning ? 'highlight' : ''}`}
+              onClick={applyChanges}
+              disabled={isAdjusting || desiredCount === actualRunning}
+            >
+              {isAdjusting ? (
+                <>
+                  <RefreshCw size={16} className="spinning" />
+                  Adjusting...
+                </>
+              ) : (
+                'Apply Changes'
+              )}
+            </button>
+          </div>
+          {desiredCount !== actualRunning && (
+            <div className="change-indicator">
+              Will {desiredCount > actualRunning ? 'start' : 'stop'} {Math.abs(desiredCount - actualRunning)} bot(s)
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Individual Bot Status */}
+      <div className="bot-grid">
+        <h3>Individual Bot Status</h3>
+        <div className="bot-list">
+          {bots.map(bot => (
+            <div key={bot.port} className={`bot-card ${bot.status?.toLowerCase()}`}>
+              <div className="bot-header">
+                <span className="bot-port">Bot {bot.port}</span>
+                <span className={`status-badge ${getStatusColor(bot.status)}`}>
+                  {bot.status || 'STOPPED'}
+                </span>
+              </div>
+              
+              <div className="bot-info">
+                {bot.current_call && (
+                  <div className="info-row">
+                    <span>Call:</span>
+                    <span className="call-id">{bot.current_call.substring(0, 8)}...</span>
+                  </div>
+                )}
+                {bot.last_activity && (
+                  <div className="info-row">
+                    <span>Last Active:</span>
+                    <span>{new Date(bot.last_activity).toLocaleTimeString()}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="bot-actions">
+                {bot.status === 'CRASHED' ? (
+                  <button
+                    className="btn-action restart"
+                    onClick={() => restartBot(bot.port)}
+                    title="Restart crashed bot"
+                  >
+                    <RotateCw size={14} />
+                    Restart
+                  </button>
+                ) : bot.running ? (
+                  <button
+                    className="btn-action stop"
+                    onClick={() => stopBot(bot.port)}
+                    title="Stop this bot"
+                  >
+                    <Pause size={14} />
+                    Stop
+                  </button>
+                ) : (
+                  <button
+                    className="btn-action start"
+                    onClick={() => startBot(bot.port)}
+                    title="Start this bot"
+                  >
+                    <Play size={14} />
+                    Start
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* System Health Indicator */}
+      <div className={`system-health ${systemHealth}`}>
+        <div className="health-header">
+          {systemHealth === 'healthy' ? (
+            <>
+              <CheckCircle size={20} />
+              System Healthy
+            </>
+          ) : systemHealth === 'warning' ? (
+            <>
+              <AlertTriangle size={20} />
+              System Warning - Some bots crashed
+            </>
+          ) : (
+            <>
+              <AlertCircle size={20} />
+              System Critical - Multiple crashes detected
+            </>
+          )}
+        </div>
+        <div className="health-detail">
+          Last updated: {lastUpdate.toLocaleTimeString()}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default BotPoolManager;

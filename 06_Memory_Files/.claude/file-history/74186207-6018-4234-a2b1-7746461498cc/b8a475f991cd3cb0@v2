@@ -1,0 +1,19 @@
+#!/bin/bash
+# Run Steam with native libraries instead of runtime
+
+echo "Running Steam with native libraries..."
+
+# Kill existing Steam
+killall -9 steam steam.sh 2>/dev/null
+
+# Set display
+export DISPLAY=:1
+
+# Disable Steam runtime, use system libraries
+export STEAM_RUNTIME=0
+
+# Force software rendering
+export LIBGL_ALWAYS_SOFTWARE=1
+
+# Launch Steam with native mode
+steam-native "$@"

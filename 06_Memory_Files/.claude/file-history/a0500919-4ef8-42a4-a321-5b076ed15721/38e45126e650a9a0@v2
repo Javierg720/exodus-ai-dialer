@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+"""
+Fix manual call logging by creating a default campaign for manual calls
+and updating the database schema to handle them properly.
+"""
+
+import sqlite3
+import sys
+from datetime import datetime
+
+DB_PATH = "/home/user/Desktop/Projects_Organized/01_Exodus_Dialer/exodus-kali-deploy/dialer.db"
+
+def create_manual_calls_campaign():
+    """Create a special campaign for manual calls if it doesn't exist."""
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    try:
+        # Check if manual calls campaign exists
+        cursor.execute("""
+            SELECT id FROM campaigns
+            WHERE name = 'Manual Calls'
+        """)
+        result = cursor.fetchone()
+
+        if result:
+            print(f"✅ Manual Calls campaign already exists with ID: {result[0]}")
+            return result[0]
+
+        # Create manual calls campaign
+        cursor.execute("""
+            INSERT INTO campaigns (
+                name, description, status, dial_method, dial_ratio,
+                max_dial_ratio, drop_rate_limit,
+                call_time_start, call_time_end,
+                stt_provider, enable_recording, max_agents,
+                created_at
+            ) VALUES (
+                'Manual Calls', 'Special campaign for tracking manually dialed calls',
+                'ACTIVE', 'PREVIEW', 1.0,
+                1.0, 0.03,
+                '00:00', '23:59',
+                'groq', 1, 20,
+                CURRENT_TIMESTAMP
+            )
+        """)
+
+        campaign_id = cursor.lastrowid
+        conn.commit()
+
+        print(f"✅ Created Manual Calls campaign with ID: {campaign_id}")
+        return campaign_id
+
+    except Exception as e:
+        print(f"❌ Error creating manual calls campaign: {e}")
+        conn.rollback()
+        return None
+    finally:
+        conn.close()
+
+def update_database_schema():
+    """Make campaign_id nullable in call_log table to support manual calls."""
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    try:
+        # SQLite doesn't support ALTER COLUMN directly, need to recreate table
+        # First, let's check current schema
+        cursor.execute("SELECT sql FROM sqlite_master WHERE name='call_log' AND type='table'")
+        current_schema = cursor.fetchone()[0]
+
+        if "campaign_id INTEGER NOT NULL" in current_schema:
+            print("⚠️ Campaign_id is currently NOT NULL - would need complex migration")
+            print("  Using Manual Calls campaign approach instead")
+        else:
+            print("✅ Campaign_id already allows NULL values")
+
+    except Exception as e:
+        print(f"❌ Error checking schema: {e}")
+    finally:
+        conn.close()
+
+if __name__ == "__main__":
+    print("🔧 Fixing Manual Call Logging Issue\n")
+
+    # Create manual calls campaign
+    campaign_id = create_manual_calls_campaign()
+
+    if campaign_id:
+        print(f"\n📝 Next Steps:")
+        print(f"1. Update API to use campaign_id={campaign_id} for manual calls")
+        print(f"2. Update orchestrator to track manual calls with this campaign_id")
+        print(f"3. Test with a manual call to verify logging")
+
+    # Check schema
+    print("\n📊 Database Schema Status:")
+    update_database_schema()

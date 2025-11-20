@@ -1,0 +1,222 @@
+"""
+Edge TTS adapter for configurable pipelines.
+
+This module provides a TTS adapter that integrates Microsoft Edge TTS
+(free, unofficial API) with the pipeline orchestrator. The adapter follows
+the TTSComponent contract defined in base.py.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import audioop
+import io
+from typing import Any, AsyncIterator, Dict, Optional
+
+try:
+    import edge_tts
+except ImportError:
+    edge_tts = None
+
+try:
+    from pydub import AudioSegment
+except ImportError:
+    AudioSegment = None
+
+from ..audio import convert_pcm16le_to_target_format
+from ..config import AppConfig
+from ..logging_config import get_logger
+from .base import TTSComponent
+
+logger = get_logger(__name__)
+
+
+class EdgeTTSAdapter(TTSComponent):
+    """Edge TTS adapter using Microsoft's unofficial Edge TTS API (free)."""
+
+    def __init__(
+        self,
+        component_key: str,
+        app_config: AppConfig,
+        provider_config: Optional[Dict[str, Any]] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ):
+        if edge_tts is None:
+            raise RuntimeError("edge-tts library required. Install: pip install edge-tts")
+        if AudioSegment is None:
+            raise RuntimeError("pydub library required. Install: pip install pydub")
+
+        self.component_key = component_key
+        self._app_config = app_config
+        self._provider_defaults = provider_config or {}
+        self._pipeline_defaults = options or {}
+
+        # Default settings
+        self._default_voice = "en-US-AvaMultilingualNeural"
+        self._default_rate = "+10%"
+        self._default_pitch = "+0Hz"
+        self._chunk_size_ms = 20  # 20ms chunks for telephony
+
+    async def start(self) -> None:
+        voice = self._provider_defaults.get("voice", self._default_voice)
+        logger.info(
+            "Edge TTS adapter initialized",
+            component=self.component_key,
+            voice=voice,
+            note="Using FREE Microsoft Edge TTS (unofficial API)",
+        )
+
+    async def stop(self) -> None:
+        logger.debug("Edge TTS adapter stopped", component=self.component_key)
+
+    async def open_call(self, call_id: str, options: Dict[str, Any]) -> None:
+        """Prepare per-call state (no-op for Edge TTS)."""
+        pass
+
+    async def close_call(self, call_id: str) -> None:
+        """Release per-call state (no-op for Edge TTS)."""
+        pass
+
+    def _compose_options(self, runtime_options: Dict[str, Any]) -> Dict[str, Any]:
+        """Merge provider defaults with pipeline defaults and runtime options."""
+        merged = {}
+
+        # Start with provider defaults
+        merged.update(self._provider_defaults)
+
+        # Overlay pipeline defaults
+        merged.update(self._pipeline_defaults)
+
+        # Overlay runtime options (highest priority)
+        merged.update(runtime_options)
+
+        # Fill in any missing defaults
+        if "voice" not in merged:
+            merged["voice"] = self._default_voice
+        if "rate" not in merged:
+            merged["rate"] = self._default_rate
+        if "pitch" not in merged:
+            merged["pitch"] = self._default_pitch
+
+        return merged
+
+    async def synthesize(
+        self,
+        call_id: str,
+        text: str,
+        options: Dict[str, Any],
+    ) -> AsyncIterator[bytes]:
+        """Synthesize text to audio using Edge TTS and yield μ-law chunks."""
+
+        if not text or not text.strip():
+            # Empty text - yield nothing
+            return
+            yield  # Make this an async generator
+
+        merged = self._compose_options(options)
+        voice = merged["voice"]
+        rate = merged["rate"]
+        pitch = merged["pitch"]
+
+        # Target format from options (default to μ-law @ 8kHz for telephony)
+        target_format = merged.get("format", {})
+        target_encoding = target_format.get("encoding", "ulaw")
+        target_sample_rate = target_format.get("sample_rate", 8000)
+
+        logger.info(
+            "Edge TTS synthesis started",
+            call_id=call_id,
+            voice=voice,
+            rate=rate,
+            pitch=pitch,
+            text_preview=text[:64] + ("..." if len(text) > 64 else ""),
+            target_encoding=target_encoding,
+            target_sample_rate=target_sample_rate,
+        )
+
+        try:
+            # Create Edge TTS communicate object
+            communicate = edge_tts.Communicate(
+                text=text,
+                voice=voice,
+                rate=rate,
+                pitch=pitch,
+            )
+
+            # Collect all MP3 audio chunks
+            audio_buffer = bytearray()
+
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    audio_buffer.extend(chunk["data"])
+
+            if len(audio_buffer) == 0:
+                logger.warning(
+                    "Edge TTS returned no audio",
+                    call_id=call_id,
+                    text_preview=text[:64],
+                )
+                return
+
+            # Convert MP3 → PCM16 using pydub
+            audio_segment = AudioSegment.from_mp3(io.BytesIO(bytes(audio_buffer)))
+
+            # Resample to target rate, ensure mono, 16-bit
+            audio_segment = (
+                audio_segment
+                .set_frame_rate(target_sample_rate)
+                .set_channels(1)
+                .set_sample_width(2)  # 16-bit
+            )
+
+            # Get raw PCM16 data
+            pcm16_data = audio_segment.raw_data
+
+            # Convert PCM16 → target encoding (μ-law, PCM16, etc.)
+            if target_encoding.lower() in ("ulaw", "mulaw", "mu-law"):
+                # Convert PCM16 → μ-law
+                output_data = audioop.lin2ulaw(pcm16_data, 2)  # 2 = 16-bit
+            elif target_encoding.lower() in ("linear16", "pcm16", "slin16"):
+                # Already PCM16
+                output_data = pcm16_data
+            else:
+                logger.warning(
+                    f"Unsupported encoding '{target_encoding}', defaulting to μ-law",
+                    call_id=call_id,
+                )
+                output_data = audioop.lin2ulaw(pcm16_data, 2)
+
+            # Chunk audio into telephony-sized frames
+            bytes_per_sample = 1 if target_encoding.lower() in ("ulaw", "mulaw", "mu-law") else 2
+            frame_size = int(target_sample_rate * (self._chunk_size_ms / 1000.0) * bytes_per_sample)
+
+            total_bytes_yielded = 0
+            chunk_count = 0
+
+            for i in range(0, len(output_data), frame_size):
+                chunk = output_data[i : i + frame_size]
+                if chunk:
+                    yield chunk
+                    total_bytes_yielded += len(chunk)
+                    chunk_count += 1
+
+            duration_ms = (len(output_data) / bytes_per_sample / target_sample_rate) * 1000
+
+            logger.info(
+                "Edge TTS synthesis complete",
+                call_id=call_id,
+                total_bytes=total_bytes_yielded,
+                chunk_count=chunk_count,
+                duration_ms=f"{duration_ms:.1f}",
+                encoding=target_encoding,
+                sample_rate=target_sample_rate,
+            )
+
+        except Exception as e:
+            logger.error(
+                "Edge TTS synthesis failed",
+                call_id=call_id,
+                error=str(e),
+                text_preview=text[:64],
+            )
+            raise

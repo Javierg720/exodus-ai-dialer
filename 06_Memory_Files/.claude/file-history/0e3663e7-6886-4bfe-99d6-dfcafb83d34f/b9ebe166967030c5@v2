@@ -1,0 +1,51 @@
+const express = require('express');
+const { OpenAI } = require('openai');
+const app = express();
+app.use(express.json());
+
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const MODEL = process.env.GROQ_MODEL || 'llama3-8b-8192';  // Or mixtral-8x7b-32768, etc.
+const TEMPERATURE = parseFloat(process.env.TEMPERATURE || '0.7');
+
+const openai = new OpenAI({
+  apiKey: GROQ_API_KEY,
+  baseURL: 'https://api.groq.com/openai/v1',  // Groq's OpenAI-compatible endpoint
+});
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', provider: 'groq', model: MODEL });
+});
+
+// AVR /prompt-stream endpoint (SSE format with type: "text")
+app.post('/prompt-stream', async (req, res) => {
+  try {
+    const { messages = [], systemPrompt = 'You are a helpful assistant.' } = req.body;
+    const formattedMessages = [
+      { role: 'system', content: systemPrompt },
+      ...messages
+    ];
+
+    console.log(`[Groq] /prompt-stream with ${messages.length} messages`);
+
+    const completion = await openai.chat.completions.create({
+      model: MODEL,
+      messages: formattedMessages,
+      temperature: TEMPERATURE,
+      stream: false  // Buffered full response
+    });
+
+    const responseText = completion.choices[0]?.message?.content || '';
+    console.log(`[Groq] Response: ${responseText.substring(0, 50)}...`);
+
+    // AVR expects plain JSON with "type": "text" and "content": responseText (not wrapped in SSE)
+    res.json({ type: 'text', content: responseText });
+  } catch (error) {
+    console.error('[Groq] Error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.listen(6002, () => {
+  console.log('[Groq LLM Provider] Running on port 6002');
+});

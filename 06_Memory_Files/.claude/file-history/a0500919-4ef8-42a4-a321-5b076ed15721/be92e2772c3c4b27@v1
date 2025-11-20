@@ -1,0 +1,328 @@
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { 
+  Phone, Search, Download, ExternalLink, 
+  PlayCircle, FileText, Clock, User,
+  PhoneCall, PhoneOff, Filter, ChevronLeft, ChevronRight
+} from 'lucide-react';
+import axios from 'axios';
+import './CallHistory.css';
+
+function CallHistory({ apiUrl }) {
+  const [calls, setCalls] = useState([]);
+  const [activeCalls, setActiveCalls] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterDisposition, setFilterDisposition] = useState('all');
+
+  const fetchCalls = async (page = 1) => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${apiUrl}/calls/history`, {
+        params: { page, limit: 50 }
+      });
+      const callsArray = response.data.calls || response.data;
+      setCalls(callsArray);
+      setCurrentPage(page);
+      // Calculate total pages if API provides count
+      if (response.data.total) {
+        setTotalPages(Math.ceil(response.data.total / 50));
+      }
+    } catch (error) {
+      console.error('Failed to fetch calls:', error);
+      setCalls([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchActiveCalls = async () => {
+    try {
+      const response = await axios.get(`${apiUrl}/calls/active`);
+      const activeCallsArray = response.data.calls || response.data;
+      setActiveCalls(activeCallsArray);
+    } catch (error) {
+      console.error('Failed to fetch active calls:', error);
+      setActiveCalls([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchCalls();
+    fetchActiveCalls();
+
+    // Refresh active calls more frequently
+    const interval = setInterval(fetchActiveCalls, 5000);
+    return () => clearInterval(interval);
+  }, [apiUrl]);
+
+  const exportCalls = async () => {
+    try {
+      const response = await axios.get(`${apiUrl}/export/calls`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `call_history_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Failed to export calls:', error);
+    }
+  };
+
+  const formatDuration = (seconds) => {
+    if (!seconds) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatTime = (isoString) => {
+    if (!isoString) return '-';
+    const date = new Date(isoString);
+    return date.toLocaleString();
+  };
+
+  const filteredCalls = calls.filter(call => {
+    // Search filter
+    if (searchQuery && !JSON.stringify(call).toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+
+    // Status filter (API returns call_status)
+    if (filterStatus !== 'all' && call.call_status?.toLowerCase() !== filterStatus.toLowerCase()) {
+      return false;
+    }
+
+    // Disposition filter (API returns disposition_code)
+    if (filterDisposition !== 'all' && call.disposition_code !== filterDisposition) {
+      return false;
+    }
+
+    return true;
+  });
+
+  return (
+    <div className="call-history">
+      <div className="history-header">
+        <h2>Call History</h2>
+        <div className="header-actions">
+          <button 
+            className="btn-export"
+            onClick={exportCalls}
+          >
+            <Download size={16} />
+            Export CSV
+          </button>
+        </div>
+      </div>
+
+      {/* Active Calls Section */}
+      {activeCalls.length > 0 && (
+        <div className="active-calls-section">
+          <h3 className="section-title">
+            <PhoneCall className="pulse" />
+            Active Calls ({activeCalls.length})
+          </h3>
+          <div className="active-calls-grid">
+            {activeCalls.map(call => (
+              <div key={call.uuid} className="active-call-card">
+                <div className="call-header">
+                  <span className="phone-number">{call.phone_number}</span>
+                  <span className="duration-live">
+                    <Clock size={14} />
+                    {formatDuration(call.duration)}
+                  </span>
+                </div>
+                <div className="call-details">
+                  <span className="lead-name">
+                    <User size={14} />
+                    {call.lead_name}
+                  </span>
+                  <span className="bot-info">Bot {call.bot_port}</span>
+                </div>
+                <div className="call-actions">
+                  <Link 
+                    to={`/call/${call.uuid}`}
+                    className="btn-monitor"
+                  >
+                    Monitor
+                  </Link>
+                  <button className="btn-hangup">
+                    <PhoneOff size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="history-filters">
+        <div className="search-box">
+          <Search size={16} />
+          <input
+            type="text"
+            placeholder="Search by phone, name, campaign..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="filter-select"
+        >
+          <option value="all">All Status</option>
+          <option value="answered">Answered</option>
+          <option value="no_answer">No Answer</option>
+          <option value="busy">Busy</option>
+          <option value="failed">Failed</option>
+          <option value="abandoned">Abandoned</option>
+        </select>
+        
+        <select 
+          value={filterDisposition}
+          onChange={(e) => setFilterDisposition(e.target.value)}
+          className="filter-select"
+        >
+          <option value="all">All Dispositions</option>
+          <option value="INTERESTED">Interested</option>
+          <option value="NOT_INTERESTED">Not Interested</option>
+          <option value="CALLBACK">Callback</option>
+          <option value="DNC">DNC</option>
+        </select>
+      </div>
+
+      {/* Call History Table */}
+      <div className="history-table-container">
+        <table className="history-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Phone</th>
+              <th>Lead</th>
+              <th>Campaign</th>
+              <th>Duration</th>
+              <th>Status</th>
+              <th>Disposition</th>
+              <th>Bot</th>
+              <th>Recording</th>
+              <th>Transcription</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan="11" className="loading-cell">Loading...</td>
+              </tr>
+            ) : filteredCalls.length === 0 ? (
+              <tr>
+                <td colSpan="11" className="empty-cell">No calls found</td>
+              </tr>
+            ) : (
+              filteredCalls.map(call => (
+                <tr key={call.id || call.uuid}>
+                  <td className="time-cell">
+                    {formatTime(call.start_time)}
+                  </td>
+                  <td className="phone-cell">
+                    <Phone size={14} />
+                    {call.phone_number}
+                  </td>
+                  <td>{call.first_name ? `${call.first_name} ${call.last_name || ''}`.trim() : '-'}</td>
+                  <td>{call.campaign_name || '-'}</td>
+                  <td className="duration-cell">
+                    {formatDuration(call.duration_seconds)}
+                  </td>
+                  <td>
+                    <span className={`status-badge ${call.call_status?.toLowerCase()}`}>
+                      {call.call_status}
+                    </span>
+                  </td>
+                  <td>
+                    {call.disposition_code && (
+                      <span className={`disposition-badge ${call.disposition_code?.toLowerCase()}`}>
+                        {call.disposition_code}
+                      </span>
+                    )}
+                  </td>
+                  <td className="bot-cell">
+                    {call.bot_port}
+                  </td>
+                  <td className="recording-cell">
+                    {call.recording_url ? (
+                      <audio controls style={{ width: '200px', height: '30px' }}>
+                        <source src={call.recording_url} type="audio/mpeg" />
+                        <source src={call.recording_url} type="audio/wav" />
+                        Your browser does not support audio playback.
+                      </audio>
+                    ) : (
+                      <span style={{ color: '#999' }}>-</span>
+                    )}
+                  </td>
+                  <td className="transcription-cell">
+                    {call.transcription_text ? (
+                      <div style={{ maxWidth: '300px', maxHeight: '100px', overflow: 'auto', fontSize: '0.85em' }}>
+                        {call.transcription_text}
+                      </div>
+                    ) : (
+                      <span style={{ color: '#999' }}>-</span>
+                    )}
+                  </td>
+                  <td className="actions-cell">
+                    <Link
+                      to={`/call/${call.id || call.uuid}`}
+                      className="btn-view-details"
+                      title="View call details, transcript & recording"
+                    >
+                      <ExternalLink size={16} />
+                      Details
+                    </Link>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      <div className="pagination">
+        <button
+          className="btn-page"
+          disabled={currentPage === 1}
+          onClick={() => fetchCalls(currentPage - 1)}
+        >
+          <ChevronLeft size={16} />
+          Previous
+        </button>
+        
+        <span className="page-info">
+          Page {currentPage} {totalPages > 1 && `of ${totalPages}`}
+        </span>
+        
+        <button
+          className="btn-page"
+          disabled={filteredCalls.length < 50}
+          onClick={() => fetchCalls(currentPage + 1)}
+        >
+          Next
+          <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default CallHistory;

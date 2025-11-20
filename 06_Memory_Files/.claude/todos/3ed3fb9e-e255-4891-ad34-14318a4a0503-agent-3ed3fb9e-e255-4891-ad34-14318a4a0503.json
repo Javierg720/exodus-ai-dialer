@@ -1,0 +1,42 @@
+[
+  {
+    "content": "Create SimpleAMIManager to replace panoramisk",
+    "status": "completed",
+    "activeForm": "Creating SimpleAMIManager to replace panoramisk"
+  },
+  {
+    "content": "Update dialer_orchestrator.py to use SimpleAMIManager",
+    "status": "completed",
+    "activeForm": "Updating dialer_orchestrator.py to use SimpleAMIManager"
+  },
+  {
+    "content": "Test dialer with new AMI client",
+    "status": "completed",
+    "activeForm": "Testing dialer with new AMI client"
+  },
+  {
+    "content": "Debug why AMI commands not reaching Asterisk",
+    "status": "completed",
+    "activeForm": "Debugging why AMI commands not reaching Asterisk"
+  },
+  {
+    "content": "Fix _read_response_blocking to handle AMI protocol correctly",
+    "status": "completed",
+    "activeForm": "Fixing _read_response_blocking to handle AMI protocol correctly"
+  },
+  {
+    "content": "Fix Asterisk context from audiosocket-dial to ava-context",
+    "status": "completed",
+    "activeForm": "Fixing Asterisk context from audiosocket-dial to ava-context"
+  },
+  {
+    "content": "Fix event listener timeout handling",
+    "status": "completed",
+    "activeForm": "Fixing event listener timeout handling"
+  },
+  {
+    "content": "Test dialer with fixed event listener",
+    "status": "in_progress",
+    "activeForm": "Testing dialer with fixed event listener"
+  }
+]

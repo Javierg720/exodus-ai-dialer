@@ -1,0 +1,500 @@
+#!/usr/bin/env python3
+"""
+Bot Pool Manager - Spawns and manages multiple Ava bot instances.
+
+Each bot instance:
+- Runs on its own port (9092, 9093, 9094, ...)
+- Handles one call at a time (using existing AudioSocket transport)
+- Auto-restarts if it crashes
+- Reports health status via simple HTTP endpoint
+
+The Bot Pool Manager:
+- Spawns N bot instances on startup
+- Monitors their health every 30 seconds
+- Auto-restarts crashed bots
+- Provides REST API to query bot status
+- Tracks which bots are idle vs. busy
+
+Architecture:
+    Dialer → Checks available bots → Routes call to idle bot port
+
+Example Usage:
+    pool = BotPoolManager(
+        base_port=9092,
+        num_instances=20,
+        bot_script="ava_sales_bot_audiosocket.py"
+    )
+    await pool.start()
+
+    # Get idle bot
+    bot_port = pool.get_idle_bot_port()
+    if bot_port:
+        # Route call to this port via AMI
+        originate_call(lead, bot_port)
+"""
+
+import asyncio
+import subprocess
+import time
+from dataclasses import dataclass, field
+from typing import Optional, List, Dict
+from enum import Enum
+import aiohttp
+from loguru import logger
+
+
+class BotStatus(Enum):
+    """Bot instance status."""
+    STARTING = "starting"
+    IDLE = "idle"
+    BUSY = "busy"
+    CRASHED = "crashed"
+    STOPPED = "stopped"
+    STOPPING = "stopping"
+
+
+@dataclass
+class BotInstance:
+    """Represents one bot instance in the pool."""
+
+    port: int
+    status: BotStatus = BotStatus.STARTING
+    process: Optional[subprocess.Popen] = None
+    current_call_uuid: Optional[str] = None
+
+    # Statistics
+    total_calls_handled: int = 0
+    calls_handled: int = 0
+    crashes: int = 0
+    started_at: float = field(default_factory=time.time)
+    last_health_check: float = 0
+    last_call_time: float = 0
+
+    # Wrap-up time tracking (TCPA compliance - prevents over-dialing)
+    wrap_up_end_time: Optional[float] = None
+
+    def is_available(self) -> bool:
+        """Check if this bot can accept a new call.
+
+        A bot is available if:
+        - Status is IDLE
+        - Process is running
+        - Wrap-up time has elapsed (if set)
+        """
+        if self.status != BotStatus.IDLE:
+            return False
+        if not self.process or self.process.poll() is not None:
+            return False
+        # Check if still in wrap-up period
+        if self.wrap_up_end_time and time.time() < self.wrap_up_end_time:
+            return False
+        return True
+
+    def uptime(self) -> float:
+        """Get uptime in seconds."""
+        return time.time() - self.started_at
+
+
+class BotPoolManager:
+    """Manages a pool of bot instances for concurrent call handling.
+
+    The pool maintains N bot processes, each running on a unique port.
+    Bots are monitored for health and auto-restarted on crash.
+
+    Features:
+    - Health monitoring with auto-restart
+    - Load balancing (round-robin or least-busy)
+    - Statistics tracking per bot
+    - REST API for querying pool status
+    """
+
+    def __init__(
+        self,
+        base_port: int = 9092,
+        num_instances: int = 20,
+        bot_script: str = "ava_sales_bot_zai.py",  # Using z.ai FREE version
+        python_path: str = "pipecat_env_new/bin/python3",
+        contact_name: str = "there",
+        health_check_interval: int = 30,
+        max_restart_attempts: int = 3,
+        wrap_up_duration: int = 5  # Seconds of wrap-up time after each call
+    ):
+        """Initialize bot pool manager.
+
+        Args:
+            base_port: Starting port number (9092)
+            num_instances: Number of bot instances to spawn
+            bot_script: Path to bot script
+            python_path: Path to Python interpreter with dependencies
+            contact_name: Default contact name for bots
+            health_check_interval: Seconds between health checks
+            max_restart_attempts: Max restart attempts before marking crashed
+            wrap_up_duration: Seconds to wait after call ends before bot is available
+        """
+        self.base_port = base_port
+        self.num_instances = num_instances
+        self.bot_script = bot_script
+        self.python_path = python_path
+        self.contact_name = contact_name
+        self.health_check_interval = health_check_interval
+        self.max_restart_attempts = max_restart_attempts
+        self.wrap_up_duration = wrap_up_duration
+
+        # Bot instances keyed by port
+        self.bots: Dict[int, BotInstance] = {}
+
+        # Monitoring task
+        self._monitor_task: Optional[asyncio.Task] = None
+        self._stop_event = asyncio.Event()
+
+        # Round-robin index for load balancing
+        self._next_bot_index = 0
+
+        logger.info(f"🏊 Bot Pool Manager initialized: {num_instances} instances, "
+                   f"ports {base_port}-{base_port + num_instances - 1}")
+
+    async def start(self):
+        """Start all bot instances and begin monitoring."""
+        logger.info("🚀 Starting bot pool...")
+
+        # Spawn all bot instances
+        for i in range(self.num_instances):
+            port = self.base_port + i
+            await self._spawn_bot(port)
+
+        # Start health monitoring
+        self._monitor_task = asyncio.create_task(self._monitor_loop())
+
+        logger.info(f"✅ Bot pool started: {len(self.bots)} instances running")
+
+    async def stop(self):
+        """Stop all bot instances and cleanup."""
+        logger.info("🛑 Stopping bot pool...")
+        self._stop_event.set()
+
+        # Stop monitoring
+        if self._monitor_task and not self._monitor_task.done():
+            self._monitor_task.cancel()
+            try:
+                await self._monitor_task
+            except asyncio.CancelledError:
+                pass
+
+        # Terminate all bots
+        for port, bot in self.bots.items():
+            await self._terminate_bot(port)
+
+        logger.info("✅ Bot pool stopped")
+
+    async def _spawn_bot(self, port: int) -> bool:
+        """Spawn a bot instance on the given port.
+
+        Args:
+            port: Port number for this bot instance
+
+        Returns:
+            True if successfully spawned, False otherwise
+        """
+        try:
+            logger.info(f"🤖 Spawning bot on port {port}...")
+
+            # Build command
+            cmd = [
+                self.python_path,
+                self.bot_script,
+                "--host", "0.0.0.0",
+                "--port", str(port),
+                "--contact-name", self.contact_name
+            ]
+
+            # Spawn process
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd="/home/user/Desktop/exodus-kali-deploy"
+            )
+
+            # Create bot instance
+            bot = BotInstance(port=port, process=process)
+            self.bots[port] = bot
+
+            # Wait a moment for startup
+            await asyncio.sleep(2)
+
+            # Check if it's still running
+            if process.poll() is None:
+                bot.status = BotStatus.IDLE
+                logger.info(f"✅ Bot spawned successfully on port {port} (PID: {process.pid})")
+                return True
+            else:
+                # Process died immediately
+                logger.error(f"❌ Bot on port {port} died immediately after spawn")
+                bot.status = BotStatus.CRASHED
+                bot.crashes += 1
+                return False
+
+        except Exception as e:
+            logger.error(f"❌ Failed to spawn bot on port {port}: {e}")
+            return False
+
+    async def _terminate_bot(self, port: int):
+        """Terminate a bot instance.
+
+        Args:
+            port: Port number of bot to terminate
+        """
+        bot = self.bots.get(port)
+        if not bot or not bot.process:
+            return
+
+        logger.info(f"🛑 Terminating bot on port {port}...")
+        bot.status = BotStatus.STOPPING
+
+        try:
+            # Try graceful shutdown first
+            bot.process.terminate()
+            try:
+                bot.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                # Force kill if didn't stop
+                bot.process.kill()
+                bot.process.wait()
+
+            logger.info(f"✅ Bot on port {port} terminated")
+        except Exception as e:
+            logger.error(f"Error terminating bot on port {port}: {e}")
+
+    async def _check_bot_health(self, port: int) -> bool:
+        """Check if a bot is healthy.
+
+        Simple health check: Is the process still running?
+        Could be enhanced with HTTP health endpoint.
+
+        Args:
+            port: Port number of bot to check
+
+        Returns:
+            True if healthy, False if crashed
+        """
+        bot = self.bots.get(port)
+        if not bot or not bot.process:
+            return False
+
+        # Check if process is still running
+        if bot.process.poll() is not None:
+            # Process exited
+            logger.warning(f"⚠️  Bot on port {port} crashed (exit code: {bot.process.poll()})")
+            bot.status = BotStatus.CRASHED
+            bot.crashes += 1
+            return False
+
+        # Process is running
+        bot.last_health_check = time.time()
+        return True
+
+    async def _restart_bot(self, port: int) -> bool:
+        """Restart a crashed bot.
+
+        Args:
+            port: Port number of bot to restart
+
+        Returns:
+            True if successfully restarted
+        """
+        bot = self.bots.get(port)
+        if not bot:
+            logger.error(f"❌ POOL: Cannot restart bot {port} - not found in pool")
+            return False
+
+        # Check restart attempts
+        if bot.crashes >= self.max_restart_attempts:
+            logger.error(f"❌ POOL: Bot {port} exceeded max restart attempts ({bot.crashes}/{self.max_restart_attempts})")
+            logger.warning(f"   Bot {port} will remain CRASHED - manual intervention required")
+            return False
+
+        logger.info(f"🔄 POOL: Restarting bot {port} - Attempt {bot.crashes + 1}/{self.max_restart_attempts}")
+        logger.debug(f"   Previous status: {bot.status.value}, Crashes: {bot.crashes}")
+
+        # Cleanup old process
+        await self._terminate_bot(port)
+
+        # Spawn new instance
+        success = await self._spawn_bot(port)
+
+        if success:
+            logger.info(f"✅ POOL: Bot {port} restarted successfully")
+            logger.debug(f"   New PID: {self.bots[port].process.pid if self.bots[port].process else 'N/A'}")
+        else:
+            logger.error(f"❌ POOL: Failed to restart bot {port} - spawn failed")
+
+        return success
+
+    async def _monitor_loop(self):
+        """Continuous monitoring loop - checks health and restarts crashed bots."""
+        logger.info("👀 Bot pool monitoring started")
+
+        try:
+            while not self._stop_event.is_set():
+                # Wait for health check interval
+                await asyncio.sleep(self.health_check_interval)
+
+                # Check each bot
+                for port, bot in list(self.bots.items()):
+                    # Skip manually stopped bots
+                    if bot.status == BotStatus.STOPPED:
+                        continue
+
+                    healthy = await self._check_bot_health(port)
+
+                    if not healthy:
+                        # Attempt restart (only for crashed bots, not manually stopped ones)
+                        await self._restart_bot(port)
+
+                # Log pool status
+                idle_count = sum(1 for b in self.bots.values() if b.status == BotStatus.IDLE)
+                busy_count = sum(1 for b in self.bots.values() if b.status == BotStatus.BUSY)
+                crashed_count = sum(1 for b in self.bots.values() if b.status == BotStatus.CRASHED)
+
+                logger.info(f"📊 Pool status: {idle_count} idle, {busy_count} busy, {crashed_count} crashed")
+
+        except asyncio.CancelledError:
+            logger.info("👀 Bot pool monitoring stopped")
+            raise
+
+    def get_idle_bot_port(self) -> Optional[int]:
+        """Get the port of an available (idle) bot instance.
+
+        Uses round-robin strategy to distribute load evenly.
+
+        Returns:
+            Port number of idle bot, or None if all busy
+        """
+        idle_bots = [port for port, bot in self.bots.items() if bot.is_available()]
+
+        if not idle_bots:
+            return None
+
+        # Round-robin selection
+        selected_port = idle_bots[self._next_bot_index % len(idle_bots)]
+        self._next_bot_index += 1
+
+        return selected_port
+
+    def mark_bot_busy(self, port: int, call_uuid: str):
+        """Mark a bot as busy handling a call.
+
+        Args:
+            port: Port number of bot
+            call_uuid: UUID of the call being handled
+        """
+        bot = self.bots.get(port)
+        if bot:
+            previous_status = bot.status
+            bot.status = BotStatus.BUSY
+            bot.current_call_uuid = call_uuid
+            bot.last_call_time = time.time()
+            logger.info(f"📞 POOL: Bot {port} marked BUSY - handling call {call_uuid}")
+            logger.debug(f"   Previous status: {previous_status.value}, Total calls: {bot.total_calls_handled}")
+        else:
+            logger.error(f"❌ POOL: Cannot mark bot {port} as BUSY - bot not found")
+
+    def mark_bot_idle(self, port: int):
+        """Mark a bot as idle (call ended).
+
+        Sets wrap-up time to prevent immediate reassignment (TCPA compliance).
+
+        Args:
+            port: Port number of bot
+        """
+        bot = self.bots.get(port)
+        if bot:
+            previous_uuid = bot.current_call_uuid
+            bot.status = BotStatus.IDLE
+            bot.total_calls_handled += 1
+            bot.calls_handled += 1
+            bot.current_call_uuid = None
+            # Set wrap-up end time (prevents over-dialing)
+            bot.wrap_up_end_time = time.time() + self.wrap_up_duration
+            wrap_up_until = datetime.fromtimestamp(bot.wrap_up_end_time).strftime('%H:%M:%S')
+            logger.info(f"✅ POOL: Bot {port} marked IDLE - completed call {previous_uuid}")
+            logger.debug(
+                f"   Total calls handled: {bot.total_calls_handled}, Wrap-up until: {wrap_up_until}"
+            )
+        else:
+            logger.error(f"❌ POOL: Cannot mark bot {port} as IDLE - bot not found")
+
+    def get_pool_stats(self) -> Dict:
+        """Get statistics about the bot pool.
+
+        Returns:
+            Dictionary with pool statistics
+        """
+        stats = {
+            "total_instances": len(self.bots),
+            "idle": sum(1 for b in self.bots.values() if b.status == BotStatus.IDLE),
+            "busy": sum(1 for b in self.bots.values() if b.status == BotStatus.BUSY),
+            "crashed": sum(1 for b in self.bots.values() if b.status == BotStatus.CRASHED),
+            "starting": sum(1 for b in self.bots.values() if b.status == BotStatus.STARTING),
+            "total_calls_handled": sum(b.total_calls_handled for b in self.bots.values()),
+            "total_crashes": sum(b.crashes for b in self.bots.values()),
+            "bots": []
+        }
+
+        for port, bot in sorted(self.bots.items()):
+            stats["bots"].append({
+                "port": port,
+                "status": bot.status.value,
+                "current_call": bot.current_call_uuid,
+                "total_calls": bot.total_calls_handled,
+                "crashes": bot.crashes,
+                "uptime_seconds": bot.uptime(),
+                "last_health_check": bot.last_health_check
+            })
+
+        return stats
+
+    def get_all_bot_ports(self) -> List[int]:
+        """Get list of all bot ports."""
+        return list(self.bots.keys())
+
+
+# Example usage
+async def main():
+    """Test bot pool manager."""
+
+    # Create pool
+    pool = BotPoolManager(
+        base_port=9092,
+        num_instances=20,  # Full production pool
+        bot_script="ava_sales_bot_zai.py",  # Using z.ai FREE version
+        python_path="pipecat_env_new/bin/python3",
+        contact_name="Test User"
+    )
+
+    # Start pool
+    await pool.start()
+
+    # Wait a bit
+    await asyncio.sleep(10)
+
+    # Get stats
+    stats = pool.get_pool_stats()
+    logger.info(f"Pool stats: {stats}")
+
+    # Get idle bot
+    idle_port = pool.get_idle_bot_port()
+    logger.info(f"Idle bot port: {idle_port}")
+
+    # Keep running
+    try:
+        await asyncio.sleep(60)
+    except KeyboardInterrupt:
+        logger.info("Stopping...")
+
+    # Stop pool
+    await pool.stop()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

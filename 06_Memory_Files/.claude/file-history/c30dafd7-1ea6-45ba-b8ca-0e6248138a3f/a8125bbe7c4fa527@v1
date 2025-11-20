@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+"""
+Simple script to make outbound calls with AVR agent using Asterisk AMI.
+"""
+
+import asyncio
+import sys
+from asterisk.ami import AMIClient
+
+async def make_call(phone_number: str, caller_id: str = "+19544668818"):
+    """
+    Make an outbound call to the specified number and connect to AVR agent.
+
+    Args:
+        phone_number: Number to call (e.g., "+15551234567")
+        caller_id: Caller ID to display (your Twilio number)
+    """
+
+    print(f"📞 Calling {phone_number} with AVR agent...")
+
+    # Connect to Asterisk AMI
+    client = AMIClient(host='localhost', port=5038)
+
+    try:
+        await client.login(username='avr', secret='u4lyvcPyQ19hwJKy')
+        print("✅ Connected to Asterisk AMI")
+
+        # Originate call
+        response = await client.send_action({
+            'Action': 'Originate',
+            'Channel': f'PJSIP/{phone_number}@twilio-trunk',
+            'Context': 'avr-outbound',
+            'Exten': 's',
+            'Priority': '1',
+            'CallerID': caller_id,
+            'Timeout': '30000',  # 30 seconds
+            'Async': 'true'
+        })
+
+        if response.success:
+            print(f"✅ Call initiated!")
+            print(f"   Number: {phone_number}")
+            print(f"   Caller ID: {caller_id}")
+            print(f"   Response: {response.message}")
+            print("\n💡 Your AVR agent will handle this call when it's answered!")
+        else:
+            print(f"❌ Call failed: {response.message}")
+
+    except Exception as e:
+        print(f"❌ Error: {e}")
+
+    finally:
+        client.logoff()
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python avr_make_call.py <phone_number> [caller_id]")
+        print("\nExample:")
+        print("  python avr_make_call.py +15551234567")
+        print("  python avr_make_call.py +15551234567 +19544668818")
+        sys.exit(1)
+
+    phone = sys.argv[1]
+    caller = sys.argv[2] if len(sys.argv) > 2 else "+19544668818"
+
+    asyncio.run(make_call(phone, caller))

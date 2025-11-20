@@ -1,0 +1,117 @@
+[DEBUG] Watching for changes in setting files /home/user/.claude/settings.json, /home/user/.claude/settings.json, /home/user/.claude/settings.local.json...
+[DEBUG] Applying permission update: Adding 29 allow rule(s) to destination 'localSettings': ["WebSearch","WebFetch(domain:docs.pipecat.ai)","WebFetch(domain:github.com)","WebFetch(domain:console.groq.com)","Bash(pkill:*)","WebFetch(domain:www.daily.co)","Bash(source:*)","Bash(edge-tts:*)","Bash(paplay:*)","Bash(aplay:*)","Bash(mpg123:*)","Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/pip list)","Bash(python3:*)","Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/python3 -c \"from pipecat.transports.network.fastapi_websocket import FastAPIWebsocketTransport, FastAPIWebsocketParams; from pipecat.serializers.twilio import TwilioFrameSerializer; print(''Pipecat Twilio WebSocket support available'')\")","Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/python3 -c \"import pipecat.serializers.twilio; import inspect; print(inspect.getsourcefile(pipecat.serializers.twilio))\")","WebFetch(domain:livekit.io)","WebFetch(domain:docs.livekit.io)","WebFetch(domain:docs.bolna.ai)","WebFetch(domain:www.bolna.ai)","WebFetch(domain:community.asterisk.org)","WebFetch(domain:www.agentvoiceresponse.com)","WebFetch(domain:demo.agentvoiceresponse.com)","Bash(docker exec:*)","Read(//etc/**)","Bash(sqlite3:*)","WebFetch(domain:viciwiki.com)","Read(//tmp/**)","WebFetch(domain:docs.asterisk.org)","WebFetch(domain:caruizdiaz.com)"]
+[DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+[DEBUG] Creating shell snapshot for zsh (/usr/bin/zsh)
+[DEBUG] Looking for shell config file: /home/user/.zshrc
+[DEBUG] Snapshots directory: /home/user/.claude/shell-snapshots
+[DEBUG] Creating snapshot at: /home/user/.claude/shell-snapshots/snapshot-zsh-1762224546211-1ygcls.sh
+[DEBUG] Shell binary exists: true
+[DEBUG] Execution timeout: 10000ms
+[DEBUG] Writing to temp file: /home/user/.claude/todos/8bd8a794-16a1-4c83-977b-15d4de088ff0-agent-8bd8a794-16a1-4c83-977b-15d4de088ff0.json.tmp.1174799.1762224546222
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Renaming /home/user/.claude/todos/8bd8a794-16a1-4c83-977b-15d4de088ff0-agent-8bd8a794-16a1-4c83-977b-15d4de088ff0.json.tmp.1174799.1762224546222 to /home/user/.claude/todos/8bd8a794-16a1-4c83-977b-15d4de088ff0-agent-8bd8a794-16a1-4c83-977b-15d4de088ff0.json
+[DEBUG] File /home/user/.claude/todos/8bd8a794-16a1-4c83-977b-15d4de088ff0-agent-8bd8a794-16a1-4c83-977b-15d4de088ff0.json written atomically
+[DEBUG] Registered 0 hooks from 0 plugins
+[DEBUG] Loading skills from directories: managed=/etc/claude-code/.claude/skills, user=/home/user/.claude/skills, project=/home/user/.claude/skills
+[DEBUG] Loaded 0 skills total (managed: 0, user: 0, project: 0)
+[DEBUG] Total plugin commands loaded: 0
+[DEBUG] Total plugin skills loaded: 0
+[DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/usr/local/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+[DEBUG] Shell snapshot created successfully (9233 bytes)
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.1174799.1762224546497
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 443092 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.1174799.1762224546497 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.1174799.1762224546756
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 443092 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.1174799.1762224546756 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Executing hooks for SessionStart:startup
+[DEBUG] Getting matching hook commands for SessionStart with query: startup
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.1174799.1762224546886
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 442987 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.1174799.1762224546886 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.1174799.1762224546901
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 442987 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.1174799.1762224546901 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] performStartupChecks called, ENABLE_PLUGINS=undefined
+[DEBUG] Skipping plugin installations - ENABLE_PLUGINS not set
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.1174799.1762224546941
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 443092 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.1174799.1762224546941 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] rg error (signal=undefined, code=ERR_CHILD_PROCESS_STDIO_MAXBUFFER, stderr: ), 168078 results
+[ERROR] RangeError: RangeError [ERR_CHILD_PROCESS_STDIO_MAXBUFFER]: stdout maxBuffer length exceeded
+    at Socket.onChildStdout (node:child_process:490:14)
+    at Socket.emit (node:events:524:28)
+    at Socket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:191:23)
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[ERROR] xk1: xk1: Insufficient permissions for global npm install.
+    at PD0 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1895:1013)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async cG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1905:43)
+    at async file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2661:8314
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] Executing hooks for SessionStart:resume
+[DEBUG] Getting matching hook commands for SessionStart with query: resume
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "resume" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] FileHistory: Copied backup 590f47b56046296a@v2 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup c9a75700fafaa86c@v2 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup aeff47930d5aff29@v2 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup be1ed87f95170c35@v2 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup 9892adc2bd3d599c@v2 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup 4dc1b9d166d398f5@v2 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup dbc05ba8d81dc908@v2 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup e8b2e8113a64463c@v4 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup b5c5f9045fea1754@v4 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup 066f15011fb208b3@v2 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup e5c200113381b34d@v2 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup 45dabe0a6605019e@v3 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup 56178dcf4f8241bb@v2 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup be92e2772c3c4b27@v2 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup 5865ec28ceaa486d@v2 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup f513f924366faccf@v5 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup cced2a8f8fcd543d@v2 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup 1080a7d1598c8b34@v3 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup 926a9bb5f691cb44@v3 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup 9b64c671ba47a97d@v10 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup 25355683c3afb3d1@v2 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup 56eb4fa2b491de49@v2 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup 4fc03378658719be@v3 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup 15af30f48f61ad6d@v2 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] FileHistory: Copied backup f513f924366faccf@v6 from session 4cbab4d1-265a-4156-bcfb-f97c53fb26ff to 8bd8a794-16a1-4c83-977b-15d4de088ff0
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.1174799.1762224569250
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 442987 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.1174799.1762224569250 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.1174799.1762224569267
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 442987 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.1174799.1762224569267 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically

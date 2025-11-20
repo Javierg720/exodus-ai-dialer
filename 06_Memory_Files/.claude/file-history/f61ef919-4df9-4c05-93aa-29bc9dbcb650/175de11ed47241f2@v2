@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EXODUS AI Dialer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+        * {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        /* Apple Glassmorphism */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+        }
+
+        .glass-sidebar {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-right: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        /* Apple Buttons */
+        .btn-primary {
+            background: linear-gradient(180deg, #0071e3 0%, #005bb5 100%);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(180deg, #0077ed 0%, #0061c1 100%);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        /* Status Pills */
+        .status-pill {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
+        .status-active {
+            background: linear-gradient(135deg, #34c759 0%, #30d158 100%);
+            color: white;
+        }
+
+        .status-idle {
+            background: linear-gradient(135deg, #8e8e93 0%, #aeaeb2 100%);
+            color: white;
+        }
+
+        .status-busy {
+            background: linear-gradient(135deg, #ff9500 0%, #ff9f0a 100%);
+            color: white;
+        }
+
+        /* Metrics Cards */
+        .metric-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 16px;
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Transcription Viewer */
+        .transcription-modal {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .transcription-content {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .transcript-line {
+            padding: 12px;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .transcript-line:hover {
+            background: rgba(0, 113, 227, 0.05);
+            border-left-color: #0071e3;
+        }
+
+        .transcript-bot {
+            color: #0071e3;
+            font-weight: 600;
+        }
+
+        .transcript-user {
+            color: #34c759;
+            font-weight: 600;
+        }
+
+        /* Audio Player */
+        .audio-player {
+            background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ed 100%);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .audio-progress {
+            height: 4px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .audio-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #0071e3 0%, #005bb5 100%);
+            border-radius: 2px;
+            transition: width 0.1s;
+        }
+
+        /* Smooth Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-slide-in {
+            animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .pulse-dot {
+            animation: pulse 2s infinite;
+        }
+
+        /* Tab Navigation */
+        .tab-button {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s;
+            color: #6e6e73;
+        }
+
+        .tab-button.active {
+            background: white;
+            color: #0071e3;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+    </style>
+</head>
+<body class="overflow-hidden">
+    <!-- Header -->
+    <div class="glass-card fixed top-0 left-0 right-0 z-50 border-b" style="height: 64px;">
+        <div class="flex items-center justify-between h-full px-6">
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="zap" class="w-6 h-6 text-blue-600"></i>
+                    <span class="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">EXODUS</span>
+                </div>
+                <div class="h-6 w-px bg-gray-300"></div>
+                <span class="text-sm text-gray-500">AI Dialer System</span>
+            </div>
+
+            <div class="flex items-center space-x-6">
+                <div class="flex items-center space-x-2">
+                    <div class="w-2 h-2 bg-green-500 rounded-full pulse-dot"></div>
+                    <span class="text-sm font-medium text-gray-700">Connected</span>
+                </div>
+                <div class="text-sm text-gray-500" id="currentTime"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="flex" style="margin-top: 64px; height: calc(100vh - 64px);">
+        <!-- Sidebar -->
+        <div class="glass-sidebar w-64 flex-shrink-0">
+            <div class="p-4 space-y-1">
+                <button onclick="showTab('overview')" class="tab-nav w-full flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-white/50 transition-all active" id="tab-overview">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    <span class="font-medium">Overview</span>
+                </button>
+                <button onclick="showTab('calls')" class="tab-nav w-full flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-white/50 transition-all" id="tab-calls">
+                    <i data-lucide="phone-call" class="w-5 h-5"></i>
+                    <span class="font-medium">Call History</span>
+                    <span class="ml-auto bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full" id="callCount">0</span>
+                </button>
+                <button onclick="showTab('bots')" class="tab-nav w-full flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-white/50 transition-all" id="tab-bots">
+                    <i data-lucide="cpu" class="w-5 h-5"></i>
+                    <span class="font-medium">Bot Pool</span>
+                    <span class="ml-auto bg-green-100 text-green-600 text-xs px-2 py-1 rounded-full">20</span>
+                </button>
+                <button onclick="showTab('campaigns')" class="tab-nav w-full flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-white/50 transition-all" id="tab-campaigns">
+                    <i data-lucide="target" class="w-5 h-5"></i>
+                    <span class="font-medium">Campaigns</span>
+                </button>
+                <button onclick="showTab('leads')" class="tab-nav w-full flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-white/50 transition-all" id="tab-leads">
+                    <i data-lucide="users" class="w-5 h-5"></i>
+                    <span class="font-medium">Leads</span>
+                </button>
+                <button onclick="showTab('analytics')" class="tab-nav w-full flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-white/50 transition-all" id="tab-analytics">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                    <span class="font-medium">Analytics</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="flex-1 overflow-y-auto p-6">
+            <!-- Overview Tab -->
+            <div id="content-overview" class="tab-content">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Dashboard Overview</h2>
+
+                <!-- Metrics Grid -->
+                <div class="grid grid-cols-4 gap-4 mb-6">
+                    <div class="metric-card">
+                        <div class="flex items-center justify-between mb-2">
+                            <i data-lucide="phone" class="w-5 h-5 text-blue-600"></i>
+                            <span class="text-2xl font-bold text-gray-800" id="metric-active">0</span>
+                        </div>
+                        <div class="text-sm text-gray-500">Active Calls</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="flex items-center justify-between mb-2">
+                            <i data-lucide="trending-up" class="w-5 h-5 text-green-600"></i>
+                            <span class="text-2xl font-bold text-gray-800" id="metric-rate">0%</span>
+                        </div>
+                        <div class="text-sm text-gray-500">Connection Rate</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="flex items-center justify-between mb-2">
+                            <i data-lucide="clock" class="w-5 h-5 text-orange-600"></i>
+                            <span class="text-2xl font-bold text-gray-800" id="metric-duration">0:00</span>
+                        </div>
+                        <div class="text-sm text-gray-500">Avg Duration</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="flex items-center justify-between mb-2">
+                            <i data-lucide="activity" class="w-5 h-5 text-purple-600"></i>
+                            <span class="text-2xl font-bold text-gray-800" id="metric-bots">20</span>
+                        </div>
+                        <div class="text-sm text-gray-500">Idle Bots</div>
+                    </div>
+                </div>
+
+                <!-- Live Calls -->
+                <div class="glass-card rounded-2xl p-6 mb-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Live Calls</h3>
+                    <div id="liveCallsContainer" class="space-y-3">
+                        <div class="text-center text-gray-400 py-8">
+                            <i data-lucide="phone-off" class="w-12 h-12 mx-auto mb-2 opacity-50"></i>
+                            <p>No active calls</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Call History Tab -->
+            <div id="content-calls" class="tab-content hidden">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Call History</h2>
+                    <button class="btn-primary text-white px-4 py-2 rounded-lg flex items-center space-x-2">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>Export</span>
+                    </button>
+                </div>
+
+                <div class="glass-card rounded-2xl overflow-hidden">
+                    <table class="w-full">
+                        <thead class="bg-gray-50/50">
+                            <tr>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Time</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Number</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Duration</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Bot</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="callHistoryTable" class="divide-y divide-gray-100">
+                            <!-- Dynamic content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Bot Pool Tab -->
+            <div id="content-bots" class="tab-content hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Bot Pool Status</h2>
+                <div class="grid grid-cols-4 gap-4" id="botGrid">
+                    <!-- Dynamic bot cards -->
+                </div>
+            </div>
+
+            <!-- Other tabs -->
+            <div id="content-campaigns" class="tab-content hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Campaigns</h2>
+                <div class="glass-card rounded-2xl p-6">
+                    <p class="text-gray-500">Campaign management coming soon...</p>
+                </div>
+            </div>
+
+            <div id="content-leads" class="tab-content hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Leads</h2>
+                <div class="glass-card rounded-2xl p-6">
+                    <p class="text-gray-500">Lead management coming soon...</p>
+                </div>
+            </div>
+
+            <div id="content-analytics" class="tab-content hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Analytics</h2>
+                <div class="glass-card rounded-2xl p-6">
+                    <canvas id="analyticsChart" style="max-height: 400px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transcription Modal -->
+    <div id="transcriptionModal" class="transcription-modal fixed inset-0 z-50 hidden flex items-center justify-center p-6">
+        <div class="transcription-content animate-slide-in">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800">Call Recording & Transcript</h3>
+                        <p class="text-sm text-gray-500 mt-1" id="modal-call-info">Call details</p>
+                    </div>
+                    <button onclick="closeTranscriptionModal()" class="text-gray-400 hover:text-gray-600">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Audio Player -->
+            <div class="p-6 border-b border-gray-200">
+                <div class="audio-player">
+                    <div class="flex items-center justify-between mb-3">
+                        <button id="playPauseBtn" onclick="togglePlayback()" class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition">
+                            <i data-lucide="play" class="w-5 h-5"></i>
+                        </button>
+                        <div class="flex-1 mx-4">
+                            <div class="audio-progress">
+                                <div class="audio-progress-bar" id="audioProgress" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                        <span class="text-sm font-mono text-gray-600" id="audioTime">0:00 / 0:00</span>
+                    </div>
+                    <audio id="audioPlayer" class="hidden"></audio>
+                </div>
+            </div>
+
+            <!-- Transcript -->
+            <div class="p-6 max-h-96 overflow-y-auto">
+                <div id="transcriptContent" class="space-y-2">
+                    <!-- Dynamic transcript lines -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        const API_URL = 'http://localhost:8003';
+        let currentAudio = null;
+
+        // Tab Navigation
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-nav').forEach(el => el.classList.remove('active', 'bg-white', 'text-blue-600', 'shadow'));
+
+            document.getElementById('content-' + tabName).classList.remove('hidden');
+            const tabBtn = document.getElementById('tab-' + tabName);
+            tabBtn.classList.add('active', 'bg-white', 'text-blue-600', 'shadow');
+
+            lucide.createIcons();
+        }
+
+        // Update Time
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = now.toLocaleTimeString();
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // Fetch Data
+        async function fetchData() {
+            try {
+                // Fetch stats
+                const statsRes = await fetch(`${API_URL}/stats`);
+                const stats = await statsRes.json();
+
+                document.getElementById('metric-active').textContent = stats.active_calls || 0;
+                document.getElementById('metric-rate').textContent = (stats.connection_rate || 0).toFixed(1) + '%';
+                document.getElementById('metric-bots').textContent = stats.idle_bots || 20;
+
+                // Fetch call history
+                const callsRes = await fetch(`${API_URL}/calls/history?limit=50`);
+                const calls = await callsRes.json();
+
+                document.getElementById('callCount').textContent = calls.length;
+                renderCallHistory(calls);
+
+                // Fetch bot status
+                const botsRes = await fetch(`${API_URL}/bots/status`);
+                const bots = await botsRes.json();
+                renderBots(bots);
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        // Render Call History
+        function renderCallHistory(calls) {
+            const tbody = document.getElementById('callHistoryTable');
+            tbody.innerHTML = calls.map(call => `
+                <tr class="hover:bg-gray-50/50 transition">
+                    <td class="px-6 py-4 text-sm text-gray-700">${new Date(call.start_time).toLocaleString()}</td>
+                    <td class="px-6 py-4 text-sm font-medium text-gray-800">${call.phone_number}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${Math.floor(call.duration / 60)}:${(call.duration % 60).toString().padStart(2, '0')}</td>
+                    <td class="px-6 py-4">
+                        <span class="status-pill ${call.status === 'COMPLETED' ? 'status-active' : 'status-idle'}">
+                            ${call.status}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">Bot ${call.bot_port || 'N/A'}</td>
+                    <td class="px-6 py-4">
+                        <button onclick="openTranscription(${call.id})" class="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center space-x-1">
+                            <i data-lucide="file-text" class="w-4 h-4"></i>
+                            <span>View</span>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // Render Bots
+        function renderBots(bots) {
+            const grid = document.getElementById('botGrid');
+            grid.innerHTML = Object.entries(bots).map(([port, bot]) => `
+                <div class="metric-card">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-semibold text-gray-700">Bot ${port}</span>
+                        <span class="status-pill ${bot.status === 'idle' ? 'status-active' : bot.status === 'busy' ? 'status-busy' : 'status-idle'}">
+                            ${bot.status}
+                        </span>
+                    </div>
+                    <div class="text-xs text-gray-500">${bot.calls_handled || 0} calls handled</div>
+                </div>
+            `).join('');
+        }
+
+        // Open Transcription Modal
+        function openTranscription(callId) {
+            const modal = document.getElementById('transcriptionModal');
+            modal.classList.remove('hidden');
+
+            // Mock data - replace with real API call
+            document.getElementById('modal-call-info').textContent = `Call ID: ${callId} • Duration: 3:45`;
+
+            // Mock transcript
+            const transcript = [
+                { speaker: 'bot', time: '0:02', text: 'Hello, this is Ava from Fund Express. How are you today?' },
+                { speaker: 'user', time: '0:05', text: 'I\'m good, thanks. What\'s this about?' },
+                { speaker: 'bot', time: '0:08', text: 'I\'m calling about the business funding you inquired about. Did you ever secure those funds?' },
+                { speaker: 'user', time: '0:12', text: 'No, not yet. What can you offer?' },
+                { speaker: 'bot', time: '0:15', text: 'We can provide up to $500,000 in funding. How much are you looking for?' },
+                { speaker: 'user', time: '0:20', text: 'I need about $50,000 for equipment.' },
+                { speaker: 'bot', time: '0:23', text: 'Perfect! I can help with that. What\'s your monthly revenue?' }
+            ];
+
+            const transcriptHtml = transcript.map(line => `
+                <div class="transcript-line">
+                    <div class="flex items-start space-x-3">
+                        <span class="text-xs text-gray-400 w-12">${line.time}</span>
+                        <div class="flex-1">
+                            <span class="${line.speaker === 'bot' ? 'transcript-bot' : 'transcript-user'}">${line.speaker === 'bot' ? 'Ava' : 'Customer'}:</span>
+                            <span class="text-gray-700 ml-2">${line.text}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('transcriptContent').innerHTML = transcriptHtml;
+            lucide.createIcons();
+        }
+
+        function closeTranscriptionModal() {
+            document.getElementById('transcriptionModal').classList.add('hidden');
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+        }
+
+        function togglePlayback() {
+            const audio = document.getElementById('audioPlayer');
+            const btn = document.getElementById('playPauseBtn');
+            const icon = btn.querySelector('i');
+
+            if (audio.paused) {
+                audio.play();
+                icon.setAttribute('data-lucide', 'pause');
+            } else {
+                audio.pause();
+                icon.setAttribute('data-lucide', 'play');
+            }
+            lucide.createIcons();
+        }
+
+        // Initialize
+        fetchData();
+        setInterval(fetchData, 5000);
+
+        // Close modal on click outside
+        document.getElementById('transcriptionModal').addEventListener('click', (e) => {
+            if (e.target.id === 'transcriptionModal') {
+                closeTranscriptionModal();
+            }
+        });
+    </script>
+</body>
+</html>

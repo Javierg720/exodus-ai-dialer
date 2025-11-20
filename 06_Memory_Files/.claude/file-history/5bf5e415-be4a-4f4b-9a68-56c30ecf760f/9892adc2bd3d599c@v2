@@ -1,0 +1,26 @@
+Okay, I understand your frustration. Let me explain why you have TWO completely different projects.
+
+exodus-kali-deploy is the AI DIALER BACKEND. This is where the PHONE SYSTEM lives. It has all the Python code that makes phone calls, manages bots, talks to Asterisk, and handles the predictive dialing. This is the BRAIN of your calling system.
+
+exodus-dashboard is the WEB INTERFACE. This is the React website that lets you SEE and CONTROL the dialer through your web browser. It's just the pretty visual interface - it doesn't make any calls itself.
+
+Think of it like this: exodus-kali-deploy is the ENGINE of a car. exodus-dashboard is the DASHBOARD with the speedometer and steering wheel.
+
+They're TWO SEPARATE APPLICATIONS that talk to each other. The dashboard sends commands to the dialer backend through an API.
+
+Here's what each one does:
+
+exodus-kali-deploy contains:
+- dialer orchestrator dot py - the predictive dialing brain
+- bot pool manager dot py - manages the 20 AI voice bots
+- dialer api dot py - the API that the dashboard talks to
+- ava sales bot audiosocket dot py - the actual AI voice agent code
+- All the Python code that makes calls happen
+
+exodus-dashboard contains:
+- React components to display bot status
+- Web pages for campaign management
+- Buttons and forms to control the dialer
+- The Apple-style visual interface you see in your browser
+
+You need BOTH. They're not duplicates. They're two parts of the same system. One is the backend engine, one is the frontend interface.

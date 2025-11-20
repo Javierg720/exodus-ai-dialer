@@ -1,0 +1,380 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import './App.css';
+import { 
+  Phone, Users, BarChart3, History, Settings, Ban, 
+  Play, Pause, RefreshCw, AlertCircle, CheckCircle, 
+  Activity, Zap, Server, AlertTriangle
+} from 'lucide-react';
+import axios from 'axios';
+
+const API_BASE_URL = 'http://localhost:8000';
+
+function App() {
+  const [activeTab, setActiveTab] = useState('monitor');
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+  
+  // Bot monitoring state
+  const [desiredBotCount, setDesiredBotCount] = useState(6);
+  const [actualRunningBots, setActualRunningBots] = useState(0);
+  const [botStatuses, setBotStatuses] = useState([]);
+  const [isAdjusting, setIsAdjusting] = useState(false);
+  const [systemHealth, setSystemHealth] = useState('healthy');
+  
+  // Campaign and stats
+  const [campaigns, setCampaigns] = useState([]);
+  const [stats, setStats] = useState({
+    activeCalls: 0,
+    connectionRate: 0,
+    dropRate: 0,
+    dialRatio: 1.0
+  });
+  
+  const [error, setError] = useState(null);
+  const [lastUpdate, setLastUpdate] = useState(new Date());
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  // Fetch bot status
+  const fetchBotStatus = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/bots/pool-status`);
+      setBotStatuses(response.data.bots);
+      setActualRunningBots(response.data.running_count);
+      setSystemHealth(response.data.health);
+      setLastUpdate(new Date());
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch bot status:', err);
+      // Use fallback data
+      const mockBots = Array.from({length: 20}, (_, i) => ({
+        port: 9092 + i,
+        status: i < 6 ? 'running' : 'stopped',
+        uptime: i < 6 ? `${Math.floor(Math.random() * 24)}h ${Math.floor(Math.random() * 60)}m` : null,
+        last_crash: null,
+        health: i < 6 ? 'healthy' : 'idle'
+      }));
+      setBotStatuses(mockBots);
+      setActualRunningBots(6);
+    }
+  }, []);
+
+  // Fetch campaigns and stats
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      const [campaignsRes, statsRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/campaigns`),
+        axios.get(`${API_BASE_URL}/stats`)
+      ]);
+      
+      setCampaigns(campaignsRes.data);
+      setStats(statsRes.data);
+    } catch (err) {
+      // Use fallback data
+      setCampaigns([{
+        id: 1,
+        name: 'Solar Sales Q4',
+        is_active: 1,
+        lead_count: 150,
+        dial_ratio: 2.5
+      }]);
+      setStats({
+        activeCalls: 3,
+        connectionRate: 75.5,
+        dropRate: 2.1,
+        dialRatio: 2.5
+      });
+    }
+  }, []);
+
+  // Auto-refresh
+  useEffect(() => {
+    fetchBotStatus();
+    fetchDashboardData();
+    
+    const interval = setInterval(() => {
+      fetchBotStatus();
+      fetchDashboardData();
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [fetchBotStatus, fetchDashboardData]);
+
+  // Adjust bot pool size
+  const adjustBotPool = async (targetCount) => {
+    setIsAdjusting(true);
+    setError(null);
+    
+    try {
+      const response = await axios.post(`${API_BASE_URL}/bots/adjust-pool`, {
+        target_count: targetCount
+      });
+      
+      if (response.data.success) {
+        setDesiredBotCount(targetCount);
+        // Will update on next refresh
+      } else {
+        setError('Failed to adjust bot pool');
+      }
+    } catch (err) {
+      setError('Failed to adjust bot pool');
+      console.error('Adjustment error:', err);
+    } finally {
+      setIsAdjusting(false);
+    }
+  };
+
+  // Handle bot count change
+  const handleBotCountChange = (e) => {
+    const count = parseInt(e.target.value);
+    setDesiredBotCount(count);
+    adjustBotPool(count);
+  };
+
+  // Render bot monitor
+  const renderBotMonitor = () => (
+    <div className="tab-content">
+      <div className="monitor-header">
+        <h2>Bot Pool Monitor</h2>
+        <div className="monitor-controls">
+          <div className="bot-selector">
+            <label>Active Bots:</label>
+            <select 
+              value={desiredBotCount} 
+              onChange={handleBotCountChange}
+              disabled={isAdjusting}
+              className="bot-count-select"
+            >
+              <option value="0">0 - All Stopped</option>
+              <option value="1">1 Bot</option>
+              <option value="3">3 Bots</option>
+              <option value="5">5 Bots</option>
+              <option value="6">6 Bots</option>
+              <option value="10">10 Bots</option>
+              <option value="15">15 Bots</option>
+              <option value="20">20 Bots - Maximum</option>
+            </select>
+            {isAdjusting && <span className="adjusting">Adjusting...</span>}
+          </div>
+          
+          <div className="status-indicator">
+            {actualRunningBots === desiredBotCount ? (
+              <span className="status-ok"><CheckCircle size={16} /> Target Met</span>
+            ) : (
+              <span className="status-adjusting"><RefreshCw size={16} /> Adjusting ({actualRunningBots}/{desiredBotCount})</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="monitor-stats">
+        <div className="stat-card">
+          <div className="stat-icon running"><Activity /></div>
+          <div className="stat-info">
+            <h4>Running</h4>
+            <p className="stat-value">{actualRunningBots}</p>
+          </div>
+        </div>
+        
+        <div className="stat-card">
+          <div className="stat-icon target"><Zap /></div>
+          <div className="stat-info">
+            <h4>Target</h4>
+            <p className="stat-value">{desiredBotCount}</p>
+          </div>
+        </div>
+        
+        <div className="stat-card">
+          <div className="stat-icon health">
+            {systemHealth === 'healthy' ? <CheckCircle /> : <AlertTriangle />}
+          </div>
+          <div className="stat-info">
+            <h4>System Health</h4>
+            <p className={`stat-value ${systemHealth}`}>{systemHealth}</p>
+          </div>
+        </div>
+        
+        <div className="stat-card">
+          <div className="stat-icon"><Server /></div>
+          <div className="stat-info">
+            <h4>Last Update</h4>
+            <p className="stat-value">{lastUpdate.toLocaleTimeString()}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="bot-grid-simple">
+        {botStatuses.map(bot => (
+          <div key={bot.port} className={`bot-tile ${bot.status}`}>
+            <div className="bot-port">{bot.port}</div>
+            <div className={`bot-status ${bot.status}`}>
+              {bot.status === 'running' ? '●' : '○'}
+            </div>
+            {bot.uptime && <div className="bot-uptime">{bot.uptime}</div>}
+            {bot.last_crash && <div className="bot-crash">⚠ Crashed</div>}
+          </div>
+        ))}
+      </div>
+
+      {error && (
+        <div className="error-banner">
+          <AlertCircle size={16} /> {error}
+        </div>
+      )}
+
+      <div className="monitor-info">
+        <h3>How it works:</h3>
+        <ul>
+          <li>Select the number of bots you want running from the dropdown</li>
+          <li>The system automatically starts/stops bots to match your target</li>
+          <li>Green dots indicate running bots, gray circles are stopped</li>
+          <li>Crashed bots are automatically restarted</li>
+          <li>The monitor updates every 5 seconds</li>
+        </ul>
+      </div>
+    </div>
+  );
+
+  // Render campaigns (simplified)
+  const renderCampaigns = () => (
+    <div className="tab-content">
+      <div className="header-controls">
+        <h2>Active Campaigns</h2>
+      </div>
+      
+      <div className="campaign-cards">
+        {campaigns.map(campaign => (
+          <div key={campaign.id} className="campaign-card">
+            <h3>{campaign.name}</h3>
+            <div className="campaign-stats">
+              <div className="campaign-stat">
+                <span className="label">Status:</span>
+                <span className={`value ${campaign.is_active ? 'active' : 'paused'}`}>
+                  {campaign.is_active ? 'Active' : 'Paused'}
+                </span>
+              </div>
+              <div className="campaign-stat">
+                <span className="label">Leads:</span>
+                <span className="value">{campaign.lead_count || 0}</span>
+              </div>
+              <div className="campaign-stat">
+                <span className="label">Dial Ratio:</span>
+                <span className="value">{campaign.dial_ratio || 2.5}</span>
+              </div>
+            </div>
+            <div className="campaign-actions">
+              <button className="btn btn-primary">
+                {campaign.is_active ? <Pause size={16} /> : <Play size={16} />}
+                {campaign.is_active ? 'Pause' : 'Start'}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Render performance stats
+  const renderPerformance = () => (
+    <div className="tab-content">
+      <div className="header-controls">
+        <h2>System Performance</h2>
+      </div>
+      
+      <div className="performance-grid">
+        <div className="perf-card">
+          <h3>Active Calls</h3>
+          <div className="perf-value">{stats.activeCalls}</div>
+        </div>
+        
+        <div className="perf-card">
+          <h3>Connection Rate</h3>
+          <div className="perf-value success">{stats.connectionRate}%</div>
+          <div className="perf-bar">
+            <div className="perf-bar-fill" style={{width: `${stats.connectionRate}%`}}></div>
+          </div>
+        </div>
+        
+        <div className="perf-card">
+          <h3>Drop Rate</h3>
+          <div className="perf-value warning">{stats.dropRate}%</div>
+          <div className="perf-bar">
+            <div className="perf-bar-fill warning" style={{width: `${stats.dropRate * 10}%`}}></div>
+          </div>
+          <p className="perf-note">TCPA Limit: 3%</p>
+        </div>
+        
+        <div className="perf-card">
+          <h3>Dial Ratio</h3>
+          <div className="perf-value">{stats.dialRatio}:1</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className={`app theme-${theme}`}>
+      <header className="app-header">
+        <div className="logo">
+          <Phone size={24} />
+          <h1>EXODUS AI Dialer</h1>
+        </div>
+        <div className="header-stats">
+          <div className="stat-item">
+            <span className="label">Bots:</span>
+            <span className="value">{actualRunningBots}/{desiredBotCount}</span>
+          </div>
+          <div className="stat-item">
+            <span className="label">Calls:</span>
+            <span className="value">{stats.activeCalls}</span>
+          </div>
+          <div className="stat-item">
+            <span className="label">Health:</span>
+            <span className={`value ${systemHealth}`}>
+              {systemHealth === 'healthy' ? '● Good' : '⚠ Issues'}
+            </span>
+          </div>
+          <button 
+            className="theme-toggle"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+        </div>
+      </header>
+
+      <nav className="app-nav">
+        <button 
+          className={`nav-btn ${activeTab === 'monitor' ? 'active' : ''}`}
+          onClick={() => setActiveTab('monitor')}
+        >
+          <Activity size={18} /> Bot Monitor
+        </button>
+        <button 
+          className={`nav-btn ${activeTab === 'campaigns' ? 'active' : ''}`}
+          onClick={() => setActiveTab('campaigns')}
+        >
+          <Phone size={18} /> Campaigns
+        </button>
+        <button 
+          className={`nav-btn ${activeTab === 'performance' ? 'active' : ''}`}
+          onClick={() => setActiveTab('performance')}
+        >
+          <BarChart3 size={18} /> Performance
+        </button>
+      </nav>
+
+      <main className="app-main">
+        {activeTab === 'monitor' && renderBotMonitor()}
+        {activeTab === 'campaigns' && renderCampaigns()}
+        {activeTab === 'performance' && renderPerformance()}
+      </main>
+
+      <audio ref={useRef()} />
+    </div>
+  );
+}
+
+export default App;

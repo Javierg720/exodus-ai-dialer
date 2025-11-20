@@ -1,0 +1,127 @@
+# EXODUS DIALER - WORKING VERSION BACKUP
+**Backup Date**: November 9, 2025 - 19:31:19
+**System Status**: FULLY OPERATIONAL ✅
+
+## Working Features
+- ✅ Manual call origination with proper tracking
+- ✅ Lead status updates (NEW → CALLING → COMPLETED)
+- ✅ Call logging with duration and status
+- ✅ Bot pool management (20 instances)
+- ✅ TCPA compliance monitoring
+- ✅ Fund Express sales script (improved version)
+- ✅ Asterisk AudioSocket integration
+- ✅ React dashboard with Apple-style UI
+
+## Recent Fixes Applied
+1. **Lead Status Update Issue** - Fixed async database update method to handle call statuses
+2. **Manual Call Tracking** - Created Manual Calls campaign (ID 44) for non-campaign calls
+3. **ActionID Preservation** - Modified SimpleAMI to respect provided ActionIDs
+4. **Datetime Import Error** - Added local import in async handler for scope resolution
+5. **Bot Script Adherence** - Improved system prompt to keep Ava strictly in character
+
+## Key Files Backed Up
+
+### Backend (exodus-kali-deploy.tar.gz)
+- `dialer_orchestrator.py` - Main orchestration engine
+- `bot_pool_manager.py` - Bot lifecycle management
+- `dialer_api.py` - FastAPI REST API
+- `dialer_db_async.py` - Async database operations
+- `ava_sales_bot_audiosocket.py` - AI bot implementation
+- `bot_config.json` - Bot configuration with Fund Express script
+- `simple_ami.py` - Asterisk AMI interface
+- `dialer.db` - SQLite database (separate backup)
+
+### Frontend (exodus-dashboard.tar.gz)
+- React dashboard source code
+- Apple-styled components
+- Campaign, lead, and bot management interfaces
+
+### Asterisk Configuration (ava-asterisk-config/)
+- `extensions.conf` - Dialplan configuration
+- `pjsip.conf` - SIP trunk settings (Twilio)
+- `rtp.conf` - RTP optimization settings
+
+### Database (dialer_backup.db)
+- Campaigns (including Manual Calls - ID 44)
+- Leads table with status tracking
+- Call log with duration tracking
+- Dispositions and DNC list
+- Bot instances configuration
+
+## System Configuration
+
+### Services Running
+- **API**: Port 8000 (FastAPI)
+- **Dashboard**: Port 3003 (React dev) / 8002 (Production build)
+- **Bot Pool**: Ports 9092-9111 (20 instances)
+- **Asterisk**: Docker container (ava-asterisk)
+
+### Provider Settings
+- **STT**: Groq Whisper (whisper-large-v3-turbo)
+- **LLM**: Cerebras Llama 3.3 70B (temperature=0.3)
+- **TTS**: Edge TTS (en-US-AvaMultilingualNeural) - FREE
+
+### Cost Per Hour
+- **Per Bot**: $0.267 (Groq STT + Cerebras LLM)
+- **20 Bots**: $5.34/hour
+
+## Database Schema
+- **campaigns**: Active campaigns including Manual Calls (ID 44)
+- **leads**: Phone numbers with status tracking
+- **call_log**: Call history with duration and status
+- **dispositions**: Call outcome codes
+- **dnc_list**: Do not call registry
+- **bot_instances**: Bot pool configuration
+
+## Critical Environment Variables
+```bash
+AMI_HOST=localhost
+AMI_USERNAME=admin
+AMI_PASSWORD=admin123
+GROQ_API_KEY=[configured]
+CEREBRAS_API_KEY=[configured]
+```
+
+## Restoration Instructions
+
+1. **Extract Backend**:
+   ```bash
+   cd /desired/location
+   tar -xzf exodus-kali-deploy.tar.gz
+   ```
+
+2. **Extract Dashboard**:
+   ```bash
+   tar -xzf exodus-dashboard.tar.gz
+   ```
+
+3. **Restore Database**:
+   ```bash
+   cp dialer_backup.db /path/to/exodus-kali-deploy/dialer.db
+   ```
+
+4. **Copy Asterisk Config**:
+   ```bash
+   cp -r ava-asterisk-config /home/user/Desktop/
+   ```
+
+5. **Start Services**:
+   ```bash
+   # Start API
+   cd exodus-kali-deploy
+   python3 dialer_api.py
+
+   # Start Dashboard
+   cd exodus-dashboard
+   npm start
+   ```
+
+## Notes
+- All manual call fixes are working
+- Lead status properly updates after calls
+- Bot stays in character with improved script
+- System is production-ready for outbound dialing
+- TCPA compliance features fully operational
+
+---
+*This backup represents a fully working state after resolving all critical issues with manual call tracking, lead status updates, and bot character adherence.*

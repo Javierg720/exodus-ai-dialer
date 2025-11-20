@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+"""
+Check Twilio account for available phone numbers
+"""
+
+from twilio.rest import Client
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv('/home/user/Desktop/exodus-kali-deploy/.env')
+
+# Twilio credentials
+account_sid = os.getenv('TWILIO_ACCOUNT_SID', 'AC39ed37a2d9e427ea7aeb4c27aa368110')
+auth_token = os.getenv('TWILIO_AUTH_TOKEN', '3590e08c47cfbb31093592ec84ab4af0')
+
+# Initialize Twilio client
+client = Client(account_sid, auth_token)
+
+try:
+    print("🔍 Checking Twilio Account...\n")
+
+    # Get account info
+    account = client.api.accounts(account_sid).fetch()
+    print(f"Account Name: {account.friendly_name}")
+    print(f"Account Status: {account.status}")
+    print(f"Account Type: {account.type}")
+    print(f"Date Created: {account.date_created}")
+
+    print("\n📞 Phone Numbers in Account:")
+    print("-" * 40)
+
+    # List all phone numbers
+    incoming_phone_numbers = client.incoming_phone_numbers.list()
+
+    if incoming_phone_numbers:
+        for record in incoming_phone_numbers:
+            print(f"\nNumber: {record.phone_number}")
+            print(f"  Friendly Name: {record.friendly_name}")
+            print(f"  Capabilities:")
+            print(f"    Voice: {record.capabilities.voice}")
+            print(f"    SMS: {record.capabilities.sms}")
+            print(f"    MMS: {record.capabilities.mms}")
+            print(f"  Status: {record.status}")
+    else:
+        print("❌ No phone numbers found in this account")
+        print("\nYou need to purchase a phone number from Twilio to make calls.")
+        print("Visit: https://console.twilio.com/us1/develop/phone-numbers/manage/incoming")
+
+    # Check account balance
+    print("\n💰 Account Balance:")
+    print("-" * 40)
+    balance = client.api.accounts(account_sid).balance.fetch()
+    print(f"Balance: {balance.balance} {balance.currency}")
+
+except Exception as e:
+    print(f"❌ Error accessing Twilio account: {e}")
+    print("\nThis could mean:")
+    print("1. Invalid credentials")
+    print("2. Account is suspended")
+    print("3. Network connectivity issue")

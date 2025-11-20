@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+"""
+Transcribe audio using Deepgram API
+"""
+import asyncio
+import json
+from deepgram import DeepgramClient, PrerecordedOptions
+
+# Deepgram API key from the system
+DEEPGRAM_API_KEY = "44f464f1116d54ee9412f7b9214cdde028240091"
+
+async def transcribe_audio():
+    try:
+        # Initialize Deepgram client
+        deepgram = DeepgramClient(DEEPGRAM_API_KEY)
+
+        # Read the audio file
+        with open("/tmp/audio_for_analysis.wav", "rb") as audio:
+            audio_data = audio.read()
+
+        # Configure transcription options
+        options = PrerecordedOptions(
+            model="nova-2",
+            smart_format=True,
+            punctuate=True,
+            paragraphs=True,
+            utterances=True,
+            diarize=True,  # Speaker detection
+            language="en",
+        )
+
+        # Transcribe the audio
+        print("Starting transcription (this may take a few minutes)...")
+        response = await deepgram.listen.asyncprerecorded.v("1").transcribe_file(
+            {"buffer": audio_data},
+            options
+        )
+
+        # Extract and format the transcript
+        transcript = response['results']['channels'][0]['alternatives'][0]
+
+        # Save full response for analysis
+        with open("/tmp/transcription_full.json", "w") as f:
+            json.dump(response, f, indent=2)
+
+        # Extract formatted transcript with speaker labels if available
+        formatted_text = []
+
+        if 'utterances' in response['results']:
+            # Format with speaker labels
+            for utterance in response['results']['utterances']:
+                speaker = f"Speaker {utterance['speaker']}"
+                text = utterance['transcript']
+                formatted_text.append(f"{speaker}: {text}")
+        else:
+            # Use paragraphs if no speaker diarization
+            if 'paragraphs' in transcript:
+                for paragraph in transcript['paragraphs']['paragraphs']:
+                    for sentence in paragraph['sentences']:
+                        formatted_text.append(sentence['text'])
+            else:
+                # Fallback to basic transcript
+                formatted_text.append(transcript['transcript'])
+
+        # Save formatted transcript
+        with open("/tmp/transcription.txt", "w") as f:
+            f.write("\n\n".join(formatted_text))
+
+        print(f"Transcription complete! Saved to /tmp/transcription.txt")
+        print(f"Transcript length: {len(transcript['transcript'])} characters")
+
+        # Print first 500 characters as preview
+        print("\nFirst 500 characters of transcript:")
+        print("-" * 50)
+        print(transcript['transcript'][:500])
+        print("-" * 50)
+
+        return transcript['transcript']
+
+    except Exception as e:
+        print(f"Error during transcription: {e}")
+        return None
+
+if __name__ == "__main__":
+    asyncio.run(transcribe_audio())

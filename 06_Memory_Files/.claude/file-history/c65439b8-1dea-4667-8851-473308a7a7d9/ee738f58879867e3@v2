@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""Quick AMI call script using socket"""
+import socket
+import time
+
+def send_ami_command(sock, command_dict):
+    """Send AMI command and get response"""
+    command = ""
+    for key, value in command_dict.items():
+        command += f"{key}: {value}\r\n"
+    command += "\r\n"
+
+    sock.sendall(command.encode())
+    time.sleep(0.5)
+
+    response = b""
+    while True:
+        try:
+            sock.settimeout(1.0)
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            response += chunk
+        except socket.timeout:
+            break
+
+    return response.decode()
+
+def make_call(phone_number, caller_id="+19544668818"):
+    """Initiate call via Asterisk AMI"""
+
+    # Connect to Asterisk AMI
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect(('localhost', 5038))
+
+    # Read welcome banner
+    banner = sock.recv(1024)
+    print(f"Connected to Asterisk AMI:\n{banner.decode()}")
+
+    # Login
+    login_response = send_ami_command(sock, {
+        'Action': 'Login',
+        'Username': 'ava',
+        'Secret': 'ava123'
+    })
+    print(f"Login Response:\n{login_response}")
+
+    if "Success" not in login_response:
+        print("❌ Login failed!")
+        sock.close()
+        return False
+
+    # Originate call
+    originate_response = send_ami_command(sock, {
+        'Action': 'Originate',
+        'Channel': f'PJSIP/{phone_number}@twilio-trunk',
+        'Context': 'audiosocket-dial',
+        'Exten': '9092',
+        'Priority': '1',
+        'CallerID': caller_id,
+        'Timeout': '30000',
+        'Async': 'true'
+    })
+    print(f"Originate Response:\n{originate_response}")
+
+    # Logout
+    logout_response = send_ami_command(sock, {
+        'Action': 'Logoff'
+    })
+
+    sock.close()
+
+    if "Success" in originate_response:
+        print(f"✅ Call initiated to {phone_number}")
+        return True
+    else:
+        print(f"❌ Call failed: {originate_response}")
+        return False
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) != 2:
+        print("Usage: python quick_call.py <phone_number>")
+        sys.exit(1)
+
+    phone = sys.argv[1]
+    make_call(phone)

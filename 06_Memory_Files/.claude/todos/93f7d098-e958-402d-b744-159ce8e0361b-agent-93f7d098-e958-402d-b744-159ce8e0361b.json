@@ -1,0 +1,22 @@
+[
+  {
+    "content": "Create ETH balance checker with new API key (4 workers)",
+    "status": "completed",
+    "activeForm": "Creating ETH balance checker script"
+  },
+  {
+    "content": "Test new API key with small batch",
+    "status": "completed",
+    "activeForm": "Testing new API key"
+  },
+  {
+    "content": "Run scan on 40k addresses for ETH >= 0.00000001",
+    "status": "in_progress",
+    "activeForm": "Running ETH balance scan on 40,000 addresses"
+  },
+  {
+    "content": "Generate CSV report with results",
+    "status": "pending",
+    "activeForm": "Generating CSV report"
+  }
+]

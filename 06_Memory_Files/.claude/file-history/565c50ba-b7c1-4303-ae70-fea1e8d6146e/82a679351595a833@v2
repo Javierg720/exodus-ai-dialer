@@ -1,0 +1,282 @@
+# Security Tools Available on This System
+
+## 🌐 Web Application Testing
+
+### Vulnerability Scanners
+- **Nikto** - Web server scanner for vulnerabilities
+  ```bash
+  nikto -h https://target.com
+  ```
+
+- **WPScan** ✓ - WordPress vulnerability scanner (already used)
+  ```bash
+  wpscan --url https://site.com --enumerate ap,u
+  ```
+
+- **SQLMap** - Automated SQL injection tool
+  ```bash
+  sqlmap -u "http://site.com/page.php?id=1" --batch --dump
+  ```
+
+### Directory/File Discovery
+- **Dirb** - Directory brute forcer
+  ```bash
+  dirb https://target.com /usr/share/wordlists/dirb/common.txt
+  ```
+
+- **Gobuster** - Fast directory/file/DNS brute forcer
+  ```bash
+  gobuster dir -u https://target.com -w /usr/share/wordlists/dirb/common.txt
+  ```
+
+- **ffuf** - Fast web fuzzer
+  ```bash
+  ffuf -w /usr/share/wordlists/dirb/common.txt -u https://target.com/FUZZ
+  ```
+
+- **wfuzz** - Web application fuzzer
+  ```bash
+  wfuzz -c -w /usr/share/wordlists/dirb/common.txt https://target.com/FUZZ
+  ```
+
+### Web Proxies & Interceptors
+- **Burp Suite** - Web application security testing platform
+  ```bash
+  burpsuite
+  ```
+
+- **OWASP ZAP** - Zed Attack Proxy
+  ```bash
+  zaproxy
+  ```
+
+- **mitmproxy** - Interactive HTTPS proxy
+  ```bash
+  mitmproxy -p 8080
+  ```
+
+## 🔐 Password Cracking & Brute Force
+
+### Hash Cracking
+- **John the Ripper** ✓ - Password cracker (already used)
+  ```bash
+  john --wordlist=rockyou.txt hash.txt
+  ```
+
+- **Hashcat** ✓ - Advanced GPU password recovery (already used)
+  ```bash
+  hashcat -m 0 -a 0 hash.txt rockyou.txt
+  ```
+
+- **ophcrack** - Windows password cracker using rainbow tables
+  ```bash
+  ophcrack
+  ```
+
+### Online Brute Force
+- **Hydra** ✓ - Network login cracker (tried)
+  ```bash
+  hydra -l admin -P passwords.txt site.com http-post-form "/login:user=^USER^&pass=^PASS^:F=error"
+  ```
+
+- **Medusa** - Parallel password cracker
+  ```bash
+  medusa -h target.com -u admin -P passwords.txt -M http
+  ```
+
+- **Patator** - Multi-purpose brute forcer
+  ```bash
+  patator http_fuzz url=http://site.com/login method=POST body='user=FILE0&pass=FILE1' 0=users.txt 1=passwords.txt
+  ```
+
+### Wordlist Generation
+- **CeWL** - Custom wordlist generator from websites
+  ```bash
+  cewl https://target.com -w wordlist.txt -d 3
+  ```
+
+- **Crunch** - Wordlist generator
+  ```bash
+  crunch 8 8 -t @@@@2025 -o passwords.txt
+  ```
+
+## 🎯 Exploitation Frameworks
+
+- **Metasploit** ✓ - Penetration testing framework (checked)
+  ```bash
+  msfconsole
+  use auxiliary/scanner/http/wordpress_scanner
+  ```
+
+- **BeEF** - Browser Exploitation Framework
+  ```bash
+  beef-xss
+  ```
+
+- **Social Engineer Toolkit (SET)** - Social engineering attacks
+  ```bash
+  setoolkit
+  ```
+
+- **Empire/Starkiller** - PowerShell post-exploitation
+  ```bash
+  powershell-empire
+  ```
+
+## 🔍 Network Scanning & Enumeration
+
+### Port Scanners
+- **Nmap** ✓ - Network discovery and security auditing
+  ```bash
+  nmap -sV -sC -p- target.com
+  ```
+
+- **Masscan** - Fast port scanner
+  ```bash
+  masscan -p1-65535 target.com --rate 1000
+  ```
+
+### DNS Enumeration
+- **fierce** - DNS reconnaissance tool
+  ```bash
+  fierce --domain target.com
+  ```
+
+- **dnsrecon** - DNS enumeration tool
+  ```bash
+  dnsrecon -d target.com -t std
+  ```
+
+- **dnsenum** - DNS enumeration tool
+  ```bash
+  dnsenum target.com
+  ```
+
+- **amass** - In-depth DNS enumeration
+  ```bash
+  amass enum -d target.com
+  ```
+
+### SMB/NetBIOS
+- **enum4linux** - SMB enumeration
+  ```bash
+  enum4linux -a target.com
+  ```
+
+- **smbclient** - SMB/CIFS client
+  ```bash
+  smbclient -L //target.com
+  ```
+
+- **crackmapexec** - Network protocol enumeration
+  ```bash
+  crackmapexec smb target.com -u user -p pass
+  ```
+
+## 📡 Wireless Tools
+
+- **Aircrack-ng** - WiFi security testing suite
+  ```bash
+  aircrack-ng capture.cap -w wordlist.txt
+  ```
+
+- **Wifite** - Automated wireless attack tool
+  ```bash
+  wifite
+  ```
+
+- **Kismet** - Wireless network detector
+  ```bash
+  kismet
+  ```
+
+- **Bettercap** - Network attack and monitoring
+  ```bash
+  bettercap -iface wlan0
+  ```
+
+## 🔧 Utilities & Helpers
+
+### Network Utilities
+- **netcat (nc)** - Network Swiss army knife
+  ```bash
+  nc -lvp 4444  # Listen for connections
+  ```
+
+- **socat** - Multipurpose relay tool
+  ```bash
+  socat TCP-LISTEN:8080,fork TCP:target.com:80
+  ```
+
+- **proxychains** - Force connections through proxy
+  ```bash
+  proxychains nmap target.com
+  ```
+
+### File Analysis
+- **exiftool** - Read/write metadata
+  ```bash
+  exiftool file.pdf
+  ```
+
+- **binwalk** - Firmware analysis
+  ```bash
+  binwalk -e firmware.bin
+  ```
+
+- **steghide** - Steganography tool
+  ```bash
+  steghide extract -sf image.jpg
+  ```
+
+### PDF Tools
+- **pdfcrack** ✓ - PDF password cracker (installed today)
+  ```bash
+  pdfcrack -f file.pdf -w wordlist.txt
+  ```
+
+## 📊 Reporting & Documentation
+
+- **Maltego** - Link analysis and data mining
+- **Faraday** - Collaborative penetration test IDE
+- **Dradis** - Reporting framework
+
+## 🎓 Quick Tool Selection Guide
+
+**For WordPress sites:**
+- Primary: WPScan
+- Backup: Metasploit wordpress modules
+- Password: XML-RPC multicall with WPScan
+
+**For general web apps:**
+- Discovery: Gobuster/ffuf
+- Scanning: Nikto
+- Manual: Burp Suite
+- SQLi: SQLMap
+
+**For network recon:**
+- Primary: Nmap
+- Fast: Masscan
+- DNS: Amass/fierce
+
+**For password attacks:**
+- Online: Hydra
+- Offline: Hashcat (GPU) or John (CPU)
+- Generation: CeWL from target website
+
+## 📝 Wordlists Available
+
+```bash
+ls -la /usr/share/wordlists/
+```
+
+Key wordlists:
+- `/usr/share/wordlists/rockyou.txt` - 14M passwords (extract first)
+- `/usr/share/wordlists/dirb/` - Directory brute force
+- `/usr/share/wordlists/dirbuster/` - Web paths
+- `/usr/share/wordlists/metasploit/` - Various lists
+- `/usr/share/wordlists/wfuzz/` - Fuzzing wordlists
+
+---
+
+**Note:** This is a Kali Linux system with comprehensive security testing tools. Always ensure you have proper authorization before using these tools on any target.

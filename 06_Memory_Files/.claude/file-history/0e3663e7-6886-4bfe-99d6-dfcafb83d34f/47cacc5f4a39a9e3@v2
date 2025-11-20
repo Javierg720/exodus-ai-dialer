@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+"""
+AVR Bot Dashboard API
+Lightweight FastAPI server for monitoring 20 AVR Docker bots
+"""
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import docker
+import sqlite3
+from datetime import datetime
+from typing import Dict, List
+
+app = FastAPI(title="AVR Bot Dashboard API")
+
+# Enable CORS for React dashboard
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+DB_PATH = "dialer.db"
+docker_client = docker.from_env()
+
+@app.get("/stats")
+async def get_stats():
+    """Get overall dialer stats"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        # Today's stats
+        cursor.execute("""
+            SELECT
+                COUNT(*) as total_calls,
+                SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN status = 'NO_ANSWER' THEN 1 ELSE 0 END) as no_answer,
+                SUM(CASE WHEN status = 'BUSY' THEN 1 ELSE 0 END) as busy,
+                SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) as failed,
+                SUM(CASE WHEN duration > 0 THEN duration ELSE 0 END) as total_duration
+            FROM call_log
+            WHERE DATE(call_time) = DATE('now')
+        """)
+
+        stats = dict(cursor.fetchone())
+
+        # Active campaigns
+        cursor.execute("SELECT COUNT(*) as count FROM campaigns WHERE status = 'ACTIVE'")
+        stats['active_campaigns'] = cursor.fetchone()['count']
+
+        # Total leads
+        cursor.execute("SELECT COUNT(*) as count FROM leads WHERE status != 'COMPLETED'")
+        stats['pending_leads'] = cursor.fetchone()['count']
+
+        conn.close()
+        return stats
+    except Exception as e:
+        return {
+            "error": str(e),
+            "total_calls": 0,
+            "completed": 0,
+            "no_answer": 0,
+            "busy": 0,
+            "failed": 0,
+            "total_duration": 0,
+            "active_campaigns": 0,
+            "pending_leads": 0
+        }
+
+@app.get("/bots/status")
+async def get_bots_status():
+    """Get status of all 20 AVR Docker bots"""
+    try:
+        bots = []
+        for port in range(9092, 9112):
+            container_name = f"avr-bot-{port}"
+            try:
+                container = docker_client.containers.get(container_name)
+                bots.append({
+                    "port": port,
+                    "status": container.status,
+                    "state": container.attrs['State']['Status'],
+                    "started_at": container.attrs['State']['StartedAt'],
+                    "name": container_name,
+                    "health": "healthy" if container.status == "running" else "unhealthy"
+                })
+            except docker.errors.NotFound:
+                bots.append({
+                    "port": port,
+                    "status": "not_found",
+                    "state": "missing",
+                    "name": container_name,
+                    "health": "missing"
+                })
+
+        return {
+            "total_bots": len(bots),
+            "healthy": sum(1 for b in bots if b['status'] == 'running'),
+            "bots": bots
+        }
+    except Exception as e:
+        return {"error": str(e), "total_bots": 0, "healthy": 0, "bots": []}
+
+@app.get("/campaigns")
+async def get_campaigns():
+    """Get all campaigns"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                id, name, status, dial_ratio, max_lines,
+                created_at, start_time, end_time
+            FROM campaigns
+            ORDER BY created_at DESC
+        """)
+
+        campaigns = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return campaigns
+    except Exception as e:
+        return {"error": str(e), "campaigns": []}
+
+@app.get("/leads/recent")
+async def get_recent_leads(limit: int = 50):
+    """Get recent leads"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute(f"""
+            SELECT
+                id, campaign_id, phone_number, first_name, last_name,
+                status, attempts, last_call_time, created_at
+            FROM leads
+            ORDER BY created_at DESC
+            LIMIT {limit}
+        """)
+
+        leads = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return leads
+    except Exception as e:
+        return {"error": str(e), "leads": []}
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "service": "avr-bot-api"
+    }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")

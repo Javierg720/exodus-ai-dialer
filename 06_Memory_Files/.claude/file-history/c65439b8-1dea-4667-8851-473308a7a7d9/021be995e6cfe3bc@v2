@@ -1,0 +1,84 @@
+#!/bin/bash
+# Quick script to start all AI voice services after system restart
+
+echo "🚀 Starting all AI voice services..."
+echo ""
+
+# Check Docker containers
+echo "1️⃣ Checking Docker containers..."
+CONTAINERS=$(docker ps --format "{{.Names}}" | grep -E "registry|avr-app|ava-asterisk" | wc -l)
+if [ "$CONTAINERS" -lt 4 ]; then
+  echo "   ⚠️  Some Docker containers not running"
+  echo "   Starting AVR services..."
+  cd /home/user/Desktop/avr-app
+  docker compose up -d
+
+  echo "   Starting Asterisk..."
+  docker start ava-asterisk
+
+  echo "   Starting Registry..."
+  docker start registry || docker run -d -p 5000:5000 --name registry --network avr --restart=always registry:2
+
+  sleep 3
+else
+  echo "   ✅ All Docker containers running"
+fi
+
+# Check AVR Agent
+echo ""
+echo "2️⃣ Checking AVR agent..."
+AVR_AGENT=$(docker ps --format "{{.Names}}" | grep "avr-core-9e36ac23" | wc -l)
+if [ "$AVR_AGENT" -eq 0 ]; then
+  echo "   ⚠️  AVR agent not running"
+  echo "   Starting via API..."
+
+  TOKEN=$(curl -s -X POST "http://localhost:3000/auth/login" \
+    -H "Content-Type: application/json" \
+    -d '{"username": "admin@agentvoiceresponse.com", "password": "agentvoiceresponse"}' \
+    | jq -r '.access_token')
+
+  curl -s -X POST "http://localhost:3000/agents/9e36ac23-98bb-4cda-91fe-a261763976c8/run" \
+    -H "Authorization: Bearer $TOKEN" > /dev/null
+
+  echo "   ✅ AVR agent starting..."
+  sleep 5
+else
+  echo "   ✅ AVR agent already running"
+fi
+
+# Check Exodus Bot Pool
+echo ""
+echo "3️⃣ Checking Exodus bot pool..."
+BOT_COUNT=$(ps aux | grep "ava_sales_bot" | grep -v grep | wc -l)
+if [ "$BOT_COUNT" -lt 20 ]; then
+  echo "   ⚠️  Only $BOT_COUNT bots running (need 20)"
+  echo "   Starting bot pool..."
+
+  cd /home/user/Desktop/exodus-kali-deploy
+  ./start_dialer.sh &
+
+  echo "   ⏳ Waiting for bots to start..."
+  sleep 10
+
+  BOT_COUNT=$(ps aux | grep "ava_sales_bot" | grep -v grep | wc -l)
+  echo "   ✅ $BOT_COUNT bots now running"
+else
+  echo "   ✅ Bot pool running ($BOT_COUNT bots)"
+fi
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📊 Service Status:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "NAME|registry|avr|asterisk"
+echo ""
+echo "Exodus Bots: $(ps aux | grep "ava_sales_bot" | grep -v grep | wc -l)/20"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🌐 Access Points:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  AVR Dashboard:    http://localhost:3001"
+echo "  Exodus Dashboard: http://localhost:8000/dashboard"
+echo "  Asterisk AMI:     localhost:5038"
+echo ""
+echo "✅ All services started!"

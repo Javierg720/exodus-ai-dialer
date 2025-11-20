@@ -1,0 +1,481 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { 
+  ArrowLeft, Phone, User, Calendar, Clock, 
+  FileText, PlayCircle, Download, Copy,
+  Mic, Volume2, AlertCircle, CheckCircle,
+  PhoneCall, Building, Mail, Tag
+} from 'lucide-react';
+import axios from 'axios';
+import './CallDetail.css';
+
+function CallDetail({ apiUrl = 'http://localhost:8000' }) {
+  const { callId } = useParams();
+  const navigate = useNavigate();
+  
+  const [callData, setCallData] = useState(null);
+  const [transcript, setTranscript] = useState(null);
+  const [recording, setRecording] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('details');
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  useEffect(() => {
+    fetchCallDetails();
+  }, [callId]);
+
+  const fetchCallDetails = async () => {
+    setLoading(true);
+    try {
+      // Fetch all calls from history endpoint
+      const response = await axios.get(`${apiUrl}/calls/history?limit=1000`);
+      const calls = response.data.calls || response.data;
+
+      // Find the specific call by ID
+      const call = calls.find(c =>
+        c.id === parseInt(callId) ||
+        c.call_uuid === callId ||
+        c.id?.toString() === callId
+      );
+
+      if (call) {
+        // Set call data
+        setCallData({
+          id: call.id,
+          uuid: call.call_uuid,
+          phone_number: call.phone_number,
+          lead_id: call.lead_id,
+          lead_name: call.first_name ? `${call.first_name} ${call.last_name || ''}`.trim() : 'Unknown',
+          lead_email: call.email,
+          lead_company: call.company || call.business_name,
+          campaign_name: call.campaign_name || 'Unknown Campaign',
+          campaign_id: call.campaign_id,
+          start_time: call.start_time,
+          end_time: call.end_time,
+          duration: call.duration_seconds || call.duration,
+          status: call.call_status || call.status,
+          disposition: call.disposition_code || call.disposition,
+          bot_port: call.bot_port,
+          agent_name: 'Ava',
+          notes: call.notes || null,
+          callback_scheduled: call.callback_datetime
+        });
+
+        // Parse and set transcript if available
+        if (call.transcription_text) {
+          const lines = call.transcription_text.split('\n');
+          const conversation = [];
+
+          lines.forEach((line, index) => {
+            if (line.trim()) {
+              const isAgent = line.startsWith('Agent:');
+              const isCustomer = line.startsWith('Customer:');
+
+              if (isAgent || isCustomer) {
+                conversation.push({
+                  speaker: isAgent ? 'Agent' : 'Customer',
+                  text: line.replace(/^(Agent:|Customer:)\s*/, '').trim(),
+                  timestamp: '' // We don't have timestamps in the current format
+                });
+              }
+            }
+          });
+
+          setTranscript({
+            conversation: conversation,
+            summary: null, // Could add AI summary later
+            sentiment: null,
+            keywords: []
+          });
+        } else {
+          setTranscript(null);
+        }
+
+        // Set recording URL if available
+        if (call.recording_url) {
+          setRecording({
+            url: call.recording_url,
+            duration: call.duration_seconds || call.duration
+          });
+        } else {
+          setRecording(null);
+        }
+      } else {
+        // Call not found in history
+        console.error('Call not found:', callId);
+        // Use mock data as fallback
+        setCallData({
+          id: callId,
+          uuid: `call-${callId}`,
+          phone_number: 'Call not found',
+          lead_name: 'Unknown',
+          campaign_name: 'Unknown',
+          start_time: new Date().toISOString(),
+          duration: 0,
+          status: 'unknown',
+          disposition: 'NONE'
+        });
+        setTranscript(null);
+        setRecording(null);
+      }
+    } catch (error) {
+      console.error('Failed to fetch call details:', error);
+      // If API fails, show error state
+      setCallData({
+        id: callId,
+        uuid: `call-${callId}`,
+        phone_number: 'Error loading data',
+        lead_name: 'API Error',
+        campaign_name: error.message,
+        start_time: new Date().toISOString(),
+        duration: 0,
+        status: 'error',
+        disposition: 'ERROR'
+      });
+      setTranscript(null);
+      setRecording(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDuration = (seconds) => {
+    if (!seconds) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatDateTime = (isoString) => {
+    if (!isoString) return '-';
+    return new Date(isoString).toLocaleString();
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2000);
+  };
+
+  const downloadTranscript = () => {
+    const transcriptText = transcript.conversation
+      .map(turn => `[${turn.timestamp}] ${turn.speaker}: ${turn.text}`)
+      .join('\n\n');
+    
+    const blob = new Blob([transcriptText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transcript_${callId}_${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  if (loading) {
+    return (
+      <div className="call-detail-loading">
+        <div className="spinner"></div>
+        <p>Loading call details...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="call-detail-page">
+      <div className="detail-header">
+        <button 
+          className="btn-back"
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeft size={20} />
+          Back to Call History
+        </button>
+        
+        <div className="header-info">
+          <h1>Call Details</h1>
+          <span className="call-id">ID: {callId}</span>
+        </div>
+      </div>
+
+      <div className="detail-content">
+        <div className="detail-sidebar">
+          <div className="call-summary-card">
+            <h3>Call Summary</h3>
+            
+            <div className="summary-item">
+              <Phone size={16} />
+              <div>
+                <span className="label">Phone Number</span>
+                <span className="value">{callData?.phone_number}</span>
+              </div>
+            </div>
+            
+            <div className="summary-item">
+              <User size={16} />
+              <div>
+                <span className="label">Lead Name</span>
+                <span className="value">{callData?.lead_name || 'Unknown'}</span>
+              </div>
+            </div>
+            
+            {callData?.lead_email && (
+              <div className="summary-item">
+                <Mail size={16} />
+                <div>
+                  <span className="label">Email</span>
+                  <span className="value">{callData.lead_email}</span>
+                </div>
+              </div>
+            )}
+            
+            {callData?.lead_company && (
+              <div className="summary-item">
+                <Building size={16} />
+                <div>
+                  <span className="label">Company</span>
+                  <span className="value">{callData.lead_company}</span>
+                </div>
+              </div>
+            )}
+            
+            <div className="summary-item">
+              <Calendar size={16} />
+              <div>
+                <span className="label">Date & Time</span>
+                <span className="value">{formatDateTime(callData?.start_time)}</span>
+              </div>
+            </div>
+            
+            <div className="summary-item">
+              <Clock size={16} />
+              <div>
+                <span className="label">Duration</span>
+                <span className="value">{formatDuration(callData?.duration)}</span>
+              </div>
+            </div>
+            
+            <div className="summary-item">
+              <PhoneCall size={16} />
+              <div>
+                <span className="label">Campaign</span>
+                <span className="value">{callData?.campaign_name}</span>
+              </div>
+            </div>
+            
+            <div className="summary-item">
+              <div>
+                <span className="label">Status</span>
+                <span className={`status-badge ${callData?.status}`}>
+                  {callData?.status}
+                </span>
+              </div>
+            </div>
+            
+            <div className="summary-item">
+              <div>
+                <span className="label">Disposition</span>
+                <span className={`disposition-badge ${callData?.disposition?.toLowerCase()}`}>
+                  {callData?.disposition || 'None'}
+                </span>
+              </div>
+            </div>
+            
+            {callData?.callback_scheduled && (
+              <div className="summary-item callback">
+                <AlertCircle size={16} />
+                <div>
+                  <span className="label">Callback Scheduled</span>
+                  <span className="value">{formatDateTime(callData.callback_scheduled)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {callData?.notes && (
+            <div className="notes-card">
+              <h3>Notes</h3>
+              <p>{callData.notes}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="detail-main">
+          <div className="detail-tabs">
+            <button 
+              className={`tab ${activeTab === 'details' ? 'active' : ''}`}
+              onClick={() => setActiveTab('details')}
+            >
+              <FileText size={16} />
+              Details
+            </button>
+            
+            <button 
+              className={`tab ${activeTab === 'transcript' ? 'active' : ''}`}
+              onClick={() => setActiveTab('transcript')}
+              disabled={!transcript}
+            >
+              <Mic size={16} />
+              Transcript
+            </button>
+            
+            <button 
+              className={`tab ${activeTab === 'recording' ? 'active' : ''}`}
+              onClick={() => setActiveTab('recording')}
+              disabled={!recording}
+            >
+              <Volume2 size={16} />
+              Recording
+            </button>
+          </div>
+
+          <div className="tab-content">
+            {activeTab === 'details' && (
+              <div className="details-content">
+                <h2>Call Information</h2>
+                
+                <div className="info-grid">
+                  <div className="info-group">
+                    <h4>Call Metrics</h4>
+                    <div className="info-item">
+                      <span className="info-label">Call UUID:</span>
+                      <span className="info-value">
+                        {callData?.uuid}
+                        <button 
+                          className="btn-copy"
+                          onClick={() => copyToClipboard(callData?.uuid)}
+                        >
+                          <Copy size={14} />
+                        </button>
+                      </span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Start Time:</span>
+                      <span className="info-value">{formatDateTime(callData?.start_time)}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">End Time:</span>
+                      <span className="info-value">{formatDateTime(callData?.end_time)}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Bot Port:</span>
+                      <span className="info-value">{callData?.bot_port}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Agent:</span>
+                      <span className="info-value">{callData?.agent_name || 'Ava'}</span>
+                    </div>
+                  </div>
+                  
+                  {transcript?.keywords && (
+                    <div className="info-group">
+                      <h4>Keywords Detected</h4>
+                      <div className="keywords">
+                        {transcript.keywords.map((keyword, i) => (
+                          <span key={i} className="keyword-tag">
+                            <Tag size={12} />
+                            {keyword}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {transcript?.sentiment && (
+                    <div className="info-group">
+                      <h4>Sentiment Analysis</h4>
+                      <div className={`sentiment sentiment-${transcript.sentiment}`}>
+                        {transcript.sentiment === 'positive' && <CheckCircle size={20} />}
+                        {transcript.sentiment === 'negative' && <AlertCircle size={20} />}
+                        <span>{transcript.sentiment}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {transcript?.summary && (
+                  <div className="call-summary">
+                    <h4>AI Summary</h4>
+                    <p>{transcript.summary}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'transcript' && transcript && (
+              <div className="transcript-content">
+                <div className="transcript-header">
+                  <h2>Call Transcript</h2>
+                  <button 
+                    className="btn-download"
+                    onClick={downloadTranscript}
+                  >
+                    <Download size={16} />
+                    Download
+                  </button>
+                </div>
+                
+                <div className="conversation">
+                  {transcript.conversation.map((turn, index) => (
+                    <div 
+                      key={index} 
+                      className={`conversation-turn ${turn.speaker.toLowerCase()}`}
+                    >
+                      <div className="speaker-info">
+                        <span className="speaker-name">{turn.speaker}</span>
+                        <span className="timestamp">{turn.timestamp}</span>
+                      </div>
+                      <div className="speaker-text">
+                        {turn.text}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'recording' && recording && (
+              <div className="recording-content">
+                <h2>Call Recording</h2>
+                
+                <div className="audio-player-container">
+                  <audio 
+                    controls 
+                    className="audio-player"
+                    src={recording.url || recording}
+                  >
+                    Your browser does not support the audio element.
+                  </audio>
+                  
+                  <div className="recording-info">
+                    <span>Duration: {formatDuration(recording.duration || callData?.duration)}</span>
+                    {recording.size && <span>Size: {recording.size}</span>}
+                  </div>
+                  
+                  <a 
+                    href={recording.url || recording}
+                    download={`recording_${callId}.mp3`}
+                    className="btn-download-recording"
+                  >
+                    <Download size={16} />
+                    Download Recording
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {copySuccess && (
+        <div className="copy-notification">
+          <CheckCircle size={16} />
+          Copied to clipboard!
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default CallDetail;

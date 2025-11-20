@@ -1,0 +1,221 @@
+#!/usr/bin/env python3
+"""
+AVR Bot Manager - Controls AVR Docker containers for the dashboard
+"""
+
+import subprocess
+import json
+from typing import List, Dict
+import docker
+from loguru import logger
+
+class AVRBotManager:
+    """Manages AVR Docker bot containers"""
+
+    def __init__(self):
+        self.client = docker.from_env()
+        self.compose_file = "docker-compose-avr-bots.yml"
+        self.bot_prefix = "avr-bot"
+
+    def get_running_bots(self) -> List[Dict]:
+        """Get status of all AVR bot containers"""
+        bots = []
+        try:
+            containers = self.client.containers.list(all=True, filters={"name": self.bot_prefix})
+
+            for i in range(9092, 9112):  # Ports 9092-9111 (20 bots)
+                port = i
+                container_name = f"{self.bot_prefix}-{port}"
+
+                # Find container for this port
+                container = None
+                for c in containers:
+                    if container_name in c.name:
+                        container = c
+                        break
+
+                if container:
+                    bots.append({
+                        "port": port,
+                        "name": container_name,
+                        "status": container.status.upper(),
+                        "running": container.status == "running",
+                        "container_id": container.short_id
+                    })
+                else:
+                    bots.append({
+                        "port": port,
+                        "name": container_name,
+                        "status": "STOPPED",
+                        "running": False,
+                        "container_id": None
+                    })
+
+        except Exception as e:
+            logger.error(f"Failed to get bot status: {e}")
+
+        return bots
+
+    def scale_bots(self, target_count: int) -> Dict:
+        """Scale AVR bots to target count by starting/stopping individual services"""
+        try:
+            # Ensure target is within valid range
+            target_count = max(0, min(20, target_count))
+
+            # Get current status
+            bots = self.get_running_bots()
+            running_bots = [b for b in bots if b["running"]]
+            stopped_bots = [b for b in bots if not b["running"]]
+            current_count = len(running_bots)
+
+            logger.info(f"Current: {current_count}, Target: {target_count}")
+
+            if current_count < target_count:
+                # Need to start more bots
+                to_start = target_count - current_count
+                services_to_start = []
+
+                for bot in stopped_bots[:to_start]:
+                    services_to_start.append(f"avr-bot-{bot['port']}")
+
+                if services_to_start:
+                    # Start specific services
+                    cmd = [
+                        "docker-compose",
+                        "-f", self.compose_file,
+                        "up", "-d"
+                    ] + services_to_start
+
+                    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                    logger.info(f"Started services: {services_to_start}")
+
+            elif current_count > target_count:
+                # Need to stop some bots
+                to_stop = current_count - target_count
+                services_to_stop = []
+
+                # Stop bots from highest port first
+                for bot in sorted(running_bots, key=lambda x: x['port'], reverse=True)[:to_stop]:
+                    services_to_stop.append(f"avr-bot-{bot['port']}")
+
+                if services_to_stop:
+                    # Stop specific services
+                    cmd = [
+                        "docker-compose",
+                        "-f", self.compose_file,
+                        "stop"
+                    ] + services_to_stop
+
+                    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                    logger.info(f"Stopped services: {services_to_stop}")
+
+            # Get new status
+            bots = self.get_running_bots()
+            running_count = sum(1 for b in bots if b["running"])
+
+            return {
+                "success": True,
+                "message": f"Adjusted to {running_count} bots",
+                "target_count": target_count,
+                "actual_count": running_count
+            }
+
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to scale bots: {e}")
+            return {
+                "success": False,
+                "message": f"Failed to scale: {e.stderr}",
+                "target_count": target_count,
+                "actual_count": current_count if 'current_count' in locals() else 0
+            }
+        except Exception as e:
+            logger.error(f"Error scaling bots: {e}")
+            return {
+                "success": False,
+                "message": str(e),
+                "target_count": target_count,
+                "actual_count": current_count if 'current_count' in locals() else 0
+            }
+
+    def start_bot(self, port: int) -> bool:
+        """Start a specific bot container"""
+        try:
+            container_name = f"{self.bot_prefix}-{port}"
+            container = self.client.containers.get(container_name)
+            container.start()
+            logger.info(f"Started bot {container_name}")
+            return True
+        except docker.errors.NotFound:
+            logger.warning(f"Container {container_name} not found")
+            # Try to create it with docker-compose
+            return self._create_and_start_bot(port)
+        except Exception as e:
+            logger.error(f"Failed to start bot {port}: {e}")
+            return False
+
+    def stop_bot(self, port: int) -> bool:
+        """Stop a specific bot container"""
+        try:
+            container_name = f"{self.bot_prefix}-{port}"
+            container = self.client.containers.get(container_name)
+            container.stop()
+            logger.info(f"Stopped bot {container_name}")
+            return True
+        except docker.errors.NotFound:
+            logger.warning(f"Container {container_name} not found")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to stop bot {port}: {e}")
+            return False
+
+    def restart_bot(self, port: int) -> bool:
+        """Restart a specific bot container"""
+        try:
+            container_name = f"{self.bot_prefix}-{port}"
+            container = self.client.containers.get(container_name)
+            container.restart()
+            logger.info(f"Restarted bot {container_name}")
+            return True
+        except docker.errors.NotFound:
+            logger.warning(f"Container {container_name} not found")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to restart bot {port}: {e}")
+            return False
+
+    def _create_and_start_bot(self, port: int) -> bool:
+        """Create and start a single bot using docker-compose"""
+        try:
+            # Calculate which instance this is (0-19)
+            instance = port - 9092
+
+            cmd = [
+                "docker-compose",
+                "-f", self.compose_file,
+                "run", "-d",
+                "--name", f"{self.bot_prefix}-{port}",
+                "-e", f"BOT_PORT={port}",
+                "avr-bot"
+            ]
+
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            logger.info(f"Created and started bot on port {port}")
+            return True
+
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to create bot {port}: {e.stderr}")
+            return False
+
+
+if __name__ == "__main__":
+    # Test the manager
+    manager = AVRBotManager()
+
+    # Get current status
+    bots = manager.get_running_bots()
+    running = sum(1 for b in bots if b["running"])
+    print(f"Currently {running} bots running out of {len(bots)} total")
+
+    for bot in bots:
+        status = "🟢" if bot["running"] else "🔴"
+        print(f"{status} Bot {bot['port']}: {bot['status']}")

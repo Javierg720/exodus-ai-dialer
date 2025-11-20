@@ -1,0 +1,42 @@
+[
+  {
+    "content": "Review research findings and decide on implementation approach",
+    "status": "completed",
+    "activeForm": "Reviewing research findings and deciding on implementation approach"
+  },
+  {
+    "content": "Fix call logging system (attempts counter and call_log table)",
+    "status": "completed",
+    "activeForm": "Fixing call logging system"
+  },
+  {
+    "content": "Fix 30-day drop rate calculation (currently using 30 minutes - TCPA violation)",
+    "status": "pending",
+    "activeForm": "Fixing 30-day drop rate calculation"
+  },
+  {
+    "content": "Add wrap-up time tracking to prevent over-dialing",
+    "status": "pending",
+    "activeForm": "Adding wrap-up time tracking"
+  },
+  {
+    "content": "Add 2-second connection delay tracking (TCPA compliance)",
+    "status": "pending",
+    "activeForm": "Adding 2-second connection delay tracking"
+  },
+  {
+    "content": "Implement live call monitoring with ChanSpy",
+    "status": "pending",
+    "activeForm": "Implementing live call monitoring"
+  },
+  {
+    "content": "Redesign disposition system with callback delays",
+    "status": "pending",
+    "activeForm": "Redesigning disposition system"
+  },
+  {
+    "content": "Improve dial ratio algorithm using VICIdial approach",
+    "status": "pending",
+    "activeForm": "Improving dial ratio algorithm"
+  }
+]

@@ -1,0 +1,40 @@
+================================================================================
+📊 LEAD FILTERING SYSTEM - QUICK REFERENCE GUIDE
+================================================================================
+
+QUICK START:
+-----------
+cd /home/ubuntu/Documents/EXODUS_BACKUP_20251117_163623/01_Core_System
+
+# Show statistics
+python3 filter_leads.py --campaign 47 --stats
+
+# Show NEW leads
+python3 filter_leads.py --status NEW --limit 20
+
+# Show COMPLETED leads
+python3 filter_leads.py --status COMPLETED --limit 20
+
+# Export to CSV
+python3 filter_leads.py --status ANSWERED --export my_leads.csv
+
+COMMON FILTERS:
+--------------
+--campaign 47               Filter Strike Leads campaign
+--status NEW                Only new leads
+--status COMPLETED          Only completed leads
+--min-attempts 2            At least 2 attempts
+--start-date today          Calls from today
+--start-date 7days          Last 7 days
+--min-duration 60           Calls 60+ seconds
+--max-duration 10           Calls under 10 seconds
+--export file.csv           Export results
+
+COMBINE FILTERS:
+---------------
+python3 filter_leads.py --status COMPLETED --start-date 7days --min-duration 30
+
+This shows: COMPLETED leads from last 7 days with calls 30+ seconds long
+
+For full documentation, run:
+python3 filter_leads.py --help

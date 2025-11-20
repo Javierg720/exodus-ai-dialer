@@ -1,0 +1,222 @@
+; extensions.conf - the Asterisk dial plan
+;
+; Static extension configuration file, used by
+; the pbx_config module. This is where you configure all your
+; inbound and outbound calls in Asterisk.
+;
+; This configuration file is reloaded
+; - With the "dialplan reload" command in the CLI
+; - With the "reload" command (that reloads everything) in the CLI
+
+;
+; The "General" category is for certain variables.
+;
+[general]
+static=yes
+writeprotect=no
+clearglobalvars=no
+
+; The default trunk that is setup is Starcom.  This is required
+; for sip.conf to connect this free Toll-free trunk.
+[starcom-in]
+
+; Standard extensions begin here
+[default]
+exten => _18XXXXXXXXX,1,Dial(SIP/${EXTEN}@starcom)
+
+[globals]
+
+
+[local]
+;
+; Master context for local, toll-free, and iaxtel calls only
+;
+include => default
+
+
+[macro-trunkdial]
+;
+; Standard trunk dial macro (hangs up on a dialstatus that should
+; terminate call)
+;   ${ARG1} - What to dial
+;
+exten => s,1,Dial(${ARG1})
+exten => s,n,Goto(s-${DIALSTATUS},1)
+exten => s-NOANSWER,1,Hangup()
+exten => s-BUSY,1,Hangup()
+exten => _s-.,1,NoOp
+
+
+[public]
+
+; Simple application to repeat the time.
+[time]
+exten => _X.,30000(time),NoOp(Time: ${EXTEN} ${timezone})
+exten => _X.,n,Wait(0.25)
+exten => _X.,n,Answer()
+; the amount of delay is set for English; you may need to adjust this time
+; for other languages if there's no pause before the synchronizing beep.
+exten => _X.,n,Set(FUTURETIME=$[${EPOCH} + 12])
+exten => _X.,n,SayUnixTime(${FUTURETIME},Zulu,HNS)
+exten => _X.,n,SayPhonetic(z)
+; use the timezone associated with the extension (sip only), or system-wide
+; default if one hasn't been set.
+exten => _X.,n,SayUnixTime(${FUTURETIME},${timezone},HNS)
+exten => _X.,n,Playback(spy-local)
+exten => _X.,n,WaitUntil(${FUTURETIME})
+exten => _X.,n,Playback(beep)
+exten => _X.,n,Return()
+
+; Asterisk Dialplan Configuration for Exodus Dialer
+; Add this to /etc/asterisk/extensions.conf
+;
+; Purpose:
+; - Handle outbound calls originated by dialer_orchestrator.py
+; - Bridge answered calls to AudioSocket bot instances
+; - Support predictive dialing with call parking
+
+[audiosocket-dial]
+; ============================================================================
+; Wait Extension - Used while call is ringing/dialing
+; ============================================================================
+exten => wait,1,NoOp(Call dialing, waiting for answer)
+ same => n,Wait(30)  ; Wait up to 30 seconds for orchestrator to bridge
+ same => n,Hangup()
+
+; ============================================================================
+; Bot Port Extensions - Bridge to specific bot instance
+; ============================================================================
+; When call is answered, orchestrator redirects to extension matching bot port
+
+; Bot on port 9092
+exten => 9092,1,NoOp(Bridging to bot on port 9092)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.17.0.3:9092)
+ same => n,Hangup()
+
+; Bot on port 9093
+exten => 9093,1,NoOp(Bridging to bot on port 9093)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9093)
+ same => n,Hangup()
+
+; Bot on port 9094
+exten => 9094,1,NoOp(Bridging to bot on port 9094)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9094)
+ same => n,Hangup()
+
+; Bot on port 9095
+exten => 9095,1,NoOp(Bridging to bot on port 9095)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9095)
+ same => n,Hangup()
+
+; Bot on port 9096
+exten => 9096,1,NoOp(Bridging to bot on port 9096)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9096)
+ same => n,Hangup()
+
+; Bot on port 9097
+exten => 9097,1,NoOp(Bridging to bot on port 9097)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9097)
+ same => n,Hangup()
+
+; Bot on port 9098
+exten => 9098,1,NoOp(Bridging to bot on port 9098)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9098)
+ same => n,Hangup()
+
+; Bot on port 9099
+exten => 9099,1,NoOp(Bridging to bot on port 9099)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9099)
+ same => n,Hangup()
+
+; Bot on port 9100
+exten => 9100,1,NoOp(Bridging to bot on port 9100)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9100)
+ same => n,Hangup()
+
+; Bot on port 9101
+exten => 9101,1,NoOp(Bridging to bot on port 9101)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9101)
+ same => n,Hangup()
+
+; Bot on port 9102
+exten => 9102,1,NoOp(Bridging to bot on port 9102)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9102)
+ same => n,Hangup()
+
+; Bot on port 9103
+exten => 9103,1,NoOp(Bridging to bot on port 9103)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9103)
+ same => n,Hangup()
+
+; Bot on port 9104
+exten => 9104,1,NoOp(Bridging to bot on port 9104)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9104)
+ same => n,Hangup()
+
+; Bot on port 9105
+exten => 9105,1,NoOp(Bridging to bot on port 9105)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9105)
+ same => n,Hangup()
+
+; Bot on port 9106
+exten => 9106,1,NoOp(Bridging to bot on port 9106)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9106)
+ same => n,Hangup()
+
+; Bot on port 9107
+exten => 9107,1,NoOp(Bridging to bot on port 9107)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9107)
+ same => n,Hangup()
+
+; Bot on port 9108
+exten => 9108,1,NoOp(Bridging to bot on port 9108)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9108)
+ same => n,Hangup()
+
+; Bot on port 9109
+exten => 9109,1,NoOp(Bridging to bot on port 9109)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9109)
+ same => n,Hangup()
+
+; Bot on port 9110
+exten => 9110,1,NoOp(Bridging to bot on port 9110)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9110)
+ same => n,Hangup()
+
+; Bot on port 9111
+exten => 9111,1,NoOp(Bridging to bot on port 9111)
+ same => n,Set(AUDIOSOCKET_UUID=${SHELL(cat /proc/sys/kernel/random/uuid | tr -d '\n')})
+ same => n,AudioSocket(${AUDIOSOCKET_UUID},172.19.0.1:9111)
+ same => n,Hangup()
+
+; ============================================================================
+; Installation Instructions:
+; ============================================================================
+; 1. Copy this configuration to /etc/asterisk/extensions.conf
+;    (or include it: #include "asterisk-dialer-config.conf")
+;
+; 2. Reload Asterisk dialplan:
+;    asterisk -rx "dialplan reload"
+;
+; 3. Verify configuration:
+;    asterisk -rx "dialplan show audiosocket-dial"
+; ============================================================================

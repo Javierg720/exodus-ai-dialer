@@ -1,0 +1,17 @@
+[
+  {
+    "content": "Install mesa-utils for GPU testing",
+    "status": "completed",
+    "activeForm": "Installing mesa-utils for GPU testing"
+  },
+  {
+    "content": "Install NVIDIA proprietary drivers",
+    "status": "in_progress",
+    "activeForm": "Installing NVIDIA proprietary drivers"
+  },
+  {
+    "content": "Verify both GPUs are working properly",
+    "status": "pending",
+    "activeForm": "Verifying both GPUs are working properly"
+  }
+]

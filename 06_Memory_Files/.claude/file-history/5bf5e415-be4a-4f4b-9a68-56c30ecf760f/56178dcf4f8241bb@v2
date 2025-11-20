@@ -1,0 +1,183 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Activity, AlertTriangle, CheckCircle, RefreshCw, 
+  Server, Zap, TrendingUp, AlertCircle, Play, Pause, RotateCw, Power, Phone
+} from 'lucide-react';
+import axios from 'axios';
+
+function BotPoolManagerApple({ apiUrl }) {
+  const [bots, setBots] = useState([]);
+  const [desiredCount, setDesiredCount] = useState(0);
+  const [actualRunning, setActualRunning] = useState(0);
+  const [isAdjusting, setIsAdjusting] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const fetchBotStatus = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${apiUrl}/bots/status`);
+      const botsArray = response.data.bots || response.data;
+      setBots(botsArray);
+      const running = botsArray.filter(b => b.running).length;
+      setActualRunning(running);
+      setDesiredCount(running);
+    } catch (error) {
+      console.error('Failed to fetch bot status:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBotStatus();
+    const interval = setInterval(fetchBotStatus, 5000);
+    return () => clearInterval(interval);
+  }, [apiUrl]);
+
+  const adjustBotPool = async (targetCount) => {
+    setIsAdjusting(true);
+    try {
+      await axios.post(`${apiUrl}/bots/adjust-pool`, {
+        target_count: targetCount
+      });
+      setTimeout(fetchBotStatus, 2000);
+    } catch (error) {
+      console.error('Failed to adjust bot pool:', error);
+    } finally {
+      setIsAdjusting(false);
+    }
+  };
+
+  const toggleBot = async (port, isRunning) => {
+    try {
+      const endpoint = isRunning ? 'stop' : 'start';
+      await axios.post(`${apiUrl}/bots/${port}/${endpoint}`);
+      setTimeout(fetchBotStatus, 1000);
+    } catch (error) {
+      console.error(`Failed to ${isRunning ? 'stop' : 'start'} bot:`, error);
+    }
+  };
+
+  const stats = {
+    total: bots.length,
+    running: bots.filter(b => b.running).length,
+    idle: bots.filter(b => b.status === 'IDLE').length,
+    busy: bots.filter(b => b.status === 'BUSY').length,
+    crashed: bots.filter(b => b.status === 'CRASHED').length
+  };
+
+  return (
+    <div className="apple-bot-manager">
+      {/* Header */}
+      <div className="apple-section-header">
+        <h1 className="apple-title">Bot Pool</h1>
+        <button className="apple-icon-btn" onClick={fetchBotStatus}>
+          <RefreshCw size={18} className={loading ? 'spinning' : ''} />
+        </button>
+      </div>
+
+      {/* Main Control */}
+      <div className="apple-control-card">
+        <div className="apple-control-header">
+          <div className="apple-control-icon">
+            <Server size={24} />
+          </div>
+          <div className="apple-control-stats">
+            <div className="apple-stat-value">{stats.running}</div>
+            <div className="apple-stat-label">Active Bots</div>
+          </div>
+        </div>
+
+        <div className="apple-slider-control">
+          <span className="slider-label">0</span>
+          <input
+            type="range"
+            min="0"
+            max="20"
+            value={desiredCount}
+            onChange={(e) => setDesiredCount(parseInt(e.target.value))}
+            className="apple-slider"
+          />
+          <span className="slider-label">20</span>
+        </div>
+
+        {desiredCount !== actualRunning && (
+          <button 
+            className="apple-btn-primary full-width"
+            onClick={() => adjustBotPool(desiredCount)}
+            disabled={isAdjusting}
+          >
+            {isAdjusting ? (
+              <>
+                <RefreshCw size={16} className="spinning" />
+                Adjusting...
+              </>
+            ) : (
+              `Apply Changes (${desiredCount > actualRunning ? '+' : ''}${desiredCount - actualRunning} bots)`
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* Quick Stats */}
+      <div className="apple-stats-grid">
+        <div className="apple-stat-card green">
+          <CheckCircle size={20} />
+          <div className="stat-content">
+            <div className="stat-number">{stats.idle}</div>
+            <div className="stat-text">Available</div>
+          </div>
+        </div>
+
+        <div className="apple-stat-card blue">
+          <Zap size={20} />
+          <div className="stat-content">
+            <div className="stat-number">{stats.busy}</div>
+            <div className="stat-text">In Call</div>
+          </div>
+        </div>
+
+        {stats.crashed > 0 && (
+          <div className="apple-stat-card red">
+            <AlertTriangle size={20} />
+            <div className="stat-content">
+              <div className="stat-number">{stats.crashed}</div>
+              <div className="stat-text">Crashed</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bot Grid */}
+      <div className="apple-bots-grid">
+        {bots.map(bot => (
+          <div key={bot.port} className={`apple-bot-tile ${bot.status?.toLowerCase()}`}>
+            <div className="bot-tile-header">
+              <span className="bot-number">{bot.port - 9091}</span>
+              <div className={`bot-status-dot ${bot.running ? 'active' : ''}`} />
+            </div>
+            
+            <div className="bot-tile-body">
+              <div className="bot-status">{bot.status || 'STOPPED'}</div>
+              {bot.current_call && (
+                <div className="bot-call-info">
+                  <Phone size={12} />
+                  <span>In Call</span>
+                </div>
+              )}
+            </div>
+
+            <button
+              className={`bot-tile-action ${bot.running ? 'stop' : 'start'}`}
+              onClick={() => toggleBot(bot.port, bot.running)}
+            >
+              <Power size={16} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default BotPoolManagerApple;

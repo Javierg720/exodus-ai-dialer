@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EXODUS AI Dialer - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 25px 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .bots-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .bots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .bot-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .bot-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        .bot-card.idle {
+            border-left-color: #28a745;
+        }
+
+        .bot-card.busy {
+            border-left-color: #ffc107;
+        }
+
+        .bot-card.stopped {
+            border-left-color: #dc3545;
+        }
+
+        .bot-port {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .bot-status {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-idle {
+            background: #28a745;
+            color: white;
+        }
+
+        .status-busy {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .status-stopped {
+            background: #dc3545;
+            color: white;
+        }
+
+        .bot-info {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 18px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.green {
+            background: #28a745;
+        }
+
+        .status-indicator.yellow {
+            background: #ffc107;
+        }
+
+        .status-indicator.red {
+            background: #dc3545;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 EXODUS AI DIALER</h1>
+            <p class="subtitle">Production Dashboard - Real-time Bot Management</p>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Bots</div>
+                <div class="stat-value" id="total-bots">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">
+                    <span class="status-indicator green"></span>Idle Bots
+                </div>
+                <div class="stat-value" style="color: #28a745;" id="idle-bots">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">
+                    <span class="status-indicator yellow"></span>Active Calls
+                </div>
+                <div class="stat-value" style="color: #ffc107;" id="active-calls">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Drop Rate (30 days)</div>
+                <div class="stat-value" style="color: #667eea;" id="drop-rate">--</div>
+            </div>
+        </div>
+
+        <div class="bots-section">
+            <h2>Bot Pool Status</h2>
+            <button class="refresh-btn" onclick="loadData()">🔄 Refresh Data</button>
+            <div id="loading" class="loading">Loading bot data...</div>
+            <div class="bots-grid" id="bots-grid" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+
+        async function loadData() {
+            try {
+                // Show loading
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('bots-grid').style.display = 'none';
+
+                // Fetch bots
+                const botsRes = await fetch(`${API_URL}/bots/status`);
+                const bots = await botsRes.json();
+
+                // Fetch stats
+                const statsRes = await fetch(`${API_URL}/stats`);
+                const stats = await statsRes.json();
+
+                // Update stats
+                document.getElementById('total-bots').textContent = bots.length;
+
+                const idleCount = bots.filter(b => b.status === 'idle').length;
+                const busyCount = bots.filter(b => b.status === 'busy').length;
+
+                document.getElementById('idle-bots').textContent = idleCount;
+                document.getElementById('active-calls').textContent = busyCount;
+                document.getElementById('drop-rate').textContent = stats.drop_rate ?
+                    (stats.drop_rate * 100).toFixed(2) + '%' : '0%';
+
+                // Render bots
+                const botsGrid = document.getElementById('bots-grid');
+                botsGrid.innerHTML = '';
+
+                bots.forEach(bot => {
+                    const card = document.createElement('div');
+                    card.className = `bot-card ${bot.status}`;
+
+                    let statusClass = 'status-stopped';
+                    if (bot.status === 'idle') statusClass = 'status-idle';
+                    if (bot.status === 'busy') statusClass = 'status-busy';
+
+                    card.innerHTML = `
+                        <div class="bot-port">Port ${bot.port}</div>
+                        <div class="bot-status ${statusClass}">${bot.status}</div>
+                        <div class="bot-info">
+                            Calls: ${bot.total_calls || 0}<br>
+                            Uptime: ${bot.uptime || '0m'}
+                        </div>
+                    `;
+                    botsGrid.appendChild(card);
+                });
+
+                // Hide loading, show grid
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('bots-grid').style.display = 'grid';
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loading').textContent =
+                    '❌ Error loading data. Make sure API is running on port 8000.';
+            }
+        }
+
+        // Load on page load
+        loadData();
+
+        // Auto-refresh every 5 seconds
+        setInterval(loadData, 5000);
+    </script>
+</body>
+</html>

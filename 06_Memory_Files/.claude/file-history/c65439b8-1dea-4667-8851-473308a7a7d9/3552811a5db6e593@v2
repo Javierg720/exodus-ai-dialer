@@ -1,0 +1,293 @@
+# AVR App Configuration Guide
+
+## ✅ What's Already Configured
+
+### Providers (Successfully Added)
+
+1. **Cerebras (Llama 3.3 70B)** - LLM Provider
+   - ID: `58031321-1e88-40fa-b360-f59834265c03`
+   - Model: `llama-3.3-70b`
+   - Temperature: 0.6
+   - Max Tokens: 500
+
+2. **Groq (Llama 3.1 8B)** - LLM Provider
+   - ID: `59c4b240-7d57-46c3-b395-d433b4e9b1db`
+   - Model: `llama-3.1-8b-instant`
+   - Temperature: 0.7
+   - Max Tokens: 500
+
+3. **Deepgram STT** - Speech-to-Text Provider
+   - ID: `88b08110-d820-4263-9f43-576a1469fb86`
+   - Model: `nova-2`
+   - Language: `en-US`
+
+4. **Edge TTS (Free)** - Text-to-Speech Provider
+   - ID: `793a86f7-395b-4f51-b901-1bed697ab66d`
+   - Voice: `en-US-AvaMultilingualNeural` (Ava - same as your predictive dialer!)
+   - Rate: `+10%`
+   - Pitch: `+2Hz`
+
+---
+
+## 🔧 Manual Configuration Steps
+
+### 1. Login to Dashboard
+
+- URL: http://localhost:3001
+- Username: `admin@agentvoiceresponse.com`
+- Password: `agentvoiceresponse`
+
+**⚠️ IMPORTANT**: Change the default password immediately!
+
+---
+
+### 2. Verify Providers
+
+Navigate to **Providers** section and confirm all 4 providers are listed:
+- ✅ Cerebras (Llama 3.3 70B) - LLM
+- ✅ Groq (Llama 3.1 8B) - LLM
+- ✅ Deepgram STT - ASR
+- ✅ Edge TTS (Free) - TTS
+
+---
+
+### 3. Add SIP Trunk (Optional)
+
+If using Asterisk/SIP trunking:
+
+1. Go to **Trunks** → **Add Trunk**
+2. Name: `Twilio Main Trunk`
+3. Password: `3590e08c47cfbb31093592ec84ab4af0`
+4. Click **Save**
+
+---
+
+### 4. Create Your First Agent
+
+1. Go to **Agents** → **Create Agent**
+2. Fill in details:
+   - **Name**: `Ava Sales Bot` (or your preferred name)
+   - **Description**: `AI-powered sales agent`
+
+3. Select Providers:
+   - **LLM**: `Cerebras (Llama 3.3 70B)` or `Groq (Llama 3.1 8B)`
+   - **STT**: `Deepgram STT`
+   - **TTS**: `Edge TTS (Free)`
+
+4. Configure Agent Script/Prompt:
+   - Copy your existing sales script from `/home/user/Desktop/exodus-kali-deploy/bot_config.json`
+   - Or create a new prompt
+
+5. Click **Create Agent**
+
+---
+
+### 5. Assign Phone Numbers
+
+1. In your agent's details, go to **Numbers** tab
+2. Click **Add Number**
+3. Available Twilio numbers:
+   - `+19544668818`
+   - `+15617826702`
+   - `+19543353601`
+4. Select a number and click **Assign**
+
+---
+
+### 6. Test Your Agent
+
+#### Option A: Start Agent via Dashboard
+1. Go to **Agents**
+2. Find your agent
+3. Click **Start** button
+4. Agent will launch as a Docker container
+5. View logs and status in real-time
+
+#### Option B: API Testing
+```bash
+# Get agent ID from dashboard
+AGENT_ID="your-agent-uuid"
+
+# Login and get token
+TOKEN=$(curl -s -X POST "http://localhost:3000/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin@agentvoiceresponse.com", "password": "agentvoiceresponse"}' \
+  | jq -r '.access_token')
+
+# Start agent
+curl -X POST "http://localhost:3000/agents/$AGENT_ID/run" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Check agent status
+curl "http://localhost:3000/agents/$AGENT_ID" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+## 📞 Integration with Existing Exodus Dialer
+
+Your existing predictive dialer at `/home/user/Desktop/exodus-kali-deploy` can work alongside AVR:
+
+### Option 1: Keep Separate (Recommended for now)
+- **Exodus**: Predictive dialing with 20 concurrent bots
+- **AVR**: Admin panel for managing agents, testing, and small-scale operations
+
+### Option 2: Integrate Later
+AVR can potentially manage your bot pool through its Docker orchestration:
+- Each bot becomes an AVR agent
+- Centralized management via web dashboard
+- API-driven agent control
+- Real-time monitoring and logs
+
+---
+
+## 🔗 Available Twilio Credentials
+
+From your Exodus `.env` file:
+
+```bash
+TWILIO_ACCOUNT_SID=AC39ed37a2d9e427ea7aeb4c27aa368110
+TWILIO_AUTH_TOKEN=3590e08c47cfbb31093592ec84ab4af0
+
+# Phone Numbers
+TWILIO_PHONE_NUMBER=+19544668818
+TWILIO_PHONE_NUMBER_2=+15617826702
+TWILIO_PHONE_NUMBER_3=+19543353601
+```
+
+---
+
+## 🐳 Docker Management
+
+AVR manages agents as Docker containers:
+
+```bash
+# View running AVR containers
+docker ps | grep avr
+
+# View agent containers (when running)
+docker ps | grep agent
+
+# View logs
+docker logs avr-app-backend
+docker logs avr-app-frontend
+
+# Stop AVR
+cd /home/user/Desktop/avr-app
+docker compose down
+
+# Start AVR
+docker compose up -d
+
+# Rebuild after changes
+docker compose up --build -d
+```
+
+---
+
+## 📊 Monitoring & Logs
+
+### Backend API Logs
+```bash
+docker logs -f avr-app-backend
+```
+
+### Frontend Logs
+```bash
+docker logs -f avr-app-frontend
+```
+
+### Database
+SQLite database located at: `/home/user/Desktop/avr-app/data/data.db`
+
+```bash
+sqlite3 /home/user/Desktop/avr-app/data/data.db
+
+# List all providers
+SELECT * FROM provider;
+
+# List all agents
+SELECT * FROM agent;
+
+# List all phone numbers
+SELECT * FROM phone_number;
+```
+
+---
+
+## 🔐 Security Notes
+
+1. **Change Default Password**: First thing after login!
+2. **JWT Secret**: Currently `supersecret` in docker-compose.yml - change in production
+3. **API Keys**: All stored in database, visible in provider configs
+4. **Database**: Backed up in `./data` directory
+
+---
+
+## 🆘 Troubleshooting
+
+### Backend won't start
+```bash
+docker logs avr-app-backend
+# Check port 3000 is not in use
+sudo lsof -i :3000
+```
+
+### Frontend can't connect
+- Verify backend is running: `curl http://localhost:3000/health`
+- Check CORS settings in docker-compose.yml
+- Clear browser cache
+
+### Agents won't start
+- Verify Docker socket is mounted: `ls -la /var/run/docker.sock`
+- Check Docker permissions: `docker ps`
+- View agent logs in dashboard
+
+### Database issues
+```bash
+# Backup database
+cp /home/user/Desktop/avr-app/data/data.db /home/user/Desktop/avr-app/data/data.db.backup
+
+# Reset database (WARNING: deletes all data)
+rm /home/user/Desktop/avr-app/data/data.db
+docker compose restart backend
+```
+
+---
+
+## 🚀 Next Steps
+
+1. ✅ Login and change password
+2. ✅ Verify providers are configured
+3. ✅ Create your first agent
+4. ✅ Assign a phone number
+5. ✅ Test the agent with a call
+6. 📋 Monitor call logs and performance
+7. 🔧 Fine-tune agent prompts
+8. 📈 Scale up with more agents
+
+---
+
+## 📚 Additional Resources
+
+- **AVR Wiki**: https://wiki.agentvoiceresponse.com/en/home
+- **Discord**: https://discord.gg/DFTU69Hg74
+- **GitHub**: https://github.com/agentvoiceresponse/avr-app
+- **Docker Hub**: https://hub.docker.com/u/agentvoiceresponse
+
+---
+
+## 💡 Pro Tips
+
+1. **Use Cerebras for complex conversations** - Better reasoning with 70B model
+2. **Use Groq for fast responses** - Lower latency with 8B model
+3. **Edge TTS is free** - No cost for text-to-speech!
+4. **Deepgram credits**: You have credits, but can switch to Groq STT if needed
+5. **Monitor Docker resources**: `docker stats` to see agent CPU/memory usage
+
+---
+
+**Configuration Date**: 2025-10-25
+**Version**: AVR App v0.0.0
+**Configured from**: `/home/user/Desktop/exodus-kali-deploy/.env`

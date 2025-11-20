@@ -1,0 +1,247 @@
+# ================================================
+# EXODUS AI VOICE CALLER - ENVIRONMENT CONFIGURATION
+# ================================================
+
+# Server Configuration
+NODE_ENV=production
+BASE_URL=http://localhost:8000
+API_BASE_URL=http://localhost:8000
+WEBHOOK_BASE_URL=http://localhost:8000/webhooks
+
+# ================================================
+# TWILIO CONFIGURATION
+# ================================================
+TWILIO_ACCOUNT_SID=AC39ed37a2d9e427ea7aeb4c27aa368110
+TWILIO_AUTH_TOKEN=3590e08c47cfbb31093592ec84ab4af0
+
+# Primary Phone Numbers
+TWILIO_PHONE_NUMBER=+19544668818
+TWILIO_PHONE_NUMBER_2=+15617826702
+TWILIO_PHONE_NUMBER_3=+19543353601
+
+# All phone numbers (comma-separated)
+TWILIO_PHONE_NUMBERS=+19544668818,+15617826702,+19543353601
+
+# Webhook URLs for Twilio (using localtunnel)
+TWILIO_WEBHOOK_URL=https://loose-shirts-check.loca.lt/webhooks/twilio
+TWILIO_VOICE_URL=https://loose-shirts-check.loca.lt/webhooks/twilio/voice
+TWILIO_MEDIA_STREAMS_URL=https://loose-shirts-check.loca.lt/webhooks/twilio/media-streams
+TWILIO_STATUS_CALLBACK_URL=https://loose-shirts-check.loca.lt/webhooks/twilio/status
+TWILIO_FALLBACK_URL=https://loose-shirts-check.loca.lt/webhooks/twilio/fallback
+TWILIO_GATHER_URL=https://loose-shirts-check.loca.lt/webhooks/twilio/gather
+TWILIO_RECORDING_URL=https://loose-shirts-check.loca.lt/webhooks/twilio/recording
+TWILIO_AMD_URL=https://loose-shirts-check.loca.lt/webhooks/twilio/amd
+
+# Twilio Settings
+TWILIO_RECORD_CALLS=false
+TWILIO_MACHINE_DETECTION=Enable
+TWILIO_ASYNC_AMD=true
+TWILIO_TIMEOUT=60
+TWILIO_CALL_STATUS_EVENTS=initiated,ringing,answered,completed
+
+# ================================================
+# AI CONFIGURATION (GROQ & CEREBRAS)
+# ================================================
+GROQ_API_KEY=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
+GROQ_MODEL=llama-3.1-8b-instant
+GROQ_TEMPERATURE=0.7
+GROQ_MAX_TOKENS=500
+GROQ_TOP_P=0.9
+GROQ_STREAM=false
+
+# Cerebras Cloud (Ultra-fast inference)
+CEREBRAS_API_KEY=csk-45rkpchch265v85mj2e85pdtyj3pm8nmdyh85wyk82pprcc3
+CEREBRAS_MODEL=llama3.1-8b
+CEREBRAS_TEMPERATURE=0.7
+CEREBRAS_MAX_TOKENS=500
+
+# AI System Prompts
+AI_SYSTEM_PROMPT="You are a professional AI assistant making phone calls. Be polite, clear, and concise. Speak naturally as if in a real phone conversation."
+AI_GREETING_PROMPT="Generate a friendly, professional greeting for a phone call"
+AI_FALLBACK_RESPONSE="I apologize, I didn't catch that. Could you please repeat?"
+
+# ================================================
+# TEXT-TO-SPEECH (TTS) CONFIGURATION
+# ================================================
+TTS_PROVIDER=edge-tts
+DEFAULT_VOICE=en-US-AvaMultilingualNeural
+DEFAULT_VOICE_RATE=1.2
+DEFAULT_VOICE_PITCH=1.0
+DEFAULT_VOICE_VOLUME=1.0
+
+# Voice Options
+VOICE_FEMALE_US=en-US-AvaMultilingualNeural
+VOICE_MALE_US=en-US-ChristopherNeural
+VOICE_FEMALE_UK=en-GB-SoniaNeural
+VOICE_MALE_UK=en-GB-RyanNeural
+
+# ================================================
+# DATABASE CONFIGURATION
+# ================================================
+DATABASE_URL=postgresql://postgres:password@localhost:5432/exodus_voice_caller
+REDIS_URL=redis://localhost:6379
+REDIS_PREFIX=exodus:
+
+# Database Pool Settings
+DB_POOL_MIN=2
+DB_POOL_MAX=10
+DB_IDLE_TIMEOUT=10000
+
+# ================================================
+# SECURITY & AUTHENTICATION
+# ================================================
+JWT_SECRET=exodus-secret-key-change-in-production-xyz789
+JWT_EXPIRES_IN=7d
+REFRESH_TOKEN_SECRET=exodus-refresh-secret-abc123
+REFRESH_TOKEN_EXPIRES_IN=30d
+
+# API Keys
+API_KEY=exodus-api-key-2024
+ADMIN_API_KEY=exodus-admin-key-secure-2024
+
+# CORS Settings
+CORS_ORIGIN=*
+CORS_CREDENTIALS=true
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX_REQUESTS=100
+
+# ================================================
+# LOGGING & MONITORING
+# ================================================
+LOG_LEVEL=info
+LOG_FORMAT=json
+LOG_DIR=./logs
+LOG_MAX_SIZE=10m
+LOG_MAX_FILES=14d
+LOG_COMPRESS=true
+
+# Error Tracking
+SENTRY_DSN=
+ERROR_WEBHOOK_URL=
+
+# ================================================
+# WEBSOCKET CONFIGURATION
+# ================================================
+WS_PORT=8000
+WS_PATH=/ws
+WS_PING_INTERVAL=30000
+WS_PING_TIMEOUT=5000
+TWILIO_WEBSOCKET_URL=wss://plenty-bears-crash.loca.lt/media-stream
+
+# ================================================
+# CAMPAIGN SETTINGS
+# ================================================
+MAX_CONCURRENT_CALLS=10
+CALL_RETRY_ATTEMPTS=3
+CALL_RETRY_DELAY=300000
+CAMPAIGN_BATCH_SIZE=50
+CAMPAIGN_DELAY_BETWEEN_CALLS=2000
+
+# ================================================
+# AUDIO SETTINGS
+# ================================================
+AUDIO_CACHE_DIR=./audio-cache
+AUDIO_FORMAT=wav
+AUDIO_SAMPLE_RATE=8000
+AUDIO_CHANNELS=1
+AUDIO_BIT_DEPTH=16
+
+# ================================================
+# FEATURE FLAGS
+# ================================================
+ENABLE_CALL_RECORDING=true
+ENABLE_TRANSCRIPTION=false
+ENABLE_SENTIMENT_ANALYSIS=true
+ENABLE_CALL_ANALYTICS=true
+ENABLE_WEBHOOKS=true
+ENABLE_SMS_NOTIFICATIONS=false
+
+# ================================================
+# EXTERNAL WEBHOOKS
+# ================================================
+WEBHOOK_CALL_START=
+WEBHOOK_CALL_END=
+WEBHOOK_CALL_ERROR=
+WEBHOOK_CAMPAIGN_COMPLETE=
+
+# ================================================
+# PERFORMANCE TUNING
+# ================================================
+NODE_OPTIONS=--max-old-space-size=4096
+UV_THREADPOOL_SIZE=128
+CLUSTER_WORKERS=1
+
+# ================================================
+# DEVELOPMENT/DEBUG
+# ================================================
+DEBUG=false
+VERBOSE_LOGGING=false
+MOCK_CALLS=true
+TEST_MODE=false
+DISABLE_RATE_LIMITS=false
+
+# ================================================
+# BACKUP & RECOVERY
+# ================================================
+BACKUP_ENABLED=false
+BACKUP_SCHEDULE="0 2 * * *"
+BACKUP_RETENTION_DAYS=30
+BACKUP_S3_BUCKET=
+BACKUP_S3_REGION=
+
+# ================================================
+# NOTES
+# ================================================
+# Created: 2024-08-24
+# Version: 2.0.0
+# System: EXODUS AI Voice Caller
+# 
+# IMPORTANT: 
+# - Change JWT secrets in production
+# - Use HTTPS URLs for production webhooks
+# - Enable Twilio webhook signature validation
+# - Set appropriate rate limits
+# - Configure proper CORS origins
+# ================================================
+# ================================================
+# NEW FEATURES - ADDITIONAL API KEYS
+# ================================================
+
+# Daily.co WebRTC Testing
+DAILY_API_KEY=3ddb707e8d513fff5165f8677126881de61dbfc0c87ecb3957790709a27e0d20
+DAILY_API_URL=https://api.daily.co/v1
+
+# Local Whisper for WebRTC STT (using your existing Whisper setup)
+
+# Python Microservices Environment
+PYTHONPATH=/home/ubuntu/Desktop/exodus-kali-deploy
+KOKORO_ENV_PATH=/home/ubuntu/Desktop/exodus-kali-deploy/kokorro tts/comfyui_env/bin/python
+WHISPER_MODEL=base
+MEM0_API_KEY=your-mem0-api-key-here
+
+# ================================================
+# SHARED WEBRTC STREAM CONFIGURATION
+# ================================================
+SHARED_SIP_ENDPOINT=sip:shared-exodus-room.0@daily-e7492ca0a3e72913-app.dapp.signalwire.com
+DAILY_ROOM_URL=https://cloud-3fbaa1d6eb0e4e16864bc5160064535e.daily.co/shared-exodus-room
+
+# Update server port for consistency
+PORT=3001
+BASE_URL=https://loose-shirts-check.loca.lt
+API_BASE_URL=https://loose-shirts-check.loca.lt
+WEBHOOK_BASE_URL=https://loose-shirts-check.loca.lt/webhooks
+
+# Twilio webhooks already configured above with Cloudflare tunnel URLs
+
+
+# DeepSeek API Configuration
+DEEPSEEK_API_KEY=sk-06938b7a6fe44776b6735e5703700850
+
+# Deepgram API Configuration (for STT/TTS testing)
+# Sign up for free tier at: https://deepgram.com
+DEEPGRAM_API_KEY=d8191ab87d6958ae361407d2e30d014b7f111cec
+
+# STT Provider (deepgram or groq)
+STT_PROVIDER=deepgram

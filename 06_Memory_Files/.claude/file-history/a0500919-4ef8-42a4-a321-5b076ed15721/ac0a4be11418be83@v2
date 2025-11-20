@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+"""Check LLM provider status and configuration."""
+
+import os
+import json
+import requests
+from dotenv import load_dotenv
+
+load_dotenv()
+
+def check_groq():
+    """Check Groq API status."""
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        return {"status": "error", "message": "No API key configured"}
+
+    try:
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={
+                "model": "openai/gpt-oss-20b",
+                "messages": [{"role": "user", "content": "test"}],
+                "max_tokens": 1,
+                "temperature": 0
+            },
+            timeout=5
+        )
+        if response.status_code == 200:
+            return {"status": "ok", "message": "Groq API working"}
+        elif response.status_code == 429:
+            return {"status": "rate_limited", "message": f"Rate limited: {response.text}"}
+        else:
+            return {"status": "error", "message": f"HTTP {response.status_code}: {response.text[:100]}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+def check_cerebras():
+    """Check Cerebras API status."""
+    api_key = os.getenv("CEREBRAS_API_KEY")
+    if not api_key:
+        return {"status": "error", "message": "No API key configured"}
+
+    try:
+        response = requests.post(
+            "https://api.cerebras.ai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={
+                "model": "llama3.3-70b",
+                "messages": [{"role": "user", "content": "test"}],
+                "max_tokens": 1,
+                "temperature": 0
+            },
+            timeout=5
+        )
+        if response.status_code == 200:
+            return {"status": "ok", "message": "Cerebras API working"}
+        elif response.status_code == 429:
+            return {"status": "rate_limited", "message": f"Rate limited: {response.text}"}
+        else:
+            return {"status": "error", "message": f"HTTP {response.status_code}: {response.text[:100]}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+def main():
+    # Load current config
+    with open("bot_config.json", "r") as f:
+        config = json.load(f)
+
+    current_provider = config["ava_sales_bot"]["llm"]["provider"]
+    current_model = config["ava_sales_bot"]["llm"]["model"]
+
+    print("=" * 60)
+    print("LLM PROVIDER STATUS CHECK")
+    print("=" * 60)
+    print(f"\n📊 Current Configuration:")
+    print(f"   Provider: {current_provider}")
+    print(f"   Model: {current_model}")
+    print(f"   Temperature: {config['ava_sales_bot']['llm']['temperature']}")
+
+    print(f"\n🔍 Checking Provider Status...")
+
+    # Check Groq
+    print(f"\n1. GROQ:")
+    groq_status = check_groq()
+    status_emoji = "✅" if groq_status["status"] == "ok" else "⚠️" if groq_status["status"] == "rate_limited" else "❌"
+    print(f"   {status_emoji} {groq_status['message']}")
+
+    # Check Cerebras
+    print(f"\n2. CEREBRAS:")
+    cerebras_status = check_cerebras()
+    status_emoji = "✅" if cerebras_status["status"] == "ok" else "⚠️" if cerebras_status["status"] == "rate_limited" else "❌"
+    print(f"   {status_emoji} {cerebras_status['message']}")
+
+    # Recommendations
+    print(f"\n💡 Recommendations:")
+
+    if current_provider == "groq" and groq_status["status"] != "ok":
+        if cerebras_status["status"] == "ok":
+            print("   ⚠️ Groq is having issues. Consider switching to Cerebras:")
+            print("   Update bot_config.json:")
+            print('     "provider": "cerebras",')
+            print('     "model": "llama3.3-70b",')
+
+    elif current_provider == "cerebras" and cerebras_status["status"] != "ok":
+        if groq_status["status"] == "ok":
+            print("   ⚠️ Cerebras is having issues. Consider switching to Groq:")
+            print("   Update bot_config.json:")
+            print('     "provider": "groq",')
+            print('     "model": "openai/gpt-oss-20b",')
+
+    if groq_status["status"] == "ok" and cerebras_status["status"] == "ok":
+        print("   ✅ Both providers are operational")
+        print("   💰 Cost comparison:")
+        print("      - Groq: Faster responses, better for sales scripts")
+        print("      - Cerebras: Cheaper, good for high volume")
+
+    print("\n⚠️ WARNING: No automatic fallback configured!")
+    print("   If primary provider fails, bots will crash.")
+    print("   Manual provider switching required via bot_config.json")
+
+if __name__ == "__main__":
+    main()

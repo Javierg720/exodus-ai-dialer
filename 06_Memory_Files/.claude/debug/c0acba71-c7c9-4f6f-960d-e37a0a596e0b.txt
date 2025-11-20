@@ -1,0 +1,107 @@
+[DEBUG] Watching for changes in setting files /home/user/.claude/settings.json, /home/user/Desktop/exodus-kali-deploy/.claude/settings.local.json...
+[DEBUG] Applying permission update: Adding 13 allow rule(s) to destination 'localSettings': ["Bash(nvidia-smi:*)","Bash(lspci:*)","Bash(lsmod:*)","Bash(glxinfo:*)","Bash(DRI_PRIME=1 glxinfo:*)","Bash(sudo apt:*)","Bash(sudo apt install:*)","Bash(sudo -S apt:*)","Bash(while echo '0000')","Bash(sudo -S fuser:*)","Bash(/dev/null)","Bash(do sleep:*)","Bash(done)"]
+[DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+[DEBUG] Creating shell snapshot for zsh (/usr/bin/zsh)
+[DEBUG] Looking for shell config file: /home/user/.zshrc
+[DEBUG] Snapshots directory: /home/user/.claude/shell-snapshots
+[DEBUG] Creating snapshot at: /home/user/.claude/shell-snapshots/snapshot-zsh-1759912149227-3w7tf4.sh
+[DEBUG] Shell binary exists: true
+[DEBUG] Execution timeout: 10000ms
+[DEBUG] Writing to temp file: /home/user/.claude/todos/c0acba71-c7c9-4f6f-960d-e37a0a596e0b-agent-c0acba71-c7c9-4f6f-960d-e37a0a596e0b.json.tmp.172302.1759912149238
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Renaming /home/user/.claude/todos/c0acba71-c7c9-4f6f-960d-e37a0a596e0b-agent-c0acba71-c7c9-4f6f-960d-e37a0a596e0b.json.tmp.172302.1759912149238 to /home/user/.claude/todos/c0acba71-c7c9-4f6f-960d-e37a0a596e0b-agent-c0acba71-c7c9-4f6f-960d-e37a0a596e0b.json
+[DEBUG] File /home/user/.claude/todos/c0acba71-c7c9-4f6f-960d-e37a0a596e0b-agent-c0acba71-c7c9-4f6f-960d-e37a0a596e0b.json written atomically
+[DEBUG] Registered 0 hooks from 0 plugins
+[DEBUG] Loading skills from directories: managed=/etc/claude-code/.claude/skills, user=/home/user/.claude/skills, project=/home/user/Desktop/exodus-kali-deploy/.claude/skills
+[DEBUG] Loaded 0 skills total (managed: 0, user: 0, project: 0)
+[DEBUG] Total plugin commands loaded: 0
+[DEBUG] Total plugin skills loaded: 0
+[DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/usr/local/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+[DEBUG] Shell snapshot created successfully (9233 bytes)
+[DEBUG] Summarizing last 2 of 472 messages (~0 tokens)
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.172302.1759912149495
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 43160 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.172302.1759912149495 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.172302.1759912149761
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 43160 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.172302.1759912149761 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Executing hooks for SessionStart:startup
+[DEBUG] Getting matching hook commands for SessionStart with query: startup
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.172302.1759912149860
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 43055 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.172302.1759912149860 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.172302.1759912149865
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 43055 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.172302.1759912149865 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] performStartupChecks called, ENABLE_PLUGINS=undefined
+[DEBUG] Skipping plugin installations - ENABLE_PLUGINS not set
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.172302.1759912149903
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 43160 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.172302.1759912149903 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Summarizing last 8 of 71 messages (~142251 tokens)
+[DEBUG] Summarizing last 7 of 110 messages (~131702 tokens)
+[DEBUG] Summarizing last 3 of 282 messages (~122987 tokens)
+[DEBUG] Summarizing all 13 messages (~113336 tokens)
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] Executing hooks for SessionStart:resume
+[DEBUG] Getting matching hook commands for SessionStart with query: resume
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "resume" (0 before deduplication)
+[DEBUG] Found 0 hook commands to execute
+[DEBUG] FileHistory: Copied backup c764fb0821d87269@v3 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup 34e18f806cb25dc9@v2 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup 3b7dd8298879fb94@v2 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup 8f69c215895772d5@v2 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup 67c2ba045c3fa89a@v2 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup 9c265bc4f3bc7a17@v2 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup 8073b1680f787119@v2 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup 07edec9380361908@v2 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup b12cdd8297fb9ab7@v2 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup 7088fbdb000afe66@v4 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup 3c17e722b1f23ab5@v2 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup addf39f2365eef7c@v2 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup 3f98123172bcf185@v2 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup c764fb0821d87269@v4 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup cd9c4e0bc2961de6@v2 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup f27e592f3e2f4d47@v2 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup c764fb0821d87269@v5 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup 5c8e40b42a201027@v2 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup c764fb0821d87269@v6 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup c764fb0821d87269@v7 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup 5c8e40b42a201027@v3 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup c764fb0821d87269@v8 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup c764fb0821d87269@v9 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup 5c8e40b42a201027@v4 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup 92ee1cc4c8c993b0@v2 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] FileHistory: Copied backup 5c8e40b42a201027@v5 from session e19bda65-4e94-4fde-9dd6-eedf14d8cbf6 to c0acba71-c7c9-4f6f-960d-e37a0a596e0b
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.172302.1759912180467
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 43055 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.172302.1759912180467 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/user/.claude.json.tmp.172302.1759912180473
+[DEBUG] Preserving file permissions: 100600
+[DEBUG] Temp file written successfully, size: 43055 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/user/.claude.json.tmp.172302.1759912180473 to /home/user/.claude.json
+[DEBUG] File /home/user/.claude.json written atomically

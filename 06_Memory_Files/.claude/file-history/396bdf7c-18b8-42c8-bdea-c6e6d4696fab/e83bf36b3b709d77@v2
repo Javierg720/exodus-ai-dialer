@@ -1,0 +1,324 @@
+# AVR Agent Configuration & Training Guide
+
+## Quick Answer: How to Add a Sales Script
+
+AVR agents are configured via **SYSTEM_PROMPT environment variable** in the LLM Provider settings.
+
+---
+
+## Method 1: Quick Update (Recommended)
+
+Run the provided script:
+
+```bash
+bash /home/user/Desktop/update_avr_sales_script.sh
+```
+
+This will:
+1. Update your Cerebras LLM provider with a sales script
+2. Configure temperature to 0.3 (more deterministic)
+3. Set max tokens to 150 (concise responses)
+
+Then **restart your agent** in the AVR dashboard (Stop → Start).
+
+---
+
+## Method 2: Manual Configuration via API
+
+### Step 1: Login
+
+```bash
+TOKEN=$(curl -s -X POST "http://localhost:3000/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin@agentvoiceresponse.com", "password": "agentvoiceresponse"}' \
+  | jq -r '.access_token')
+```
+
+### Step 2: Get Provider ID
+
+```bash
+curl -s "http://localhost:3000/providers" \
+  -H "Authorization: Bearer $TOKEN" \
+  | jq '.data[] | {id, name, type}'
+```
+
+Find your LLM provider ID (Cerebras or Groq).
+
+### Step 3: Update Provider with Your Script
+
+```bash
+PROVIDER_ID="your-llm-provider-id-here"
+
+curl -X PATCH "http://localhost:3000/providers/$PROVIDER_ID" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "config": {
+      "image": "registry:5000/avr-llm-cerebras:latest",
+      "env": {
+        "CEREBRAS_API_KEY": "csk-...",
+        "CEREBRAS_MODEL": "llama-3.3-70b",
+        "TEMPERATURE": "0.3",
+        "MAX_TOKENS": "150",
+        "SYSTEM_PROMPT": "Your custom sales script here..."
+      }
+    }
+  }'
+```
+
+### Step 4: Restart Agent
+
+```bash
+AGENT_ID="9e36ac23-98bb-4cda-91fe-a261763976c8"
+
+# Stop
+curl -X POST "http://localhost:3000/agents/$AGENT_ID/stop" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Start
+curl -X POST "http://localhost:3000/agents/$AGENT_ID/run" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+## Configuration Parameters Explained
+
+### Temperature (0.0 - 1.0)
+
+Controls randomness and creativity:
+
+- **0.0 - 0.2**: Very deterministic, follows script exactly (recommended for sales)
+- **0.3 - 0.5**: Slight variation, natural but consistent
+- **0.6 - 0.8**: More creative, less predictable
+- **0.9 - 1.0**: Highly creative, may go off-script
+
+**For sales agents**: Use 0.2 - 0.3
+
+### Max Tokens
+
+Maximum response length:
+
+- **50-100**: Very concise (1-2 sentences)
+- **150-200**: Normal conversation (2-3 sentences)
+- **300-500**: Detailed explanations
+- **500+**: Long-form responses
+
+**For sales agents**: Use 100-150 (keep it brief!)
+
+### System Prompt Structure
+
+Good sales prompts include:
+
+1. **Identity**: "You are [name], a [role] for [company]"
+2. **Personality**: Professional, friendly, consultative
+3. **Goal**: What you're trying to achieve
+4. **Script/Flow**: Step-by-step conversation structure
+5. **Rules**: Critical behaviors (always ask questions, handle objections, etc.)
+
+---
+
+## Example Scripts
+
+### 1. Solar Sales Agent
+
+```
+You are Ava, a professional solar energy sales agent.
+
+GOAL: Qualify homeowners and schedule free consultations
+
+PERSONALITY: Friendly, consultative, never pushy
+
+SCRIPT:
+1. Greeting: "Hi, this is Ava from Solar Energy Solutions. Am I speaking with [NAME]?"
+2. Permission: "I'm calling about solar savings in your area. Do you have 2 minutes?"
+3. Qualify: "Do you own your home? What's your monthly electric bill?"
+4. Value: "Homeowners save 30-50% with solar. Would you like a free analysis?"
+5. Close: "I have Tuesday or Thursday. Which works better?"
+
+RULES:
+- ALWAYS end with a question
+- Keep responses under 2 sentences
+- If not interested: "I understand. The assessment is free with no obligation. What concerns you?"
+- Still no: "No problem. Have a great day!"
+- Temperature: 0.2 (stick to script)
+```
+
+### 2. Appointment Reminder
+
+```
+You are an automated appointment reminder system.
+
+GOAL: Confirm appointments and handle rescheduling
+
+SCRIPT:
+"Hi [NAME], this is a reminder about your [APPOINTMENT TYPE] scheduled for [DATE] at [TIME]. Can you confirm you'll be able to make it?"
+
+IF YES: "Great! See you then. Is there anything you need to prepare?"
+IF NO: "No problem. Would you like to reschedule? I have [SLOTS]."
+IF VOICEMAIL: Leave message and ask them to call back to confirm.
+
+RULES:
+- Stick exactly to script
+- No improvisation
+- Temperature: 0.0
+```
+
+### 3. Customer Support
+
+```
+You are a helpful customer support agent for [Product Name].
+
+GOAL: Resolve issues and answer questions
+
+PERSONALITY: Patient, empathetic, solution-oriented
+
+PROCESS:
+1. Greet and identify issue
+2. Gather account information
+3. Troubleshoot step-by-step
+4. Confirm resolution
+5. Offer additional help
+
+ESCALATION:
+- Billing disputes → Transfer to billing
+- Technical bugs → Create support ticket
+- Angry customers → Offer supervisor callback
+
+RULES:
+- Never guess - if unsure, escalate
+- Confirm understanding after each step
+- Temperature: 0.5 (balance script and flexibility)
+```
+
+---
+
+## Testing Your Agent
+
+### 1. Test Call Script
+
+Create `/home/user/Desktop/test_avr_call.sh`:
+
+```bash
+#!/bin/bash
+# Test call to your AVR agent
+
+python3 /home/user/Desktop/avr_make_call.py +YOUR_PHONE_NUMBER
+```
+
+### 2. Monitor Conversation
+
+```bash
+# Watch agent logs
+docker logs -f avr-core-9e36ac23-98bb-4cda-91fe-a261763976c8
+
+# Watch LLM provider logs
+docker logs -f $(docker ps --filter "name=avr-llm" --format "{{.Names}}" | head -1)
+```
+
+### 3. Check System Prompt is Applied
+
+```bash
+# Verify environment variable
+docker exec $(docker ps --filter "name=avr-llm" --format "{{.Names}}" | head -1) env | grep SYSTEM_PROMPT
+```
+
+---
+
+## Iteration & Improvement
+
+### A/B Testing Different Scripts
+
+1. Create multiple LLM providers with different scripts
+2. Create multiple agents (one per script variant)
+3. Test each with real calls
+4. Track which performs better
+
+### Monitoring Performance
+
+Check call logs in AVR database:
+
+```bash
+sqlite3 /home/user/Desktop/avr-app/data/data.db "SELECT * FROM call ORDER BY created_at DESC LIMIT 10"
+```
+
+### Common Issues
+
+**Agent not following script:**
+- Decrease temperature (try 0.1 or 0.0)
+- Make script more explicit
+- Add more "CRITICAL RULES" section
+
+**Agent too robotic:**
+- Increase temperature slightly (0.3 → 0.5)
+- Add personality descriptors
+- Use conversational language in script
+
+**Responses too long:**
+- Decrease MAX_TOKENS
+- Add rule: "Keep responses under X sentences"
+- Use temperature < 0.3
+
+**Agent goes off-topic:**
+- Add explicit boundaries to script
+- Lower temperature
+- Add "NEVER discuss [topics]" section
+
+---
+
+## Advanced: Multiple Script Variants
+
+### Create different providers for different use cases:
+
+```bash
+# Aggressive sales variant
+curl -X POST "http://localhost:3000/providers" -d '{
+  "name": "Sales - Aggressive",
+  "config": {"env": {"SYSTEM_PROMPT": "...", "TEMPERATURE": "0.4"}}
+}'
+
+# Soft sales variant
+curl -X POST "http://localhost:3000/providers" -d '{
+  "name": "Sales - Soft",
+  "config": {"env": {"SYSTEM_PROMPT": "...", "TEMPERATURE": "0.2"}}
+}'
+
+# Customer service variant
+curl -X POST "http://localhost:3000/providers" -d '{
+  "name": "Support Agent",
+  "config": {"env": {"SYSTEM_PROMPT": "...", "TEMPERATURE": "0.5"}}
+}'
+```
+
+Then create different agents using each provider!
+
+---
+
+## Files Created
+
+- `/home/user/Desktop/update_avr_sales_script.sh` - Quick script updater
+- `/home/user/Desktop/avr_make_call.py` - Outbound call maker
+- `/home/user/Desktop/AVR_AGENT_TRAINING_GUIDE.md` - This guide
+
+---
+
+## Key Takeaways
+
+1. ✅ **System prompts** = `SYSTEM_PROMPT` environment variable in LLM provider
+2. ✅ **Configuration** stored in Provider, not Agent
+3. ✅ **Temperature** controls how closely agent follows script
+4. ✅ **Max Tokens** controls response length
+5. ✅ **Must restart agent** after updating provider config
+6. ✅ **Test and iterate** to find optimal settings
+
+---
+
+## Next Steps
+
+1. Run `/home/user/Desktop/update_avr_sales_script.sh`
+2. Customize the sales script for your product/service
+3. Restart agent in AVR dashboard
+4. Make test calls to verify behavior
+5. Iterate based on results
+
+**Your AVR agent is now trainable! 🎉**

@@ -1,0 +1,32 @@
+[
+  {
+    "content": "Fix dialer_orchestrator.py to import AVRBotPoolManager instead of BotPoolManager",
+    "status": "in_progress",
+    "activeForm": "Fixing bot manager import in orchestrator"
+  },
+  {
+    "content": "Reset stuck leads in database (attempts=10 should be max 3)",
+    "status": "pending",
+    "activeForm": "Resetting stuck leads in database"
+  },
+  {
+    "content": "Fix CHECK constraint violation in leads table",
+    "status": "pending",
+    "activeForm": "Fixing CHECK constraint in database"
+  },
+  {
+    "content": "Add error handling for mark_bot_idle sync/async mismatch",
+    "status": "pending",
+    "activeForm": "Adding error handling for bot idle marking"
+  },
+  {
+    "content": "Create systemd service for auto-restart orchestrator",
+    "status": "pending",
+    "activeForm": "Creating systemd service for orchestrator"
+  },
+  {
+    "content": "Test orchestrator with fixed configuration",
+    "status": "pending",
+    "activeForm": "Testing orchestrator with fixed configuration"
+  }
+]

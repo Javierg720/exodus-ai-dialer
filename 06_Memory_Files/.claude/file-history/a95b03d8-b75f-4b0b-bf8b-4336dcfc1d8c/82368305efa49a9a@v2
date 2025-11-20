@@ -1,0 +1,44 @@
+Call Recording Implementation Summary
+=====================================
+
+✅ COMPLETED: Local call recording is now enabled for all bot extensions (9092-9111)
+
+Recording Configuration:
+------------------------
+- Location: /var/spool/asterisk/monitor/YYYY-MM-DD/
+- Filename format: HH-MM-SS_CallerID_botPORT_UniqueID.wav
+- Example: 2025-11-09/14-30-45_15615324683_bot9092_1699543845.123.wav
+
+What Was Done:
+--------------
+1. Added MixMonitor to all 20 bot extensions (ports 9092-9111)
+2. Created recording directory: /var/spool/asterisk/monitor/
+3. Reloaded Asterisk dialplan to apply changes
+4. Verified configuration is active
+
+Recording Features:
+------------------
+- Automatic recording starts when call connects to bot
+- Records both sides of conversation (caller + bot)
+- Organized by date folders (auto-created daily)
+- Unique filenames prevent overwrites
+- WAV format for universal compatibility
+- Option 'b' means recording only during bridged call
+
+To Access Recordings:
+--------------------
+# List recordings from container
+docker exec ava-asterisk ls -la /var/spool/asterisk/monitor/
+
+# Copy recording to local system
+docker cp ava-asterisk:/var/spool/asterisk/monitor/2025-11-09/recording.wav ./
+
+# Play recording locally
+paplay recording.wav
+
+Next Steps:
+-----------
+- Recordings will automatically start for all bot calls
+- No additional configuration needed
+- Monitor disk space as recordings accumulate
+- Consider implementing retention policy (delete after X days)

@@ -1,0 +1,38 @@
+[Unit]
+Description=Exodus AI Dialer Orchestrator with Auto-Recovery
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=user
+Group=user
+WorkingDirectory=/home/user/Desktop/Projects_Organized/01_Exodus_Dialer/exodus-kali-deploy
+
+# Python environment
+Environment="PATH=/usr/local/bin:/usr/bin:/bin:/home/user/.local/bin"
+Environment="PYTHONUNBUFFERED=1"
+
+# Start command
+ExecStartPre=/bin/sleep 10
+ExecStart=/usr/bin/python3 dialer_orchestrator.py
+
+# Restart policy - AGGRESSIVE (from Code-First agent)
+Restart=always
+RestartSec=10
+StartLimitInterval=300
+StartLimitBurst=10
+
+# Resource limits (from Groq agent)
+MemoryLimit=512M
+CPUQuota=100%
+LimitNOFILE=65536
+TimeoutStartSec=60
+TimeoutStopSec=30
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

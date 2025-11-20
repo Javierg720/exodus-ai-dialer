@@ -1,0 +1,21 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import DashboardApple from './components/DashboardApple';
+import CallDetail from './components/CallDetail';
+import './App.css';
+import './App.apple.css';
+
+function App() {
+  return (
+    <Router>
+      <div className="app apple-mode">
+        <Routes>
+          <Route path="/" element={<DashboardApple />} />
+          <Route path="/call/:callId" element={<CallDetail />} />
+        </Routes>
+      </div>
+    </Router>
+  );
+}
+
+export default App;

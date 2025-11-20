@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""Make a single test call via Asterisk AMI"""
+import socket
+import time
+
+# AMI credentials
+AMI_HOST = "localhost"
+AMI_PORT = 5038
+AMI_USER = "admin"
+AMI_SECRET = "mysecret"
+
+# Call details
+PHONE = "+13057768712"
+CALLER_ID = "Sales <+15615324683>"
+
+def send_ami_action(sock, action_lines):
+    """Send AMI action and get response"""
+    message = "\r\n".join(action_lines) + "\r\n\r\n"
+    sock.sendall(message.encode())
+
+    # Read response
+    response = b""
+    while True:
+        chunk = sock.recv(4096)
+        response += chunk
+        if b"\r\n\r\n" in response:
+            break
+    return response.decode()
+
+# Connect to AMI
+print("Connecting to Asterisk AMI...")
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect((AMI_HOST, AMI_PORT))
+
+# Read banner
+banner = sock.recv(1024).decode()
+print(f"AMI: {banner.strip()}")
+
+# Login
+print("Logging in...")
+login_response = send_ami_action(sock, [
+    "Action: Login",
+    f"Username: {AMI_USER}",
+    f"Secret: {AMI_SECRET}",
+])
+print(f"Login: {login_response.strip()}")
+
+# Originate call
+print(f"\nCalling {PHONE}...")
+originate_response = send_ami_action(sock, [
+    "Action: Originate",
+    f"Channel: PJSIP/{PHONE}@twilio-trunk",
+    "Context: audiosocket-dial",
+    "Exten: 9092",
+    "Priority: 1",
+    f"CallerID: {CALLER_ID}",
+    "Timeout: 30000",
+    "Async: true",
+])
+print(f"Response: {originate_response.strip()}")
+
+# Logout
+print("\nLogging out...")
+send_ami_action(sock, ["Action: Logoff"])
+sock.close()
+
+print("\n✅ Call originated! Answer your phone to hear Ava.")

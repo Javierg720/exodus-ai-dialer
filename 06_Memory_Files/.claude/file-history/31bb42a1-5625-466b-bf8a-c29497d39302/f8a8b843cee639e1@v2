@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+"""
+Simple Twilio test call script to verify credentials and calling functionality
+"""
+
+from twilio.rest import Client
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv('/home/user/Desktop/exodus-kali-deploy/.env')
+
+# Twilio credentials
+account_sid = os.getenv('TWILIO_ACCOUNT_SID', 'AC39ed37a2d9e427ea7aeb4c27aa368110')
+auth_token = os.getenv('TWILIO_AUTH_TOKEN', '3590e08c47cfbb31093592ec84ab4af0')
+
+# Initialize Twilio client
+client = Client(account_sid, auth_token)
+
+# Phone numbers - you can modify these
+from_number = "+1234567890"  # Replace with your Twilio phone number
+to_number = "+13057768712"   # Replace with the number you want to call
+
+import sys
+if len(sys.argv) > 1:
+    from_number = sys.argv[1]
+if len(sys.argv) > 2:
+    to_number = sys.argv[2]
+
+# Validate phone numbers
+if not from_number.startswith('+'):
+    from_number = '+' + from_number
+if not to_number.startswith('+'):
+    to_number = '+' + to_number
+
+print(f"\n📞 Attempting to call {to_number} from {from_number}...")
+
+try:
+    # Make the call with a simple TwiML message
+    call = client.calls.create(
+        twiml='<Response><Say>Hello, this is a test call from your Exodus dialer system. Your Twilio integration is working correctly.</Say></Response>',
+        to=to_number,
+        from_=from_number
+    )
+
+    print(f"✅ Call initiated successfully!")
+    print(f"Call SID: {call.sid}")
+    print(f"Status: {call.status}")
+    print(f"Direction: {call.direction}")
+    print(f"Price: {call.price}")
+    print("\nCall details:")
+    print(f"- From: {call.from_}")
+    print(f"- To: {call.to}")
+    print(f"- Created: {call.date_created}")
+
+except Exception as e:
+    print(f"❌ Error making call: {e}")
+    print("\nPossible issues:")
+    print("1. Invalid Twilio credentials")
+    print("2. From number not verified/purchased in Twilio")
+    print("3. Insufficient balance in Twilio account")
+    print("4. Invalid phone number format")

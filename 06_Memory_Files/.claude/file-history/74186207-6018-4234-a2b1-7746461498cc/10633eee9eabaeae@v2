@@ -1,0 +1,11 @@
+#!/bin/bash
+# Steam launcher with correct display
+
+# Kill any existing Steam processes
+pkill -f steam
+
+# Use the correct display
+export DISPLAY=:1
+
+# Try with hardware acceleration first
+steam "$@"

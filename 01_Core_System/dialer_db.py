@@ -1,0 +1,708 @@
+#!/usr/bin/env python3
+"""
+Dialer Database Interface - Python wrapper for SQLite database.
+
+Provides clean Python API for:
+- Campaign management
+- Lead operations
+- Call logging
+- Statistics queries
+- DNC list management
+
+Usage:
+    db = DialerDB("dialer.db")
+    campaign_id = db.create_campaign("Test Campaign")
+    db.add_lead(campaign_id, "5551234567", "John", "Doe")
+    db.log_call(lead_id, "ANSWERED", "INTERESTED")
+"""
+
+import sqlite3
+import json
+from datetime import datetime, timedelta
+from typing import List, Dict, Optional, Tuple
+from contextlib import contextmanager
+from loguru import logger
+from sqlalchemy import create_engine, pool
+
+try:
+    from dialer_logging import get_logger, PerformanceLogger
+    struct_logger = get_logger("dialer_db")
+    STRUCTURED_LOGGING = True
+except ImportError:
+    STRUCTURED_LOGGING = False
+    struct_logger = None
+
+
+class DialerDB:
+    """Database interface for Exodus dialer with connection pooling."""
+
+    def __init__(self, db_path: str = "dialer.db", pool_size: int = 10, max_overflow: int = 20):
+        """Initialize database connection with pooling.
+
+        Args:
+            db_path: Path to SQLite database file
+            pool_size: Number of connections to maintain in pool (default: 10)
+            max_overflow: Max connections beyond pool_size (default: 20)
+        """
+        self.db_path = db_path
+        
+        # Create SQLAlchemy engine with connection pooling
+        # Using QueuePool for better performance with concurrent access
+        self.engine = create_engine(
+            f"sqlite:///{db_path}",
+            poolclass=pool.QueuePool,
+            pool_size=pool_size,
+            max_overflow=max_overflow,
+            pool_pre_ping=True,  # Verify connections before use
+            echo=False  # Set to True for SQL logging
+        )
+        
+        logger.info(f"🔗 Database connection pool initialized: size={pool_size}, max_overflow={max_overflow}")
+        
+        self._init_database()
+
+    def _init_database(self):
+        """Initialize database schema if not exists."""
+        # Check if database already exists
+        try:
+            with self._get_connection() as conn:
+                # Check if campaigns table exists
+                cursor = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='campaigns'"
+                )
+                if cursor.fetchone():
+                    logger.info(f"✅ Database already initialized: {self.db_path}")
+                    return
+
+            # Database doesn't exist, create it
+            with open("dialer_database.sql", "r") as f:
+                schema_sql = f.read()
+
+            # Execute schema
+            with self._get_connection() as conn:
+                conn.executescript(schema_sql)
+                conn.commit()
+
+            logger.info(f"✅ Database initialized: {self.db_path}")
+        except FileNotFoundError:
+            logger.error(f"❌ Schema file not found: dialer_database.sql")
+            raise
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize database: {e}")
+            raise
+
+    @contextmanager
+    def _get_connection(self):
+        """Get database connection from pool.
+        
+        Connections are automatically returned to pool when context exits.
+        """
+        # Get raw connection from SQLAlchemy pool
+        conn = self.engine.raw_connection()
+        conn.row_factory = sqlite3.Row  # Return rows as dictionaries
+        try:
+            yield conn
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Database error: {e}")
+            raise
+        finally:
+            conn.close()  # Returns connection to pool, doesn't actually close it
+    
+    def get_pool_stats(self) -> Dict:
+        """Get connection pool statistics for monitoring.
+        
+        Returns:
+            Dict with pool size, checked out connections, overflow count
+        """
+        pool_status = self.engine.pool.status()
+        return {
+            "pool_size": self.engine.pool.size(),
+            "checked_out": self.engine.pool.checkedout(),
+            "overflow": self.engine.pool.overflow(),
+            "status": pool_status
+        }
+    
+    def dispose_pool(self):
+        """Dispose of connection pool (call on shutdown)."""
+        self.engine.dispose()
+        logger.info("🔗 Database connection pool disposed")
+
+    # ========================================================================
+    # CAMPAIGN OPERATIONS
+    # ========================================================================
+
+    def create_campaign(
+        self,
+        name: str,
+        description: str = "",
+        dial_method: str = "PROGRESSIVE",
+        dial_ratio: float = 3.0,
+        max_dial_ratio: float = 5.0,
+        stt_provider: str = "deepgram",
+        enable_recording: bool = False
+    ) -> int:
+        """Create a new campaign.
+
+        Args:
+            name: Campaign name (must be unique)
+            description: Campaign description
+            dial_method: PROGRESSIVE, PREDICTIVE, POWER, or PREVIEW
+            dial_ratio: Initial dial ratio (calls per bot)
+            max_dial_ratio: Maximum dial ratio
+            stt_provider: STT service to use (deepgram or groq)
+            enable_recording: Enable call recordings (saves disk space when off)
+
+        Returns:
+            Campaign ID
+        """
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO campaigns (name, description, dial_method, dial_ratio, max_dial_ratio, stt_provider, enable_recording)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (name, description, dial_method, dial_ratio, max_dial_ratio, stt_provider, 1 if enable_recording else 0)
+            )
+            conn.commit()
+            campaign_id = cursor.lastrowid
+            logger.info(f"✅ Campaign created: {name} (ID: {campaign_id})")
+            return campaign_id
+
+    def start_campaign(self, campaign_id: int):
+        """Start a campaign (set status to ACTIVE)."""
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE campaigns SET status = 'ACTIVE', started_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (campaign_id,)
+            )
+            conn.commit()
+            logger.info(f"▶️  Campaign {campaign_id} started")
+
+    def pause_campaign(self, campaign_id: int):
+        """Pause a campaign (set status to PAUSED)."""
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE campaigns SET status = 'PAUSED' WHERE id = ?",
+                (campaign_id,)
+            )
+            conn.commit()
+            logger.info(f"⏸️  Campaign {campaign_id} paused")
+
+    def get_campaign(self, campaign_id: int) -> Optional[Dict]:
+        """Get campaign details."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM campaigns WHERE id = ?",
+                (campaign_id,)
+            ).fetchone()
+            return dict(row) if row else None
+
+    def get_active_campaigns(self) -> List[Dict]:
+        """Get all active campaigns."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM campaigns WHERE status = 'ACTIVE'"
+            ).fetchall()
+            return [dict(row) for row in rows]
+
+    # ========================================================================
+    # LEAD OPERATIONS
+    # ========================================================================
+
+    def add_lead(
+        self,
+        campaign_id: int,
+        phone_number: str,
+        first_name: str = "",
+        last_name: str = "",
+        email: str = "",
+        company: str = "",
+        custom_data: Dict = None
+    ) -> int:
+        """Add a lead to a campaign.
+
+        Args:
+            campaign_id: Campaign ID
+            phone_number: Lead's phone number
+            first_name: First name
+            last_name: Last name
+            email: Email address
+            company: Company name
+            custom_data: Additional data as dictionary (stored as JSON)
+
+        Returns:
+            Lead ID
+        """
+        if STRUCTURED_LOGGING:
+            perf = PerformanceLogger(struct_logger, "add_lead", campaign_id=campaign_id)
+            perf.__enter__()
+        
+        # Check DNC list
+        if self.is_in_dnc(phone_number):
+            logger.warning(f"⚠️  Phone {phone_number} is in DNC list, not adding")
+            if STRUCTURED_LOGGING:
+                perf.__exit__(None, None, None)
+                struct_logger.warning("lead_rejected_dnc", phone=phone_number, campaign_id=campaign_id)
+            return None
+
+        custom_json = json.dumps(custom_data) if custom_data else None
+
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO leads (campaign_id, phone_number, first_name, last_name, email, company, custom_data)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (campaign_id, phone_number, first_name, last_name, email, company, custom_json)
+            )
+            conn.commit()
+            lead_id = cursor.lastrowid
+            
+            if STRUCTURED_LOGGING:
+                perf.__exit__(None, None, None)
+                struct_logger.info("lead_added", lead_id=lead_id, phone=phone_number, campaign_id=campaign_id)
+            
+            return lead_id
+
+    def bulk_import_leads(self, campaign_id: int, leads: List[Dict]) -> int:
+        """Bulk import leads from list of dictionaries.
+
+        Args:
+            campaign_id: Campaign ID
+            leads: List of lead dictionaries with phone_number, first_name, etc.
+
+        Returns:
+            Number of leads imported
+        """
+        count = 0
+        for lead in leads:
+            lead_id = self.add_lead(
+                campaign_id,
+                lead.get("phone_number"),
+                lead.get("first_name", ""),
+                lead.get("last_name", ""),
+                lead.get("email", ""),
+                lead.get("company", ""),
+                lead.get("custom_data")
+            )
+            if lead_id:
+                count += 1
+
+        logger.info(f"📥 Imported {count}/{len(leads)} leads to campaign {campaign_id}")
+        return count
+
+    def get_next_leads(self, campaign_id: int, limit: int = 100) -> List[Dict]:
+        """Get next leads to dial for a campaign.
+
+        Priority:
+        1. Scheduled callbacks (next_call_time <= now)
+        2. Never called (attempts = 0)
+        3. Least called (attempts < max_attempts)
+
+        Args:
+            campaign_id: Campaign ID
+            limit: Max number of leads to return
+
+        Returns:
+            List of lead dictionaries
+        """
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT * FROM leads
+                WHERE campaign_id = ?
+                  AND status IN ('NEW', 'NO_ANSWER', 'BUSY', 'ANSWERED')
+                  AND attempts < max_attempts
+                  AND (next_call_time IS NULL OR next_call_time <= CURRENT_TIMESTAMP)
+                ORDER BY
+                  CASE WHEN next_call_time IS NOT NULL THEN 0 ELSE 1 END,  -- Callbacks first
+                  attempts ASC,  -- Least called
+                  last_call_time ASC  -- Longest since last call
+                LIMIT ?
+                """,
+                (campaign_id, limit)
+            ).fetchall()
+            return [dict(row) for row in rows]
+
+    def mark_lead_calling(self, lead_id: int):
+        """Mark lead as currently being called."""
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE leads SET status = 'CALLING', last_call_time = CURRENT_TIMESTAMP WHERE id = ?",
+                (lead_id,)
+            )
+            conn.commit()
+
+    def update_lead_after_call(
+        self,
+        lead_id: int,
+        call_status: str,
+        disposition: Optional[str] = None
+    ):
+        """Update lead after call completes.
+
+        Handles callback scheduling based on disposition settings.
+
+        Args:
+            lead_id: Lead ID
+            call_status: ANSWERED, NO_ANSWER, BUSY, FAILED
+            disposition: Disposition code if answered
+        """
+        with self._get_connection() as conn:
+            # Get current lead data
+            lead = conn.execute(
+                "SELECT attempts, max_attempts FROM leads WHERE id = ?",
+                (lead_id,)
+            ).fetchone()
+            
+            if not lead:
+                logger.error(f"Lead {lead_id} not found")
+                return
+            
+            current_attempts = lead["attempts"]
+            max_attempts = lead["max_attempts"]
+            
+            # Increment attempts only if below max
+            new_attempts = min(current_attempts + 1, max_attempts)
+            
+            next_call_time = None
+            new_status = None
+
+            # Update status based on call outcome
+            if call_status == "ANSWERED" and disposition:
+                # Get disposition details
+                disp = conn.execute(
+                    "SELECT terminates_lead, requires_callback, callback_delay_days FROM dispositions WHERE code = ?",
+                    (disposition,)
+                ).fetchone()
+
+                if disp:
+                    if disp["terminates_lead"]:
+                        # Lead is complete - don't call again
+                        new_status = "COMPLETED"
+                        next_call_time = None
+                    elif disp["requires_callback"]:
+                        # Schedule callback
+                        callback_delay = disp["callback_delay_days"] or 1
+                        next_call_time = datetime.now() + timedelta(days=callback_delay)
+                        new_status = "ANSWERED"  # Keep as ANSWERED but schedule callback
+                        logger.info(
+                            f"📅 Scheduled callback for lead {lead_id} in {callback_delay} days "
+                            f"(disposition: {disposition})"
+                        )
+                    else:
+                        new_status = "ANSWERED"
+                else:
+                    new_status = "ANSWERED"
+            elif call_status == "NO_ANSWER":
+                new_status = "NO_ANSWER"
+            elif call_status == "BUSY":
+                new_status = "BUSY"
+            else:
+                new_status = "FAILED"
+            
+            # If we've hit max attempts and didn't answer/complete, mark as FAILED
+            if new_attempts >= max_attempts and new_status not in ("COMPLETED", "ANSWERED"):
+                new_status = "FAILED"
+                logger.info(f"Lead {lead_id} marked as FAILED after {new_attempts} attempts")
+
+            # Update lead with new status, attempts, and callback time
+            conn.execute(
+                "UPDATE leads SET status = ?, attempts = ?, next_call_time = ? WHERE id = ?",
+                (new_status, new_attempts, next_call_time, lead_id)
+            )
+            conn.commit()
+
+    # ========================================================================
+    # CALL LOGGING
+    # ========================================================================
+
+    def log_call(
+        self,
+        lead_id: int,
+        campaign_id: int,
+        call_uuid: str,
+        bot_port: int,
+        start_time: datetime,
+        end_time: datetime,
+        call_status: str,
+        disposition_code: Optional[str] = None,
+        was_dropped: bool = False,
+        recording_url: Optional[str] = None,
+        transcription: Optional[str] = None
+    ) -> int:
+        """Log a completed call.
+
+        Args:
+            lead_id: Lead ID
+            campaign_id: Campaign ID
+            call_uuid: Asterisk channel UUID
+            bot_port: Bot instance port that handled call
+            start_time: Call start time
+            end_time: Call end time
+            call_status: ANSWERED, NO_ANSWER, BUSY, FAILED, ABANDONED
+            disposition_code: Disposition code
+            was_dropped: True if no bot available when answered
+            recording_url: URL to call recording
+            transcription: Full call transcription
+
+        Returns:
+            Call log ID
+        """
+        duration = int((end_time - start_time).total_seconds())
+
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO call_log (
+                    lead_id, campaign_id, call_uuid, bot_port,
+                    start_time, end_time, duration_seconds, call_status,
+                    disposition_code, was_dropped, recording_url, transcription_text
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    lead_id, campaign_id, call_uuid, bot_port,
+                    start_time, end_time, duration,
+                    call_status, disposition_code, 1 if was_dropped else 0,
+                    recording_url, transcription
+                )
+            )
+            conn.commit()
+            call_log_id = cursor.lastrowid
+
+            # Update lead status
+            self.update_lead_after_call(lead_id, call_status, disposition_code)
+
+            return call_log_id
+
+    def update_call_transcript(self, call_uuid: str, transcript: str, disposition: str):
+        """Update call log with transcript and disposition.
+
+        Args:
+            call_uuid: Call UUID to update
+            transcript: Full conversation transcript
+            disposition: Auto-analyzed disposition code
+        """
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE call_log
+                SET transcription_text = ?, disposition_code = ?
+                WHERE call_uuid = ?
+                """,
+                (transcript, disposition, call_uuid)
+            )
+            conn.commit()
+            logger.info(f"📝 Updated transcript for call {call_uuid}: {disposition}")
+
+    # ========================================================================
+    # STATISTICS
+    # ========================================================================
+
+    def get_campaign_stats_today(self, campaign_id: int) -> Dict:
+        """Get today's statistics for a campaign."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                """
+                SELECT * FROM v_todays_stats WHERE campaign_id = ?
+                """,
+                (campaign_id,)
+            ).fetchone()
+            return dict(row) if row else {}
+
+    def calculate_drop_rate(self, campaign_id: Optional[int] = None, days: int = 30) -> float:
+        """Calculate drop rate for recent calls (TCPA compliance).
+
+        Args:
+            campaign_id: Campaign ID (if None, calculates across all campaigns)
+            days: Time window in days (TCPA requires 30-day rolling window)
+
+        Returns:
+            Drop rate (0.0-1.0)
+        """
+        cutoff = datetime.now() - timedelta(days=days)
+
+        with self._get_connection() as conn:
+            if campaign_id is not None:
+                # Single campaign
+                result = conn.execute(
+                    """
+                    SELECT
+                        CAST(SUM(CASE WHEN was_dropped = 1 THEN 1 ELSE 0 END) AS REAL) /
+                        NULLIF(SUM(CASE WHEN call_status = 'ANSWERED' THEN 1 ELSE 0 END), 0) as drop_rate
+                    FROM call_log
+                    WHERE campaign_id = ? AND start_time >= ?
+                    """,
+                    (campaign_id, cutoff)
+                ).fetchone()
+            else:
+                # All campaigns
+                result = conn.execute(
+                    """
+                    SELECT
+                        CAST(SUM(CASE WHEN was_dropped = 1 THEN 1 ELSE 0 END) AS REAL) /
+                        NULLIF(SUM(CASE WHEN call_status = 'ANSWERED' THEN 1 ELSE 0 END), 0) as drop_rate
+                    FROM call_log
+                    WHERE start_time >= ?
+                    """,
+                    (cutoff,)
+                ).fetchone()
+
+            return result["drop_rate"] if result and result["drop_rate"] else 0.0
+
+    async def get_todays_stats(self) -> dict:
+        """Get statistics for today's calls."""
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+        with self._get_connection() as conn:
+            # Call counts by status
+            call_stats = conn.execute(
+                """
+                SELECT
+                    COUNT(*) as total_calls,
+                    SUM(CASE WHEN call_status = 'ANSWERED' THEN 1 ELSE 0 END) as answered,
+                    SUM(CASE WHEN call_status = 'NO_ANSWER' THEN 1 ELSE 0 END) as no_answer,
+                    SUM(CASE WHEN call_status = 'BUSY' THEN 1 ELSE 0 END) as busy,
+                    SUM(CASE WHEN call_status = 'FAILED' THEN 1 ELSE 0 END) as failed,
+                    AVG(CASE WHEN call_status = 'ANSWERED' THEN duration_seconds ELSE NULL END) as avg_duration
+                FROM call_log
+                WHERE start_time >= ?
+                """,
+                (today,)
+            ).fetchone()
+
+            # Disposition breakdown
+            dispositions = {}
+            disp_rows = conn.execute(
+                """
+                SELECT disposition_code, COUNT(*) as count
+                FROM call_log
+                WHERE start_time >= ? AND disposition_code IS NOT NULL
+                GROUP BY disposition_code
+                """,
+                (today,)
+            ).fetchall()
+
+            for row in disp_rows:
+                dispositions[row['disposition_code']] = row['count']
+
+            return {
+                "total_calls": call_stats["total_calls"] or 0,
+                "answered": call_stats["answered"] or 0,
+                "no_answer": call_stats["no_answer"] or 0,
+                "busy": call_stats["busy"] or 0,
+                "failed": call_stats["failed"] or 0,
+                "avg_duration": round(call_stats["avg_duration"] or 0, 1),
+                "dispositions": dispositions
+            }
+
+    async def get_lead_stats(self) -> dict:
+        """Get lead statistics."""
+        with self._get_connection() as conn:
+            result = conn.execute(
+                """
+                SELECT
+                    COUNT(*) as total,
+                    SUM(CASE WHEN status = 'NEW' THEN 1 ELSE 0 END) as new,
+                    SUM(CASE WHEN status IN ('CALLED', 'COMPLETED') THEN 1 ELSE 0 END) as called,
+                    SUM(CASE WHEN status = 'CALLING' THEN 1 ELSE 0 END) as calling,
+                    SUM(CASE WHEN status = 'SCHEDULED' THEN 1 ELSE 0 END) as scheduled
+                FROM leads
+                """
+            ).fetchone()
+
+            return {
+                "total": result["total"] or 0,
+                "new": result["new"] or 0,
+                "called": result["called"] or 0,
+                "calling": result["calling"] or 0,
+                "scheduled": result["scheduled"] or 0
+            }
+
+    # ========================================================================
+    # DNC LIST
+    # ========================================================================
+
+    def add_to_dnc(self, phone_number: str, reason: str = "Lead request"):
+        """Add phone number to DNC list."""
+        with self._get_connection() as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO dnc_list (phone_number, reason, added_by) VALUES (?, ?, 'system')",
+                (phone_number, reason)
+            )
+            conn.commit()
+            logger.info(f"🚫 Added to DNC: {phone_number}")
+
+    def is_in_dnc(self, phone_number: str) -> bool:
+        """Check if phone number is in DNC list."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM dnc_list WHERE phone_number = ?",
+                (phone_number,)
+            ).fetchone()
+            return row is not None
+
+    # ========================================================================
+    # BOT INSTANCE TRACKING
+    # ========================================================================
+
+    def register_bot_instance(self, port: int):
+        """Register a bot instance in the database."""
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO bot_instances (port, status, started_at, last_health_check)
+                VALUES (?, 'IDLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """,
+                (port,)
+            )
+            conn.commit()
+
+    def update_bot_status(self, port: int, status: str, call_uuid: Optional[str] = None):
+        """Update bot instance status."""
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE bot_instances
+                SET status = ?, current_call_uuid = ?, last_health_check = CURRENT_TIMESTAMP
+                WHERE port = ?
+                """,
+                (status, call_uuid, port)
+            )
+            conn.commit()
+
+
+# Example usage
+if __name__ == "__main__":
+    # Initialize database
+    db = DialerDB("test_dialer.db")
+
+    # Create campaign
+    campaign_id = db.create_campaign("Test Campaign", dial_method="PROGRESSIVE", dial_ratio=3.0)
+
+    # Add leads
+    db.add_lead(campaign_id, "5551234567", "John", "Doe")
+    db.add_lead(campaign_id, "5559876543", "Jane", "Smith")
+
+    # Get next leads
+    leads = db.get_next_leads(campaign_id, limit=10)
+    print(f"Next leads to call: {len(leads)}")
+
+    # Log a call
+    lead_id = leads[0]["id"]
+    db.log_call(
+        lead_id=lead_id,
+        campaign_id=campaign_id,
+        call_uuid="test-uuid-123",
+        bot_port=9092,
+        start_time=datetime.now(),
+        end_time=datetime.now(),
+        call_status="ANSWERED",
+        disposition_code="INTERESTED"
+    )
+
+    # Get stats
+    stats = db.get_campaign_stats_today(campaign_id)
+    print(f"Campaign stats: {stats}")

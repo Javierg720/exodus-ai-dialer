@@ -1,0 +1,77 @@
+; PJSIP Configuration for Asterisk with Twilio SIP Trunking
+; This file configures PJSIP to work with Twilio Elastic SIP Trunking
+
+;==============================================================================
+; Transports
+;==============================================================================
+
+[transport-udp]
+type=transport
+protocol=udp
+bind=0.0.0.0:5060
+external_media_address=73.139.162.13
+external_signaling_address=73.139.162.13
+allow_reload=yes
+
+;==============================================================================
+; Twilio SIP Trunk Configuration
+;==============================================================================
+
+; Twilio Endpoint
+[twilio]
+type=endpoint
+context=ava-context
+disallow=all
+allow=ulaw
+allow=alaw
+outbound_auth=twilio
+aors=twilio
+direct_media=no
+ice_support=no
+trust_id_inbound=yes
+media_encryption=no
+rtp_symmetric=yes
+force_rport=yes
+rewrite_contact=yes
+timers=no
+from_user=19544668818     ; Your Twilio phone number without +
+from_domain=vicibox1.sip.twilio.com
+
+; Twilio Authentication
+[twilio]
+type=auth
+auth_type=userpass
+username=vicibox1       ; Your Twilio SIP trunk username
+password=3590e08c47cfbb31093592ec84ab4af0  ; Your Twilio auth token
+
+; Twilio AOR (Address of Record)
+[twilio]
+type=aor
+contact=sip:vicibox1.sip.twilio.com
+qualify_frequency=30
+
+; Identify Twilio by IP
+[twilio]
+type=identify
+endpoint=twilio
+match=54.172.60.0/23
+match=54.244.51.0/24
+match=54.171.127.192/26
+match=35.156.191.128/25
+match=54.65.63.192/26
+match=54.169.127.128/26
+match=54.252.254.64/26
+match=177.71.206.192/26
+
+;==============================================================================
+; Registration (if needed - usually not for Twilio)
+;==============================================================================
+
+;[twilio-reg]
+;type=registration
+;outbound_auth=twilio
+;server_uri=sip:vicibox1.sip.twilio.com
+;client_uri=sip:javierg720@vicibox1.sip.twilio.com
+;retry_interval=60
+;forbidden_retry_interval=600
+;expiration=3600

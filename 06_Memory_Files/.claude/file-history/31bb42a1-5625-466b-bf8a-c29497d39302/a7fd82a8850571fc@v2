@@ -1,0 +1,96 @@
+[general]
+static=yes
+writeprotect=no
+
+[globals]
+; Global variables can go here
+
+[ava-context]
+; Bot extensions with AudioSocket
+exten => 9092,1,NoOp(Incoming call to bot 1 on port 9092)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(JITTERBUFFER(adaptive)=25,1000,20)
+ same => n,Set(UUID=${EXTEN}-${STRFTIME(,,%s)})
+ same => n,AudioSocket(127.0.0.1:9092,${UUID})
+ same => n,Hangup()
+
+exten => 9093,1,NoOp(Incoming call to bot 2 on port 9093)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(JITTERBUFFER(adaptive)=25,1000,20)
+ same => n,Set(UUID=${EXTEN}-${STRFTIME(,,%s)})
+ same => n,AudioSocket(127.0.0.1:9093,${UUID})
+ same => n,Hangup()
+
+exten => 9094,1,NoOp(Incoming call to bot 3 on port 9094)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(JITTERBUFFER(adaptive)=25,1000,20)
+ same => n,Set(UUID=${EXTEN}-${STRFTIME(,,%s)})
+ same => n,AudioSocket(127.0.0.1:9094,${UUID})
+ same => n,Hangup()
+
+; Pattern match for remaining bots
+exten => _909[5-9],1,NoOp(Incoming call to bot on port ${EXTEN})
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(JITTERBUFFER(adaptive)=25,1000,20)
+ same => n,Set(UUID=${EXTEN}-${STRFTIME(,,%s)})
+ same => n,AudioSocket(127.0.0.1:${EXTEN},${UUID})
+ same => n,Hangup()
+
+exten => _910X,1,NoOp(Incoming call to bot on port ${EXTEN})
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(JITTERBUFFER(adaptive)=25,1000,20)
+ same => n,Set(UUID=${EXTEN}-${STRFTIME(,,%s)})
+ same => n,AudioSocket(127.0.0.1:${EXTEN},${UUID})
+ same => n,Hangup()
+
+exten => 9110,1,NoOp(Incoming call to bot on port 9110)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(JITTERBUFFER(adaptive)=25,1000,20)
+ same => n,Set(UUID=${EXTEN}-${STRFTIME(,,%s)})
+ same => n,AudioSocket(127.0.0.1:9110,${UUID})
+ same => n,Hangup()
+
+exten => 9111,1,NoOp(Incoming call to bot on port 9111)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(JITTERBUFFER(adaptive)=25,1000,20)
+ same => n,Set(UUID=${EXTEN}-${STRFTIME(,,%s)})
+ same => n,AudioSocket(127.0.0.1:9111,${UUID})
+ same => n,Hangup()
+
+; Test bot on port 9999
+exten => 9999,1,NoOp(Test bot on port 9999)
+ same => n,Answer()
+ same => n,Wait(2)
+ same => n,Set(JITTERBUFFER(adaptive)=25,1000,20)
+ same => n,Set(UUID=${EXTEN}-${STRFTIME(,,%s)})
+ same => n,AudioSocket(127.0.0.1:9999,${UUID})
+ same => n,Hangup()
+
+; Call monitoring extensions
+exten => 700,1,NoOp(Monitor all calls)
+ same => n,ChanSpy(,qE)
+ same => n,Hangup()
+
+exten => 701,1,NoOp(Monitor bot 1)
+ same => n,ChanSpy(AudioSocket/127.0.0.1:9092,qE)
+ same => n,Hangup()
+
+exten => 710,1,NoOp(Whisper mode)
+ same => n,ChanSpy(,qEw)
+ same => n,Hangup()
+
+; From internal phones
+[from-internal]
+include => ava-context
+
+; From Twilio trunk
+[from-twilio]
+exten => _X.,1,NoOp(Inbound from Twilio: ${EXTEN})
+ same => n,Goto(ava-context,9092,1)

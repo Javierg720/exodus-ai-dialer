@@ -1,0 +1,125 @@
+#!/bin/bash
+# Configure AVR app with credentials from exodus
+
+set -e
+
+# API endpoint
+API_URL="http://localhost:3000"
+
+# Login and get token
+echo "Logging in to AVR..."
+TOKEN=$(curl -s -X POST "$API_URL/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin@agentvoiceresponse.com",
+    "password": "agentvoiceresponse"
+  }' | jq -r '.access_token')
+
+if [ "$TOKEN" = "null" ] || [ -z "$TOKEN" ]; then
+  echo "❌ Login failed! Check if backend is running"
+  exit 1
+fi
+
+echo "✅ Logged in successfully"
+echo ""
+
+# Add Cerebras Provider
+echo "Adding Cerebras provider..."
+curl -s -X POST "$API_URL/providers" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Cerebras (Llama 3.3 70B)",
+    "type": "LLM",
+    "config": {
+      "provider": "cerebras",
+      "api_key": "csk-45rkpchch265v85mj2e85pdtyj3pm8nmdyh85wyk82pprcc3",
+      "model": "llama-3.3-70b",
+      "temperature": 0.6,
+      "max_tokens": 500
+    }
+  }' | jq '.'
+
+echo ""
+
+# Add Groq Provider
+echo "Adding Groq provider..."
+curl -s -X POST "$API_URL/providers" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Groq (Llama 3.1 8B)",
+    "type": "LLM",
+    "config": {
+      "provider": "groq",
+      "api_key": "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",
+      "model": "llama-3.1-8b-instant",
+      "temperature": 0.7,
+      "max_tokens": 500
+    }
+  }' | jq '.'
+
+echo ""
+
+# Add Deepgram STT Provider
+echo "Adding Deepgram STT provider..."
+curl -s -X POST "$API_URL/providers" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Deepgram STT",
+    "type": "ASR",
+    "config": {
+      "provider": "deepgram",
+      "api_key": "d8191ab87d6958ae361407d2e30d014b7f111cec",
+      "model": "nova-2",
+      "language": "en-US"
+    }
+  }' | jq '.'
+
+echo ""
+
+# Add Edge TTS Provider (Free)
+echo "Adding Edge TTS provider..."
+curl -s -X POST "$API_URL/providers" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Edge TTS (Free)",
+    "type": "TTS",
+    "config": {
+      "provider": "edge",
+      "voice": "en-US-AvaMultilingualNeural",
+      "rate": "+10%",
+      "pitch": "+2Hz"
+    }
+  }' | jq '.'
+
+echo ""
+
+# Add Twilio Trunk (Simple: just name and password/token)
+echo "Adding Twilio trunk..."
+curl -s -X POST "$API_URL/trunks" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Twilio Main Trunk",
+    "password": "3590e08c47cfbb31093592ec84ab4af0"
+  }' | jq '.'
+
+echo ""
+
+# Note: Phone numbers must be assigned to agents
+# We'll create them via the UI after agents are created
+echo "⚠️  Phone numbers must be assigned to agents via the dashboard"
+echo "   Available numbers: +19544668818, +15617826702, +19543353601"
+
+echo "✅ Configuration complete!"
+echo ""
+echo "Next steps:"
+echo "1. Visit http://localhost:3001"
+echo "2. Login with: admin@agentvoiceresponse.com / agentvoiceresponse"
+echo "3. Go to Agents and create your first agent"
+echo "4. Select the Cerebras provider for LLM"
+echo "5. Select Edge TTS for voice"
+echo "6. Assign a phone number and start testing!"

@@ -1,0 +1,7 @@
+#!/bin/bash
+# Steam with software rendering fallback
+export DISPLAY=:0
+export LIBGL_ALWAYS_SOFTWARE=1
+export LIBGL_DRI3_DISABLE=1
+export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe
+steam -noreactlogin "$@"

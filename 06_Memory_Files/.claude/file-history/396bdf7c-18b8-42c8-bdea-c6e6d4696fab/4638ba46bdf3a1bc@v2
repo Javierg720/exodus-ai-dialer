@@ -1,0 +1,96 @@
+#!/bin/bash
+# Fix AVR providers with correct Docker images
+
+API_URL="http://localhost:3000"
+
+# Login
+echo "Logging in..."
+TOKEN=$(curl -s -X POST "$API_URL/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin@agentvoiceresponse.com", "password": "agentvoiceresponse"}' \
+  | jq -r '.access_token')
+
+if [ "$TOKEN" = "null" ] || [ -z "$TOKEN" ]; then
+  echo "❌ Login failed!"
+  exit 1
+fi
+
+echo "✅ Logged in"
+echo ""
+
+# Delete old providers (they don't have Docker images)
+echo "Deleting old providers without Docker images..."
+for ID in "58031321-1e88-40fa-b360-f59834265c03" "59c4b240-7d57-46c3-b395-d433b4e9b1db" "88b08110-d820-4263-9f43-576a1469fb86" "793a86f7-395b-4f51-b901-1bed697ab66d"; do
+  curl -s -X DELETE "$API_URL/providers/$ID" \
+    -H "Authorization: Bearer $TOKEN" > /dev/null
+  echo "  - Deleted $ID"
+done
+echo ""
+
+# Add Deepgram ASR with Docker image
+echo "Adding Deepgram ASR provider..."
+curl -s -X POST "$API_URL/providers" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Deepgram ASR",
+    "type": "ASR",
+    "config": {
+      "image": "agentvoiceresponse/avr-asr-deepgram:latest",
+      "env": {
+        "DEEPGRAM_API_KEY": "d8191ab87d6958ae361407d2e30d014b7f111cec",
+        "DEEPGRAM_MODEL": "nova-2"
+      }
+    }
+  }' | jq '.'
+echo ""
+
+# Add OpenAI LLM with Docker image
+echo "Adding OpenAI LLM provider..."
+echo "⚠️  You need to add an OpenAI API key to use this"
+curl -s -X POST "$API_URL/providers" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "OpenAI GPT-4",
+    "type": "LLM",
+    "config": {
+      "image": "agentvoiceresponse/avr-llm-openai:latest",
+      "env": {
+        "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
+        "OPENAI_MODEL": "gpt-4o-mini",
+        "TEMPERATURE": "0.7"
+      }
+    }
+  }' | jq '.'
+echo ""
+
+# Add Deepgram TTS with Docker image
+echo "Adding Deepgram TTS provider..."
+curl -s -X POST "$API_URL/providers" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Deepgram TTS",
+    "type": "TTS",
+    "config": {
+      "image": "agentvoiceresponse/avr-tts-deepgram:latest",
+      "env": {
+        "DEEPGRAM_API_KEY": "d8191ab87d6958ae361407d2e30d014b7f111cec",
+        "VOICE": "aura-asteria-en"
+      }
+    }
+  }' | jq '.'
+echo ""
+
+echo "✅ Providers configured with Docker images!"
+echo ""
+echo "Now go to the dashboard and:"
+echo "1. Delete your old agent (it's using broken providers)"
+echo "2. Create a new agent with these providers:"
+echo "   - ASR: Deepgram ASR"
+echo "   - LLM: OpenAI GPT-4 (add your OpenAI key)"
+echo "   - TTS: Deepgram TTS"
+echo "3. Try running the agent"
+echo ""
+echo "💡 OR use your existing exodus-kali-deploy setup which already works!"

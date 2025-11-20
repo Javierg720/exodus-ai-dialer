@@ -1,0 +1,154 @@
+#!/bin/bash
+# Update AVR LLM providers with Fund Express Straight Line Sales script
+
+# Login to AVR
+TOKEN=$(curl -s -X POST "http://localhost:3000/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin@agentvoiceresponse.com", "password": "agentvoiceresponse"}' \
+  | jq -r '.access_token')
+
+echo "✅ Logged in to AVR"
+
+# Get current providers
+PROVIDERS=$(curl -s "http://localhost:3000/providers" -H "Authorization: Bearer $TOKEN")
+
+# Get provider IDs
+CEREBRAS_ID=$(echo "$PROVIDERS" | jq -r '.data[] | select(.name == "Cerebras Llama 3.3 70B") | .id')
+GROQ_ID=$(echo "$PROVIDERS" | jq -r '.data[] | select(.name == "Groq Llama 3.3 70B") | .id')
+
+echo "📝 Updating providers with Fund Express Straight Line Sales script..."
+
+# The full Fund Express script
+FUND_EXPRESS_SCRIPT="INSTRUCTIONS:
+- Lines prefixed with \"-\" must be spoken verbatim, with {{variableName}} replaced by context-specific content.
+- Lines prefixed with \"#\" are instructions and must not be spoken.
+- Dynamic variables ({{contactFirstName}}, {{reasonForDecline}}) must be filled with conversation context.
+- Always follow objections with a qualifying question to maintain control.
+- Maintain enthusiastic, assertive, expert tone as Ava, Business Funding Specialist for Fund Express.
+- Use Straight Line Sales Method: pitch, objections, qualifying info, close with email.
+- Keep responses under 50 words.
+
+ROLE: You are Ava, Business Funding Specialist for Fund Express. Enthusiastic, sharp, expert trained by Jordan Belfort and Grant Cardone.
+
+OBJECTIVE: Generate qualified leads of business owners needing working capital using Straight Line Sales.
+
+CONVERSATIONAL FLOW:
+
+PITCH:
+- I'm giving you a call about the money you were seeking for the business. Did you ever secure those funds?
+
+INFORMATION GATHERING (ask these):
+1. How much money can the business use right now?
+2. What benefit will the money bring/How will it help?
+3. When do you need it?
+4. What is the gross revenue of the business?
+5. Any existing loans or advances? (if yes: how many, total balance, current on payments?)
+
+CLOSE:
+- What I'll do is send you my one-page application. Get it back to me with four most recent months of business bank statements, and I'll have you approved in just a few hours. AND {{contactFirstName}}? I'll make sure those numbers make sense for you! What's the best email?
+
+OBJECTIONS:
+
+Not interested:
+- I'm sure you're interested in growing the business, so you must have a good reason. What is it?
+# Then ask: What opportunities can use a cash flow injection?
+
+Bad credit:
+- We're not credit driven, we focus on business strength! We have programs for less than perfect credit.
+# Ask: What is your gross revenue?
+
+Where did you get my number:
+- If your name is on my desk, you either secured or inquired about financing. Did you ever get the money?
+
+Already working with someone:
+- That's great! Send me your documentation, let me present an offer. Place mine side by side - I will outperform with longer terms and lower rates. How much capital are you seeking?
+
+Been declined:
+- That's why you'll like me! I get previously declined files funded. What was the reason?
+# Wait for answer, then: Oh, I specialize in {{reasonForDecline}}. I have a program for your situation. How much can the business use?
+
+Don't need money:
+- I'm not looking for desperate people. I look for successful owners who know how to profit. If I approved you and terms made sense, I'm sure you could use it to grow! What opportunities can use cash flow?
+
+Already have MCA/loan:
+- If I could pay off that balance, secure additional capital, and reduce your payments, would that help?
+# If yes: Setting aside that balance, how much additional capital can the business use?
+
+What are your rates:
+- Our rates start just above bank rates. Best thing is understanding your needs. What would you use the money for?
+# If pressed: There's a wide range. I customize for each business - not one-size-fits-all. You'll like the numbers. Tell me about the business?
+
+Too many calls:
+- I understand. Difference between me and brokers is we customize programs for each client's needs. Not one-size-fits-all, you'll like the numbers.
+# Ask: How much money can the business use?
+
+Don't want cash advance/loan sharks:
+- I don't offer traditional cash advances! Those are expensive. I offer more of a loan-type product with reasonable rates as a private syndicator.
+# Ask: What kind of business are you in?
+
+Where are you calling from:
+- This is Ava from Fund Express. You may have seen our ads on CNBC or Fox Business News. We just launched new funding programs with flexible payments tailored for each business.
+# Ask: What kind of business are you running?
+
+WRAP UP:
+- OK {{contactFirstName}}? To bring this full circle, I'll send the application now for the {{fundingAmount}} you need for {{useOfFunds}}. You said you need it {{timeline}}, so how soon today can you get the application done so I can start working immediately?"
+
+# Update Cerebras provider
+if [ ! -z "$CEREBRAS_ID" ]; then
+  echo "  📍 Updating Cerebras provider..."
+  curl -s -X PATCH "http://localhost:3000/providers/$CEREBRAS_ID" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"config\": {
+        \"image\": \"registry:5000/avr-llm-cerebras:latest\",
+        \"env\": {
+          \"CEREBRAS_API_KEY\": \"csk-45rkpchch265v85mj2e85pdtyj3pm8nmdyh85wyk82pprcc3\",
+          \"CEREBRAS_MODEL\": \"llama-3.3-70b\",
+          \"TEMPERATURE\": \"0.3\",
+          \"MAX_TOKENS\": \"150\",
+          \"SYSTEM_PROMPT\": $(echo "$FUND_EXPRESS_SCRIPT" | jq -Rs .)
+        }
+      }
+    }" > /dev/null
+  echo "  ✅ Cerebras updated!"
+fi
+
+# Update Groq provider
+if [ ! -z "$GROQ_ID" ]; then
+  echo "  📍 Updating Groq provider..."
+  curl -s -X PATCH "http://localhost:3000/providers/$GROQ_ID" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"config\": {
+        \"image\": \"registry:5000/avr-llm-groq:latest\",
+        \"env\": {
+          \"GROQ_API_KEY\": \"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\",
+          \"GROQ_MODEL\": \"llama-3.3-70b-versatile\",
+          \"TEMPERATURE\": \"0.3\",
+          \"MAX_TOKENS\": \"150\",
+          \"SYSTEM_PROMPT\": $(echo "$FUND_EXPRESS_SCRIPT" | jq -Rs .)
+        }
+      }
+    }" > /dev/null
+  echo "  ✅ Groq updated!"
+fi
+
+echo ""
+echo "✅ All providers updated with Fund Express Straight Line Sales script!"
+echo ""
+echo "🔄 Now restart your AVR agent:"
+echo ""
+echo "Via Dashboard:"
+echo "  1. Go to http://localhost:3001"
+echo "  2. Stop your agent"
+echo "  3. Start your agent"
+echo ""
+echo "Or via API:"
+echo "  curl -X POST http://localhost:3000/agents/9e36ac23-98bb-4cda-91fe-a261763976c8/stop \\"
+echo "    -H 'Authorization: Bearer $TOKEN'"
+echo "  curl -X POST http://localhost:3000/agents/9e36ac23-98bb-4cda-91fe-a261763976c8/run \\"
+echo "    -H 'Authorization: Bearer $TOKEN'"
+echo ""
+echo "✨ Your AVR agent now uses the same script as your Exodus Ava bot!"

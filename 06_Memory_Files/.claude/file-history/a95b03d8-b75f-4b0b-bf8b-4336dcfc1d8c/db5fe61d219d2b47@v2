@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+"""
+Simple transcript capture from AVR bot logs without docker module.
+"""
+
+import subprocess
+import sqlite3
+import re
+import sys
+from datetime import datetime
+
+def capture_transcript(bot_port, call_uuid):
+    """Capture transcript from bot logs using docker CLI."""
+
+    print(f"📝 Capturing transcript for bot {bot_port}, call {call_uuid}")
+
+    # Get logs from docker using subprocess
+    cmd = f"docker logs avr-bot-{bot_port} --tail 500 2>&1"
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        print(f"❌ Failed to get logs: {result.stderr}")
+        return None
+
+    lines = result.stdout.split('\n')
+
+    # Parse ASR and TTS lines
+    transcript = []
+
+    for line in lines:
+        # User speech (ASR)
+        if "Received data from external asr service:" in line:
+            match = re.search(r"asr service: (.+)$", line)
+            if match:
+                user_text = match.group(1).strip()
+                if user_text:
+                    transcript.append(f"Customer: {user_text}")
+                    print(f"  📥 User: {user_text}")
+
+        # Bot speech (TTS)
+        elif "Sends text from LLM to TTS:" in line:
+            match = re.search(r"to TTS: (.+)$", line)
+            if match:
+                bot_text = match.group(1).strip()
+                if bot_text:
+                    transcript.append(f"Agent: {bot_text}")
+                    print(f"  🤖 Bot: {bot_text[:50]}...")
+
+    if not transcript:
+        print("⚠️  No transcript found in logs")
+        return None
+
+    transcript_text = "\n".join(transcript)
+
+    # Save to database
+    try:
+        conn = sqlite3.connect('dialer.db')
+        cursor = conn.cursor()
+
+        # Update call_log with transcript
+        cursor.execute("""
+            UPDATE call_log
+            SET transcription_text = ?
+            WHERE call_uuid = ?
+        """, (transcript_text, call_uuid))
+
+        rows_updated = cursor.rowcount
+        conn.commit()
+        conn.close()
+
+        if rows_updated > 0:
+            print(f"✅ Saved transcript for call {call_uuid}")
+            print(f"   Transcript length: {len(transcript_text)} chars")
+        else:
+            print(f"⚠️  No call_log entry found for {call_uuid}")
+            # Try to insert a new record
+            conn = sqlite3.connect('dialer.db')
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO call_log (call_uuid, lead_id, campaign_id, bot_port,
+                                    start_time, end_time, call_status, transcription_text)
+                VALUES (?, 0, 0, ?, datetime('now'), datetime('now'), 'COMPLETED', ?)
+            """, (call_uuid, bot_port, transcript_text))
+            conn.commit()
+            conn.close()
+            print(f"✅ Created new call record with transcript")
+
+        return transcript_text
+
+    except Exception as e:
+        print(f"❌ Database error: {e}")
+        return None
+
+def test_capture_last_call():
+    """Test by capturing transcript from bot 9092's last call."""
+
+    # Get last call UUID from database
+    conn = sqlite3.connect('dialer.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT call_uuid FROM call_log ORDER BY id DESC LIMIT 1")
+    row = cursor.fetchone()
+    conn.close()
+
+    if row:
+        call_uuid = row[0]
+        print(f"📞 Last call UUID: {call_uuid}")
+    else:
+        # Generate test UUID
+        call_uuid = f"test_{int(datetime.now().timestamp())}"
+        print(f"📞 Using test UUID: {call_uuid}")
+
+    transcript = capture_transcript(9092, call_uuid)
+
+    if transcript:
+        print("\n📄 Captured Transcript Preview:")
+        print("-" * 50)
+        print(transcript[:500])
+        if len(transcript) > 500:
+            print("...")
+        print("-" * 50)
+
+if __name__ == "__main__":
+    if len(sys.argv) > 2:
+        bot_port = int(sys.argv[1])
+        call_uuid = sys.argv[2]
+        capture_transcript(bot_port, call_uuid)
+    else:
+        test_capture_last_call()

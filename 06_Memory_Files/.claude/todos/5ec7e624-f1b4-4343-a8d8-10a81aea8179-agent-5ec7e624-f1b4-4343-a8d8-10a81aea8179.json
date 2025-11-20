@@ -1,0 +1,67 @@
+[
+  {
+    "content": "Clone AVR repository from GitHub",
+    "status": "completed",
+    "activeForm": "Cloning AVR repository from GitHub"
+  },
+  {
+    "content": "Run AVR with Docker Compose",
+    "status": "completed",
+    "activeForm": "Running AVR with Docker Compose"
+  },
+  {
+    "content": "Analyze AVR architecture and AudioSocket implementation",
+    "status": "completed",
+    "activeForm": "Analyzing AVR architecture and AudioSocket implementation"
+  },
+  {
+    "content": "Troubleshoot AVR login and capture dashboard screenshots",
+    "status": "completed",
+    "activeForm": "Troubleshooting AVR login and capturing dashboard screenshots"
+  },
+  {
+    "content": "Document complete AudioSocket protocol findings",
+    "status": "completed",
+    "activeForm": "Documenting complete AudioSocket protocol findings"
+  },
+  {
+    "content": "Research ViciDial installation requirements",
+    "status": "completed",
+    "activeForm": "Researching ViciDial installation requirements"
+  },
+  {
+    "content": "Install Asterisk with AudioSocket support",
+    "status": "completed",
+    "activeForm": "Installing Asterisk with AudioSocket support"
+  },
+  {
+    "content": "Configure Asterisk dialplan for AudioSocket",
+    "status": "completed",
+    "activeForm": "Configuring Asterisk dialplan for AudioSocket"
+  },
+  {
+    "content": "Create AudioSocketTransport class for Pipecat",
+    "status": "completed",
+    "activeForm": "Creating AudioSocketTransport class for Pipecat"
+  },
+  {
+    "content": "Test Ava bot with Asterisk AudioSocket",
+    "status": "completed",
+    "activeForm": "Testing Ava bot with Asterisk AudioSocket"
+  },
+  {
+    "content": "Install ViciDial for campaign management",
+    "status": "pending",
+    "activeForm": "Installing ViciDial for campaign management"
+  },
+  {
+    "content": "Configure ViciDial campaigns with AudioSocket routing",
+    "status": "pending",
+    "activeForm": "Configuring ViciDial campaigns with AudioSocket routing"
+  },
+  {
+    "content": "Test end-to-end calling with campaign management",
+    "status": "pending",
+    "activeForm": "Testing end-to-end calling with campaign management"
+  }
+]

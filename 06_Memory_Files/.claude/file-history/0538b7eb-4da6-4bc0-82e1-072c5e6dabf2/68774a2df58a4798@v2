@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+"""
+Transcribe audio using Deepgram API with requests
+"""
+import requests
+import json
+import base64
+
+# Deepgram API key
+DEEPGRAM_API_KEY = "44f464f1116d54ee9412f7b9214cdde028240091"
+
+def transcribe_audio():
+    try:
+        # Read the audio file
+        with open("/tmp/audio_for_analysis.wav", "rb") as audio:
+            audio_data = audio.read()
+
+        # Deepgram API endpoint
+        url = "https://api.deepgram.com/v1/listen"
+
+        # Headers
+        headers = {
+            "Authorization": f"Token {DEEPGRAM_API_KEY}",
+            "Content-Type": "audio/wav"
+        }
+
+        # Query parameters for transcription options
+        params = {
+            "model": "nova-2",
+            "smart_format": "true",
+            "punctuate": "true",
+            "paragraphs": "true",
+            "utterances": "true",
+            "diarize": "true",
+            "language": "en"
+        }
+
+        print("Starting transcription (this may take a few minutes)...")
+        print(f"Audio file size: {len(audio_data) / 1024 / 1024:.2f} MB")
+
+        # Make the request
+        response = requests.post(url, headers=headers, params=params, data=audio_data)
+
+        if response.status_code == 200:
+            result = response.json()
+
+            # Save full response
+            with open("/tmp/transcription_full.json", "w") as f:
+                json.dump(result, f, indent=2)
+
+            # Extract transcript
+            transcript = result['results']['channels'][0]['alternatives'][0]['transcript']
+
+            # Format with speaker labels if available
+            formatted_text = []
+
+            if 'utterances' in result['results']:
+                print(f"Found {len(result['results']['utterances'])} utterances with speaker diarization")
+                for utterance in result['results']['utterances']:
+                    speaker = f"Speaker {utterance['speaker']}"
+                    text = utterance['transcript']
+                    formatted_text.append(f"{speaker}: {text}")
+            else:
+                # Use paragraphs if available
+                if 'paragraphs' in result['results']['channels'][0]['alternatives'][0]:
+                    paragraphs = result['results']['channels'][0]['alternatives'][0]['paragraphs']['paragraphs']
+                    print(f"Found {len(paragraphs)} paragraphs")
+                    for paragraph in paragraphs:
+                        for sentence in paragraph['sentences']:
+                            formatted_text.append(sentence['text'])
+                else:
+                    formatted_text.append(transcript)
+
+            # Save formatted transcript
+            with open("/tmp/transcription.txt", "w") as f:
+                f.write("\n\n".join(formatted_text))
+
+            print(f"\nTranscription complete!")
+            print(f"Transcript length: {len(transcript)} characters")
+            print(f"Saved to /tmp/transcription.txt")
+
+            # Print first 1000 characters as preview
+            print("\nFirst 1000 characters of transcript:")
+            print("-" * 50)
+            print(transcript[:1000])
+            print("-" * 50)
+
+            return transcript
+        else:
+            print(f"Error: {response.status_code}")
+            print(response.text)
+            return None
+
+    except Exception as e:
+        print(f"Error during transcription: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+if __name__ == "__main__":
+    transcribe_audio()

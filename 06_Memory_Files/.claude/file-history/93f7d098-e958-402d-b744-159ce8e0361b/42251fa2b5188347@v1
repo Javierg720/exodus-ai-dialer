@@ -1,0 +1,176 @@
+#!/usr/bin/env python3
+"""
+Comprehensive ERC20 Token Balance Checker
+Scans all Ethereum addresses for ANY ERC20 token worth > $0.005 (0.5 cents)
+"""
+
+import requests
+import time
+import csv
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
+import os
+
+# === CONFIG ===
+API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6IjY0MjhlYzljLTAyN2EtNGFhYS05ZDA0LWViZTVjNDY5ZDY2NCIsIm9yZ0lkIjoiNDc5NTMwIiwidXNlcklkIjoiNDkzMzM4IiwidHlwZUlkIjoiYTc1MWYxNzMtM2Q2MS00YjQxLWJhMWUtNmZlNzM1M2NiODlkIiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NjIyODM5MzcsImV4cCI6NDkxODA0MzkzN30.AJTXOGNivAIp5Dvw5hs_THg2qAGFG9gwGN36vStuLHE"
+WALLET_FILE = "/home/user/Documents/AnyDesk/test_addresses.txt"
+OUTPUT_FILE = f"/home/user/erc20_balances_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+MIN_USD_VALUE = 0.005  # 0.5 cents minimum
+MAX_WORKERS = 50  # Parallel requests
+RATE_LIMIT_DELAY = 0.02  # 20ms between requests (50 req/sec max per worker)
+# ==============
+
+headers = {
+    "Accept": "application/json",
+    "X-API-Key": API_KEY
+}
+
+# Stats tracking
+total_addresses = 0
+processed = 0
+found_balances = 0
+errors = 0
+start_time = time.time()
+
+def load_addresses():
+    """Load wallet addresses from file"""
+    print(f"Loading addresses from {WALLET_FILE}...")
+    with open(WALLET_FILE, 'r') as f:
+        addresses = [line.strip() for line in f if line.strip().startswith('0x')]
+    print(f"Loaded {len(addresses):,} addresses")
+    return addresses
+
+def check_address_tokens(address):
+    """Check all ERC20 tokens for a single address"""
+    global processed, found_balances, errors
+
+    url = f"https://deep-index.moralis.io/api/v2.2/{address}/erc20"
+    params = {"chain": "eth"}
+
+    try:
+        time.sleep(RATE_LIMIT_DELAY)  # Rate limiting
+        response = requests.get(url, headers=headers, params=params, timeout=10)
+
+        if response.status_code == 200:
+            tokens = response.json()
+            results = []
+
+            # Filter tokens with USD value > MIN_USD_VALUE
+            for token in tokens:
+                usd_value = float(token.get('usd_value', 0) or 0)
+                balance_formatted = float(token.get('balance_formatted', 0) or 0)
+
+                if usd_value >= MIN_USD_VALUE and balance_formatted > 0:
+                    results.append({
+                        'address': address,
+                        'token_name': token.get('name', 'Unknown'),
+                        'token_symbol': token.get('symbol', 'Unknown'),
+                        'token_address': token.get('token_address', ''),
+                        'balance': balance_formatted,
+                        'usd_value': usd_value,
+                        'usd_price': float(token.get('usd_price', 0) or 0)
+                    })
+                    found_balances += 1
+
+            processed += 1
+
+            # Progress update every 100 addresses
+            if processed % 100 == 0:
+                elapsed = time.time() - start_time
+                rate = processed / elapsed if elapsed > 0 else 0
+                eta_seconds = (total_addresses - processed) / rate if rate > 0 else 0
+                eta_hours = eta_seconds / 3600
+
+                print(f"[{processed:,}/{total_addresses:,}] "
+                      f"Found: {found_balances:,} | "
+                      f"Rate: {rate:.1f} addr/sec | "
+                      f"ETA: {eta_hours:.1f}h | "
+                      f"Errors: {errors}")
+
+            return results
+
+        elif response.status_code == 429:
+            # Rate limited - wait and retry
+            errors += 1
+            print(f"⚠️  Rate limited on {address}, waiting 5s...")
+            time.sleep(5)
+            return check_address_tokens(address)  # Retry
+
+        else:
+            errors += 1
+            if errors % 50 == 0:
+                print(f"⚠️  Error {response.status_code} for {address}: {response.text[:100]}")
+            return []
+
+    except Exception as e:
+        errors += 1
+        if errors % 50 == 0:
+            print(f"⚠️  Exception for {address}: {str(e)[:100]}")
+        return []
+
+def main():
+    global total_addresses
+
+    print("="*80)
+    print("ERC20 Token Balance Checker")
+    print(f"Minimum USD Value: ${MIN_USD_VALUE}")
+    print(f"Max Workers: {MAX_WORKERS}")
+    print("="*80)
+
+    # Load addresses
+    addresses = load_addresses()
+    total_addresses = len(addresses)
+
+    # Prepare CSV output
+    csv_file = open(OUTPUT_FILE, 'w', newline='', encoding='utf-8')
+    csv_writer = csv.writer(csv_file)
+    csv_writer.writerow([
+        'wallet_address',
+        'token_name',
+        'token_symbol',
+        'token_address',
+        'balance',
+        'usd_value',
+        'usd_price_per_token'
+    ])
+
+    print(f"\nStarting scan of {total_addresses:,} addresses...")
+    print(f"Results will be saved to: {OUTPUT_FILE}\n")
+
+    # Process in parallel
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = {executor.submit(check_address_tokens, addr): addr for addr in addresses}
+
+        for future in as_completed(futures):
+            results = future.result()
+
+            # Write results immediately to CSV
+            for result in results:
+                csv_writer.writerow([
+                    result['address'],
+                    result['token_name'],
+                    result['token_symbol'],
+                    result['token_address'],
+                    result['balance'],
+                    f"${result['usd_value']:.4f}",
+                    f"${result['usd_price']:.6f}"
+                ])
+                csv_file.flush()  # Ensure data is written
+
+    csv_file.close()
+
+    # Final report
+    elapsed = time.time() - start_time
+    print("\n" + "="*80)
+    print("SCAN COMPLETE!")
+    print("="*80)
+    print(f"Total addresses scanned: {processed:,}")
+    print(f"Token balances found (>${MIN_USD_VALUE}): {found_balances:,}")
+    print(f"Errors encountered: {errors:,}")
+    print(f"Time elapsed: {elapsed/60:.1f} minutes ({elapsed/3600:.2f} hours)")
+    print(f"Average rate: {processed/elapsed:.1f} addresses/second")
+    print(f"\nResults saved to: {OUTPUT_FILE}")
+    print("="*80)
+
+if __name__ == "__main__":
+    main()

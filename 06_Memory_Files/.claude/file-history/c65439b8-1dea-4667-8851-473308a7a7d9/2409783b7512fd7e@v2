@@ -1,0 +1,82 @@
+#!/bin/bash
+# Update AVR agent with sales script
+
+# Login to AVR
+TOKEN=$(curl -s -X POST "http://localhost:3000/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin@agentvoiceresponse.com", "password": "agentvoiceresponse"}' \
+  | jq -r '.access_token')
+
+echo "✅ Logged in to AVR"
+
+# Get current providers
+PROVIDERS=$(curl -s "http://localhost:3000/providers" -H "Authorization: Bearer $TOKEN")
+
+# Get Cerebras LLM provider ID
+CEREBRAS_ID=$(echo "$PROVIDERS" | jq -r '.data[] | select(.name == "Cerebras Llama 3.3 70B") | .id')
+
+echo "📝 Updating Cerebras provider with sales script..."
+
+# Your sales script (customize this!)
+SALES_SCRIPT="You are Ava, a professional AI sales agent for Solar Energy Solutions.
+
+PERSONALITY: Friendly, professional, consultative (not pushy)
+
+GOAL: Qualify homeowners for free solar consultations
+
+CONVERSATION FLOW:
+1. Warm Greeting
+   - 'Hi, this is Ava from Solar Energy Solutions. Am I speaking with [NAME]?'
+
+2. Permission & Purpose (15 seconds max)
+   - 'I'm calling about the solar savings assessment for your area. Do you have 2 minutes?'
+
+3. Qualification Questions
+   - 'Do you own your home?'
+   - 'What's your average monthly electric bill?'
+   - If under \$100: Politely disqualify
+   - If \$100+: Continue
+
+4. Value Proposition
+   - 'Homeowners in [AREA] are saving 30-50% on electricity with solar. Would you like a free analysis?'
+
+5. Close
+   - 'Great! I have Tuesday at 2pm or Thursday at 10am. Which works better?'
+
+CRITICAL RULES:
+- ALWAYS ask a question after each response (maintain control)
+- Keep responses under 2 sentences
+- If they say 'not interested', respond: 'I understand. Just so you know, the assessment is completely free with no obligation. May I ask what concerns you have about solar?'
+- If still not interested: 'No problem. Have a great day!'
+- NEVER be aggressive or rude
+- Temperature should be LOW (0.2-0.3) to follow script closely"
+
+# Update provider with sales script
+curl -s -X PATCH "http://localhost:3000/providers/$CEREBRAS_ID" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"config\": {
+      \"image\": \"registry:5000/avr-llm-cerebras:latest\",
+      \"env\": {
+        \"CEREBRAS_API_KEY\": \"csk-45rkpchch265v85mj2e85pdtyj3pm8nmdyh85wyk82pprcc3\",
+        \"CEREBRAS_MODEL\": \"llama-3.3-70b\",
+        \"TEMPERATURE\": \"0.3\",
+        \"MAX_TOKENS\": \"150\",
+        \"SYSTEM_PROMPT\": $(echo "$SALES_SCRIPT" | jq -Rs .)
+      }
+    }
+  }" > /dev/null
+
+echo "✅ Sales script updated!"
+echo ""
+echo "🔄 Now restart your agent to apply the new script:"
+echo ""
+echo "1. In AVR dashboard: Stop your agent"
+echo "2. Then Start it again"
+echo ""
+echo "Or via command line:"
+echo "  curl -X POST http://localhost:3000/agents/9e36ac23-98bb-4cda-91fe-a261763976c8/stop -H 'Authorization: Bearer $TOKEN'"
+echo "  curl -X POST http://localhost:3000/agents/9e36ac23-98bb-4cda-91fe-a261763976c8/run -H 'Authorization: Bearer $TOKEN'"
+echo ""
+echo "✨ Your agent will now use the sales script!"

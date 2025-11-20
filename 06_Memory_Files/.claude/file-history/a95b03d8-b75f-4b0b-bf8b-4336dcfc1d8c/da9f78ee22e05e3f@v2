@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+import json
+import os
+
+def load_bot_config():
+    """Load bot configuration from bot_config.json"""
+    config_path = "/home/user/Desktop/Projects_Organized/01_Exodus_Dialer/exodus-kali-deploy/bot_config.json"
+    print(f"Loading config from: {config_path}")
+    print(f"File exists: {os.path.exists(config_path)}")
+
+    try:
+        with open(config_path, "r") as f:
+            all_configs = json.load(f)
+            config = all_configs.get("ava_sales_bot", {})
+            print(f"✅ Config loaded successfully!")
+            return config
+    except Exception as e:
+        print(f"❌ Error loading bot config: {e}")
+        return None
+
+# Test it
+config = load_bot_config()
+
+if config:
+    script_config = config.get("script", {})
+    system_prompt = script_config.get("system_prompt", "NO PROMPT")
+
+    print(f"\n📊 Configuration Analysis:")
+    print(f"- LLM Provider: {config.get('llm', {}).get('provider')}")
+    print(f"- Model: {config.get('llm', {}).get('model')}")
+    print(f"- Temperature: {config.get('llm', {}).get('temperature')}")
+    print(f"- System prompt length: {len(system_prompt)} characters")
+    print(f"- Contains 'Fund Express': {'Fund Express' in system_prompt}")
+    print(f"- Contains opening pitch: {'money you were seeking' in system_prompt}")
+
+    print(f"\n📝 First 300 chars of system prompt:")
+    print(system_prompt[:300])
+else:
+    print("Failed to load config!")

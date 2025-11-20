@@ -1,0 +1,28 @@
+#!/bin/bash
+# Comprehensive Steam launcher with GLX workarounds
+
+# Kill any existing Steam processes
+pkill -f steam
+
+# Set display
+export DISPLAY=:0
+
+# Force software rendering with llvmpipe
+export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe
+export LIBGL_ALWAYS_SOFTWARE=1
+
+# Disable hardware acceleration
+export LIBGL_DRI3_DISABLE=1
+export __GLX_VENDOR_LIBRARY_NAME=mesa
+
+# Additional compatibility settings
+export STEAM_RUNTIME_PREFER_HOST_LIBRARIES=0
+export STEAM_RUNTIME=1
+export DBUS_FATAL_WARNINGS=0
+
+# Skip GPU detection
+export STEAM_FRAME_FORCE_CLOSE=1
+export SDL_VIDEODRIVER=x11
+
+# Launch Steam with additional parameters
+steam -noreactlogin -nofriendsui -skipstreamingdrivers "$@" 2>&1 | grep -v "glXChooseVisual"

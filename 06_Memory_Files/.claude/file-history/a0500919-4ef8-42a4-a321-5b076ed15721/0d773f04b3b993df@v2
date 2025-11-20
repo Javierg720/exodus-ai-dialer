@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+import json
+import sys
+
+# Read the config file
+with open('/home/user/Desktop/Projects_Organized/01_Exodus_Dialer/exodus-kali-deploy/bot_config.json', 'r') as f:
+    config = json.load(f)
+
+# Check what's in the config
+bot_config = config.get('ava_sales_bot', {})
+script_config = bot_config.get('script', {})
+system_prompt = script_config.get('system_prompt', 'NOT FOUND')
+
+print("✅ Script Configuration Verification:\n")
+print("1. Config file loaded: YES")
+print(f"2. Bot name: {bot_config.get('metadata', {}).get('bot_name', 'Unknown')}")
+print(f"3. System prompt found: {'YES' if system_prompt != 'NOT FOUND' else 'NO'}")
+print(f"4. System prompt length: {len(system_prompt)} characters")
+print(f"5. Contains 'Fund Express': {'YES' if 'Fund Express' in system_prompt else 'NO'}")
+print(f"6. Contains opening pitch: {'YES' if 'money you were seeking' in system_prompt else 'NO'}")
+print(f"7. Contains objection handlers: {'YES' if 'Not interested' in system_prompt else 'NO'}")
+print("\n✅ First 200 chars of system prompt:")
+print(system_prompt[:200] + "...")

@@ -1,0 +1,13 @@
+Listen, I need to explain how React development works because you've got it backwards.
+
+The SOURCE directory is where you make ALL changes. The BUILD directory is just compiled output that gets regenerated every time you run npm run build.
+
+Think of it like this: Source code is your original document. Build is like a PDF export. You always edit the original document, never the PDF, because the PDF gets recreated from the document every time.
+
+So when you see the build is newer, that doesn't mean it has more edits. It just means someone ran the build command more recently. The source code is the master copy. The build is just the compiled version for production.
+
+If you edit the build directory, your changes disappear the next time anyone runs npm run build. That's why you NEVER edit build files directly.
+
+Both dashboards you're seeing - port 3003 and port 8002 - are serving the SAME source code. Port 3003 shows it in development mode with warnings. Port 8002 shows the compiled production version without warnings.
+
+So tell me: what specific visual problems or functionality issues are you seeing? Because both dashboards are running identical code from the source directory.

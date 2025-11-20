@@ -1,0 +1,138 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Custom Pipeline: Deepgram STT + Cerebras LLM + Edge TTS
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# This is the EXACT stack currently running in Exodus dialer
+#
+# Requirements:
+#   - DEEPGRAM_API_KEY in .env file
+#   - CEREBRAS_API_KEY in .env file
+#   - edge-tts and pydub Python packages
+#
+# Performance:
+#   - STT: Deepgram Nova-2 (~775ms response time, $0.26/hour)
+#   - LLM: Cerebras Llama 3.3 70B ($0.007/hour, ultra-fast)
+#   - TTS: Edge TTS (FREE, Microsoft unofficial API)
+#   - Total cost: ~$0.267/hour per bot
+#
+# Best for:
+#   - Sales dialer applications
+#   - Cost-effective deployments
+#   - Fast, intelligent responses with free TTS
+#
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Pipeline Definition
+# Modular pipeline: separate providers for each stage (STT → LLM → TTS)
+pipelines:
+  exodus_stack:
+    stt: deepgram_stt           # Deepgram STT (modular, not Voice Agent)
+    llm: cerebras_llm           # Cerebras via OpenAI-compatible API
+    tts: edge_tts               # Edge TTS (free)
+    options:
+      stt:
+        chunk_ms: 320           # Audio chunk size for STT processing
+        streaming: true         # Enable streaming STT
+        stream_format: "pcm16_16k"
+        model: "nova-2"         # Deepgram Nova-2 model
+        endpointing: 400        # Milliseconds of silence before finalizing
+        interim_results: true   # Get interim transcripts
+      llm:
+        base_url: "https://api.cerebras.ai/v1"  # Cerebras endpoint
+        model: "llama-3.3-70b"  # Cerebras Llama 3.3 70B
+        temperature: 0.6        # Response creativity (Exodus tuned)
+        max_tokens: 80          # Maximum response length (concise for sales)
+      tts:
+        voice: "en-US-AvaMultilingualNeural"  # Ava voice
+        rate: "+10%"            # Slightly faster speech
+        pitch: "+0Hz"           # Normal pitch
+        format:
+          encoding: ulaw        # Output format: μ-law for telephony
+          sample_rate: 8000     # Output sample rate
+
+# Active Pipeline Selection
+active_pipeline: exodus_stack
+
+# Audio Transport
+# "audiosocket" = TCP-based (same as current Exodus setup)
+audio_transport: "audiosocket"
+
+# Playback Mode
+# "file" = File-based playback (REQUIRED for pipelines)
+downstream_mode: "file"
+
+# AudioSocket Configuration
+audiosocket:
+  host: "0.0.0.0"              # Bind to all interfaces
+  port: 8090                    # Standard AudioSocket port
+  format: "ulaw"                # Audio format: ulaw (8kHz telephony)
+
+# Barge-In (Interrupt Handling)
+# Based on Exodus Phase 9D optimizations
+barge_in:
+  enabled: true                 # Enable interruptions
+  initial_protection_ms: 200    # Protect first 200ms (echo prevention)
+  min_ms: 400                   # 2 words minimum (Exodus tuned)
+  energy_threshold: 1800        # RMS energy threshold
+  cooldown_ms: 1000             # Prevent rapid re-triggering
+  post_tts_end_protection_ms: 250
+
+# Streaming Configuration
+streaming:
+  sample_rate: 8000
+  jitter_buffer_ms: 100
+  keepalive_interval_ms: 5000
+  connection_timeout_ms: 10000
+  fallback_timeout_ms: 8000
+  chunk_size_ms: 20             # 20ms telephony standard
+  min_start_ms: 300
+  low_watermark_ms: 200
+  provider_grace_ms: 500
+  logging_level: "info"
+
+# VAD Configuration
+# Based on Exodus working config (Phase 9A)
+vad:
+  enabled: true
+  mode: "webrtc"
+  webrtc_aggressiveness: 2      # Normal aggressiveness
+  min_speech_duration_ms: 250
+  silence_duration_ms: 1000     # 1 second (Exodus stop_secs)
+  speech_pad_ms: 300            # Exodus start_secs equivalent
+  max_utterance_duration_s: 30
+
+# Provider Configurations
+providers:
+  # Deepgram STT Configuration
+  deepgram:
+    enabled: true
+    api_key: "${DEEPGRAM_API_KEY}"
+    base_url: "https://api.deepgram.com"
+    model: "nova-2"
+    endpointing: 400
+    interim_results: true
+    smart_format: false
+    encoding: "linear16"
+    sample_rate: 16000
+
+  # Cerebras LLM Configuration (via OpenAI adapter)
+  openai:
+    enabled: true
+    api_key: "${CEREBRAS_API_KEY}"
+    base_url: "https://api.cerebras.ai/v1"
+    chat_model: "llama-3.3-70b"
+    temperature: 0.6
+    max_tokens: 80
+
+  # Edge TTS Configuration (custom adapter)
+  edge:
+    enabled: true
+    voice: "en-US-AvaMultilingualNeural"
+    rate: "+10%"
+    pitch: "+0Hz"
+
+# LLM Configuration (Fallback/Default)
+llm:
+  initial_greeting: "I'm giving you a call about the money you were seeking for the business. Did you ever secure those funds?"
+  prompt: "You are Ava, a Business Funding Specialist at Fund Express. You help businesses secure funding through a straightforward, consultative approach. Be enthusiastic, assertive, and expert. Always ask questions to maintain control of the conversation. Keep responses under 50 words unless gathering detailed information."
+  model: "llama-3.3-70b"

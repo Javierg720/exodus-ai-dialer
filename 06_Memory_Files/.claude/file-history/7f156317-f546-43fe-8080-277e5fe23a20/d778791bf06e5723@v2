@@ -1,0 +1,160 @@
+#!/bin/bash
+#═══════════════════════════════════════════════════════════════════════════════
+# EXODUS DIALER CRITICAL FIX DEPLOYMENT
+# Combines best solutions from all AI agents
+#═══════════════════════════════════════════════════════════════════════════════
+
+set -e  # Exit on error
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}       EXODUS DIALER CRITICAL FIX DEPLOYMENT${NC}"
+echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}\n"
+
+# Change to project directory
+cd /home/user/Desktop/Projects_Organized/01_Exodus_Dialer/exodus-kali-deploy
+
+#═══════════════════════════════════════════════════════════════════════════════
+# PHASE 0: EMERGENCY STOP (From My Analysis)
+#═══════════════════════════════════════════════════════════════════════════════
+echo -e "${YELLOW}▶ PHASE 0: Emergency Stop${NC}"
+echo "  Stopping all services to prevent further damage..."
+
+pkill -f dialer_orchestrator.py 2>/dev/null || true
+pkill -f dialer_api.py 2>/dev/null || true
+sleep 2
+
+echo -e "${GREEN}  ✓ All services stopped${NC}\n"
+
+#═══════════════════════════════════════════════════════════════════════════════
+# PHASE 1: DATABASE RECOVERY (From Code-First Agent)
+#═══════════════════════════════════════════════════════════════════════════════
+echo -e "${YELLOW}▶ PHASE 1: Database Recovery${NC}"
+echo "  Fixing database corruption and constraints..."
+
+# Apply database fixes
+sqlite3 dialer.db < fix_database.sql
+
+echo -e "${GREEN}  ✓ Database fixed and optimized${NC}\n"
+
+#═══════════════════════════════════════════════════════════════════════════════
+# PHASE 2: CODE FIXES (Combined from all agents)
+#═══════════════════════════════════════════════════════════════════════════════
+echo -e "${YELLOW}▶ PHASE 2: Applying Code Fixes${NC}"
+echo "  Implementing critical code changes..."
+
+# Run the Python fix script
+python3 apply_critical_fixes.py
+
+echo -e "${GREEN}  ✓ Code fixes applied${NC}\n"
+
+#═══════════════════════════════════════════════════════════════════════════════
+# PHASE 3: SYSTEMD SERVICE (From Code-First Agent)
+#═══════════════════════════════════════════════════════════════════════════════
+echo -e "${YELLOW}▶ PHASE 3: Installing Auto-Restart Service${NC}"
+echo "  Setting up systemd service for automatic recovery..."
+
+# Copy service file
+sudo cp exodus-dialer.service /etc/systemd/system/
+sudo systemctl daemon-reload
+
+# Enable and start service
+sudo systemctl enable exodus-dialer.service
+sudo systemctl start exodus-dialer.service
+
+echo -e "${GREEN}  ✓ Systemd service installed and started${NC}\n"
+
+#═══════════════════════════════════════════════════════════════════════════════
+# PHASE 4: START API (From Groq Agent - Quick Win)
+#═══════════════════════════════════════════════════════════════════════════════
+echo -e "${YELLOW}▶ PHASE 4: Starting API Service${NC}"
+echo "  Launching FastAPI backend..."
+
+nohup python3 dialer_api.py > api.log 2>&1 &
+
+sleep 3
+echo -e "${GREEN}  ✓ API started on port 8000${NC}\n"
+
+#═══════════════════════════════════════════════════════════════════════════════
+# PHASE 5: VERIFICATION (From Cerebras Agent - Comprehensive Check)
+#═══════════════════════════════════════════════════════════════════════════════
+echo -e "${YELLOW}▶ PHASE 5: System Verification${NC}"
+
+# Check orchestrator status
+echo -n "  Checking orchestrator service... "
+if sudo systemctl is-active --quiet exodus-dialer.service; then
+    echo -e "${GREEN}RUNNING${NC}"
+else
+    echo -e "${RED}FAILED${NC}"
+    echo "  Check logs: sudo journalctl -u exodus-dialer -n 50"
+fi
+
+# Check API status
+echo -n "  Checking API service... "
+if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+    echo -e "${GREEN}RUNNING${NC}"
+else
+    echo -e "${RED}FAILED${NC}"
+fi
+
+# Check AVR bots
+echo -n "  Counting AVR bots... "
+BOT_COUNT=$(docker ps --filter "name=avr-bot" --filter "status=running" -q | wc -l)
+echo -e "${GREEN}${BOT_COUNT} bots running${NC}"
+
+# Check database
+echo -n "  Checking database... "
+NEW_LEADS=$(sqlite3 dialer.db "SELECT COUNT(*) FROM leads WHERE status='NEW';" 2>/dev/null)
+echo -e "${GREEN}${NEW_LEADS} leads available${NC}"
+
+# Check Asterisk
+echo -n "  Checking Asterisk... "
+CHANNELS=$(docker exec ava-asterisk asterisk -rx "core show channels count" 2>/dev/null | grep "active channels" | awk '{print $1}')
+echo -e "${GREEN}${CHANNELS} active channels${NC}"
+
+echo ""
+echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+echo -e "${GREEN}        DEPLOYMENT COMPLETE!${NC}"
+echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}\n"
+
+#═══════════════════════════════════════════════════════════════════════════════
+# MONITORING COMMANDS (From All Agents)
+#═══════════════════════════════════════════════════════════════════════════════
+echo "📊 MONITORING COMMANDS:"
+echo ""
+echo "  Watch orchestrator logs:"
+echo "    sudo journalctl -u exodus-dialer -f"
+echo ""
+echo "  Check bot status:"
+echo "    curl http://localhost:8000/bots | jq"
+echo ""
+echo "  Monitor active calls:"
+echo "    docker exec ava-asterisk asterisk -rx 'core show channels'"
+echo ""
+echo "  Database stats:"
+echo "    sqlite3 dialer.db 'SELECT status, COUNT(*) FROM leads GROUP BY status;'"
+echo ""
+echo "  Tail all logs:"
+echo "    tail -f orchestrator.out api.log"
+echo ""
+echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+
+#═══════════════════════════════════════════════════════════════════════════════
+# EXPECTED RESULTS (From Cerebras Agent)
+#═══════════════════════════════════════════════════════════════════════════════
+echo ""
+echo "📈 EXPECTED RESULTS:"
+echo "  • Leads called: 761/761 within 2 hours"
+echo "  • Uptime: Continuous (auto-restart on crash)"
+echo "  • Drop rate: <3% (TCPA compliant)"
+echo "  • Bot utilization: 60-80%"
+echo "  • Dial ratio: 1.2-2.0 (adaptive)"
+echo ""
+
+exit 0

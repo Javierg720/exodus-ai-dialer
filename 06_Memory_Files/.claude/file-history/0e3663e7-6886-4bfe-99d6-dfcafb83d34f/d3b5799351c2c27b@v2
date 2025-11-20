@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""
+Simple Ava: VAPI-Like Prompt Bot
+Prompt in config, LLM generates line from last user input—no repeats, easy flow.
+"""
+
+import asyncio
+import os
+import sys
+import json
+import logging
+from dotenv import load_dotenv
+
+from pipecat.pipeline.pipeline import Pipeline
+from pipecat.pipeline.runner import PipelineRunner
+from pipecat.pipeline.task import PipelineTask, PipelineParams
+from pipecat.frames.frames import TranscriptionFrame, TextFrame, StartFrame, EndFrame
+from pipecat.services.groq import GroqSTTService
+from pipecat.processors.aggregators.llm_response import LLMAssistantContextAggregator
+from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
+from pipecat.services.openai import OpenAILLMService
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from edge_tts_service import EdgeTTSService
+from audiosocket_transport import AudioSocketTransport, AudioSocketParams, AudioSocketCallbacks
+
+load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Load prompt from config
+def load_prompt():
+    with open("bot_config.json", "r") as f:
+        config = json.load(f)
+        return config["ava_sales_bot"]["script"]["system_prompt"]
+
+async def main(contact_name: str = "there", host: str = "0.0.0.0", port: int = 9092):
+    prompt = load_prompt().replace("{{contactFirstName}}", contact_name)
+    logger.info(f"Simple Ava starting—prompt mode, VAPI-like flow. Contact: {contact_name}")
+
+    call_uuid = None
+    pipeline_task = None
+
+    async def on_call_connected(uuid: str):
+        nonlocal call_uuid, pipeline_task
+        call_uuid = uuid
+        logger.info(f"✅ Call connected: {uuid}")
+
+        if pipeline_task:
+            logger.info("🎬 Sending StartFrame")
+            await pipeline_task.queue_frames([StartFrame()])
+            await asyncio.sleep(2.0)
+
+            # Queue opener
+            opening = prompt.split("PITCH (line 1 only):")[1].split("\n\n")[0].strip()
+            opening = opening.replace("{{contactFirstName}}", contact_name)
+            logger.info(f"📣 Queuing opener: {opening}")
+            await pipeline_task.queue_frames([TextFrame(text=opening)])
+
+    async def on_call_disconnected(uuid: str):
+        logger.info(f"📴 Call ended: {uuid}")
+
+    async def on_server_ready():
+        logger.info(f"💡 Server ready on {host}:{port}")
+
+    transport = AudioSocketTransport(
+        host=host, port=port,
+        params=AudioSocketParams(
+            audio_out_enabled=True,
+            audio_in_enabled=True,
+            audio_in_passthrough=True
+        ),
+        callbacks=AudioSocketCallbacks(
+            on_call_connected=on_call_connected,
+            on_call_disconnected=on_call_disconnected,
+            on_server_ready=on_server_ready
+        )
+    )
+
+    stt = GroqSTTService(api_key=os.getenv("GROQ_API_KEY"), model="whisper-large-v3-turbo")
+
+    llm = OpenAILLMService(
+        model="llama-3.3-70b",
+        api_key=os.getenv("CEREBRAS_API_KEY"),
+        base_url="https://api.cerebras.ai/v1"
+    )
+
+    tts = EdgeTTSService(
+        voice="en-US-AvaMultilingualNeural",
+        rate="+10%",
+        aggregate_sentences=True
+    )
+
+    # Simple context: System prompt only—no history leak
+    context = OpenAILLMContext(messages=[{"role": "system", "content": prompt}])
+
+    # Aggregator: Last user line only—no full history
+    class SimpleAggregator(LLMAssistantContextAggregator):
+        async def process_frame(self, frame, direction):
+            if isinstance(frame, TranscriptionFrame):
+                # Prune to last user line only—no leak
+                context.messages = context.messages[:1]  # System only
+                context.messages.append({"role": "user", "content": frame.text})
+                logger.info(f"👤 USER: '{frame.text}' → LLM line")
+            return await super().process_frame(frame, direction)
+
+    agg = SimpleAggregator(context)
+
+    pipeline = Pipeline([
+        transport.input(),
+        stt,
+        agg,
+        llm,
+        tts,
+        transport.output()
+    ])
+
+    task = PipelineTask(pipeline, params=PipelineParams(allow_interruptions=False))
+    pipeline_task = task
+
+    runner = PipelineRunner()
+    await runner.run(task)
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=9092)
+    parser.add_argument("--contact-name", default="there")
+    args = parser.parse_args()
+    asyncio.run(main(args.contact_name, args.host, args.port))

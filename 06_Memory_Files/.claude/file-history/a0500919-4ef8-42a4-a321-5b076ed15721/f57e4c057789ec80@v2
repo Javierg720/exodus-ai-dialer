@@ -1,0 +1,58 @@
+EXODUS BOT SCRIPT FIX SUMMARY
+==============================
+
+PROBLEM IDENTIFIED FROM TRANSCRIPTS:
+------------------------------------
+✅ Bot was saying opening pitch correctly:
+   "Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?"
+
+❌ But then going completely OFF-SCRIPT:
+   - Talking about factor rates and OnDeck Capital
+   - Telling jokes ("What do you call a fake noodle? An impasta!")
+   - Saying "I'm a large language model"
+   - Acting like a general assistant instead of sales specialist
+   - Having random conversations instead of qualifying leads
+
+ROOT CAUSE:
+-----------
+Bot was loading the config file correctly BUT not staying in character as a sales specialist. After the opening pitch, it would revert to general assistant mode.
+
+FIXES APPLIED:
+--------------
+1. REDUCED TEMPERATURE: 0.6 → 0.3
+   - Makes responses more deterministic and script-focused
+   - Less creative improvisation
+
+2. REDUCED MAX TOKENS: 120 → 60
+   - Forces shorter, more concise responses
+   - Less room to go off-script
+
+3. STRENGTHENED SYSTEM PROMPT:
+   - Added: "🚨 CRITICAL: You are Ava from Fund Express, NOT an AI assistant"
+   - Added: "NEVER say 'I'm an AI' or 'I'm a language model'"
+   - Added: "You're a REAL sales specialist calling about business funding"
+   - Added: "🚫 NEVER: Tell jokes, discuss other lenders, talk about factor rates, say 'how can I help'"
+   - Emphasized: "STAY ON SCRIPT EXACTLY"
+
+4. UPDATED INTERRUPTION: 2 → 3 words minimum
+   - Reduces accidental interruptions
+   - Allows bot to complete pitches
+
+STATUS:
+-------
+✅ All 20 bots restarted with new configuration
+✅ Temperature lowered for script adherence
+✅ Response length limited to stay concise
+✅ System prompt reinforced to prevent breaking character
+✅ Ready for testing with real calls
+
+EXPECTED BEHAVIOR:
+------------------
+Bot should now:
+1. Stay in character as Ava from Fund Express
+2. Follow the Straight Line Sales script exactly
+3. Ask qualifying questions in order
+4. Handle objections with provided rebuttals
+5. Never break character or discuss unrelated topics
+6. Keep responses under 40 words
+7. Ask ONE question then WAIT for response

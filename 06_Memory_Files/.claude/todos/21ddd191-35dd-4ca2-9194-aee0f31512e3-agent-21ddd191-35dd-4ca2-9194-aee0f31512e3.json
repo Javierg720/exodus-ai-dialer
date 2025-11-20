@@ -1,0 +1,52 @@
+[
+  {
+    "content": "Fix UUID reading to use TLV protocol format",
+    "status": "completed",
+    "activeForm": "Fixing UUID reading to use TLV protocol format"
+  },
+  {
+    "content": "Update protocol documentation in docstring",
+    "status": "completed",
+    "activeForm": "Updating protocol documentation in docstring"
+  },
+  {
+    "content": "Fix task cleanup to clear _read_task reference",
+    "status": "completed",
+    "activeForm": "Fixing task cleanup to clear _read_task reference"
+  },
+  {
+    "content": "Restart bot with all fixes",
+    "status": "completed",
+    "activeForm": "Restarting bot with all fixes"
+  },
+  {
+    "content": "Test multiple consecutive calls",
+    "status": "completed",
+    "activeForm": "Testing multiple consecutive calls"
+  },
+  {
+    "content": "Verify bidirectional audio quality",
+    "status": "completed",
+    "activeForm": "Verifying bidirectional audio quality"
+  },
+  {
+    "content": "Investigate frame dropping at call start",
+    "status": "completed",
+    "activeForm": "Investigating frame dropping at call start"
+  },
+  {
+    "content": "Add auto-greeting to eliminate call start silence",
+    "status": "completed",
+    "activeForm": "Adding auto-greeting to eliminate call start silence"
+  },
+  {
+    "content": "Restart bot with greeting fix",
+    "status": "completed",
+    "activeForm": "Restarting bot with greeting fix"
+  },
+  {
+    "content": "Test improved call start experience",
+    "status": "pending",
+    "activeForm": "Testing improved call start experience"
+  }
+]

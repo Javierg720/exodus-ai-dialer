@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:docs.pipecat.ai)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:console.groq.com)",
+      "Bash(pkill:*)",
+      "WebFetch(domain:www.daily.co)",
+      "Bash(source:*)",
+      "Bash(edge-tts:*)",
+      "Bash(paplay:*)",
+      "Bash(aplay:*)",
+      "Bash(mpg123:*)",
+      "Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/pip list)",
+      "Bash(python3:*)",
+      "Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/python3 -c \"from pipecat.transports.network.fastapi_websocket import FastAPIWebsocketTransport, FastAPIWebsocketParams; from pipecat.serializers.twilio import TwilioFrameSerializer; print(''Pipecat Twilio WebSocket support available'')\")",
+      "Bash(/home/user/Desktop/exodus-kali-deploy/pipecat_env_new/bin/python3 -c \"import pipecat.serializers.twilio; import inspect; print(inspect.getsourcefile(pipecat.serializers.twilio))\")",
+      "WebFetch(domain:livekit.io)",
+      "WebFetch(domain:docs.livekit.io)",
+      "WebFetch(domain:docs.bolna.ai)",
+      "WebFetch(domain:www.bolna.ai)",
+      "WebFetch(domain:community.asterisk.org)",
+      "WebFetch(domain:www.agentvoiceresponse.com)",
+      "WebFetch(domain:demo.agentvoiceresponse.com)",
+      "Bash(docker exec:*)",
+      "Read(//etc/**)",
+      "Bash(sqlite3:*)",
+      "WebFetch(domain:viciwiki.com)",
+      "Read(//tmp/**)",
+      "WebFetch(domain:docs.asterisk.org)",
+      "WebFetch(domain:caruizdiaz.com)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

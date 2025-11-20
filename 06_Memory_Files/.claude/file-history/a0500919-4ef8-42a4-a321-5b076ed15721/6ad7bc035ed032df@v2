@@ -1,0 +1,247 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import {
+  ArrowLeft, Phone, Clock, Calendar, User,
+  FileText, PlayCircle, Download, Copy, CheckCircle
+} from 'lucide-react';
+import axios from 'axios';
+import './CallDetails.css';
+
+function CallDetails({ apiUrl }) {
+  const { id } = useParams();
+  const [call, setCall] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    fetchCallDetails();
+  }, [id]);
+
+  const fetchCallDetails = async () => {
+    try {
+      // First try to get from call history
+      const response = await axios.get(`${apiUrl}/calls/history?limit=100`);
+      const calls = response.data.calls || response.data;
+      const foundCall = calls.find(c => c.id === parseInt(id) || c.call_uuid === id);
+
+      if (foundCall) {
+        setCall(foundCall);
+      }
+    } catch (error) {
+      console.error('Failed to fetch call details:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDuration = (seconds) => {
+    if (!seconds) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleString();
+  };
+
+  const copyTranscript = () => {
+    if (call?.transcription_text) {
+      navigator.clipboard.writeText(call.transcription_text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const downloadTranscript = () => {
+    if (call?.transcription_text) {
+      const blob = new Blob([call.transcription_text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `transcript_${call.phone_number}_${call.id}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const formatTranscript = (text) => {
+    if (!text) return [];
+
+    // Split by newlines and format each line
+    const lines = text.split('\n');
+    return lines.map((line, index) => {
+      const isAgent = line.startsWith('Agent:');
+      const isCustomer = line.startsWith('Customer:');
+
+      return {
+        id: index,
+        speaker: isAgent ? 'Agent' : isCustomer ? 'Customer' : 'System',
+        text: line.replace(/^(Agent:|Customer:)\s*/, ''),
+        type: isAgent ? 'agent' : isCustomer ? 'customer' : 'system'
+      };
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="call-details loading">
+        <div className="spinner"></div>
+        <p>Loading call details...</p>
+      </div>
+    );
+  }
+
+  if (!call) {
+    return (
+      <div className="call-details error">
+        <h3>Call not found</h3>
+        <Link to="/calls" className="btn-back">
+          <ArrowLeft size={16} />
+          Back to Call History
+        </Link>
+      </div>
+    );
+  }
+
+  const transcriptLines = formatTranscript(call.transcription_text);
+
+  return (
+    <div className="call-details">
+      <div className="details-header">
+        <Link to="/calls" className="btn-back">
+          <ArrowLeft size={16} />
+          Back
+        </Link>
+        <h2>Call Details</h2>
+      </div>
+
+      {/* Call Summary Card */}
+      <div className="call-summary-card">
+        <div className="summary-row">
+          <div className="summary-item">
+            <Phone size={16} />
+            <div>
+              <label>Phone Number</label>
+              <span>{call.phone_number}</span>
+            </div>
+          </div>
+          <div className="summary-item">
+            <User size={16} />
+            <div>
+              <label>Lead Name</label>
+              <span>{call.first_name ? `${call.first_name} ${call.last_name || ''}` : '-'}</span>
+            </div>
+          </div>
+          <div className="summary-item">
+            <Calendar size={16} />
+            <div>
+              <label>Date & Time</label>
+              <span>{formatDateTime(call.start_time)}</span>
+            </div>
+          </div>
+          <div className="summary-item">
+            <Clock size={16} />
+            <div>
+              <label>Duration</label>
+              <span>{formatDuration(call.duration_seconds)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="summary-row">
+          <div className="summary-item">
+            <label>Campaign</label>
+            <span>{call.campaign_name || '-'}</span>
+          </div>
+          <div className="summary-item">
+            <label>Status</label>
+            <span className={`status-badge ${call.call_status?.toLowerCase()}`}>
+              {call.call_status}
+            </span>
+          </div>
+          <div className="summary-item">
+            <label>Disposition</label>
+            <span className={`disposition-badge ${call.disposition_code?.toLowerCase()}`}>
+              {call.disposition_code || '-'}
+            </span>
+          </div>
+          <div className="summary-item">
+            <label>Bot</label>
+            <span>Port {call.bot_port}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Recording Section */}
+      {call.recording_url && (
+        <div className="recording-section">
+          <h3>
+            <PlayCircle size={18} />
+            Call Recording
+          </h3>
+          <audio controls className="audio-player">
+            <source src={call.recording_url} type="audio/mpeg" />
+            <source src={call.recording_url} type="audio/wav" />
+            Your browser does not support audio playback.
+          </audio>
+        </div>
+      )}
+
+      {/* Transcript Section */}
+      <div className="transcript-section">
+        <div className="transcript-header">
+          <h3>
+            <FileText size={18} />
+            Call Transcript
+          </h3>
+          <div className="transcript-actions">
+            <button
+              className={`btn-copy ${copied ? 'copied' : ''}`}
+              onClick={copyTranscript}
+              disabled={!call.transcription_text}
+            >
+              {copied ? <CheckCircle size={16} /> : <Copy size={16} />}
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+            <button
+              className="btn-download"
+              onClick={downloadTranscript}
+              disabled={!call.transcription_text}
+            >
+              <Download size={16} />
+              Download
+            </button>
+          </div>
+        </div>
+
+        {call.transcription_text ? (
+          <div className="transcript-content">
+            {transcriptLines.map(line => (
+              <div key={line.id} className={`transcript-line ${line.type}`}>
+                <span className="speaker">{line.speaker}:</span>
+                <span className="text">{line.text}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="no-transcript">
+            <FileText size={32} />
+            <p>No transcript available for this call</p>
+          </div>
+        )}
+      </div>
+
+      {/* Notes Section */}
+      {call.notes && (
+        <div className="notes-section">
+          <h3>Notes</h3>
+          <p>{call.notes}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default CallDetails;

@@ -1,0 +1,69 @@
+#!/bin/bash
+# Exodus Dialer - Quick Restore Script
+# Created: November 9, 2025
+
+echo "🔄 EXODUS DIALER - RESTORE FROM BACKUP"
+echo "======================================"
+echo "This will restore the working version from backup"
+echo ""
+
+# Check if user wants to proceed
+read -p "Do you want to restore from this backup? (y/n): " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "❌ Restore cancelled"
+    exit 1
+fi
+
+# Set target directory
+TARGET_DIR="/home/user/Desktop/Projects_Organized/01_Exodus_Dialer"
+BACKUP_DIR="$(dirname "$0")"
+
+echo ""
+echo "📦 Starting restore process..."
+
+# Create backup of current version
+echo "📁 Backing up current version..."
+TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
+if [ -d "$TARGET_DIR/exodus-kali-deploy" ]; then
+    mv "$TARGET_DIR/exodus-kali-deploy" "$TARGET_DIR/exodus-kali-deploy.before_restore_$TIMESTAMP"
+fi
+
+# Extract backend
+echo "📥 Extracting backend..."
+cd "$TARGET_DIR"
+tar -xzf "$BACKUP_DIR/exodus-kali-deploy.tar.gz"
+
+# Extract dashboard if needed
+if [ -f "$BACKUP_DIR/exodus-dashboard.tar.gz" ]; then
+    echo "📥 Extracting dashboard..."
+    if [ -d "$TARGET_DIR/exodus-dashboard" ]; then
+        mv "$TARGET_DIR/exodus-dashboard" "$TARGET_DIR/exodus-dashboard.before_restore_$TIMESTAMP"
+    fi
+    tar -xzf "$BACKUP_DIR/exodus-dashboard.tar.gz"
+fi
+
+# Restore database
+echo "💾 Restoring database..."
+cp "$BACKUP_DIR/dialer_backup.db" "$TARGET_DIR/exodus-kali-deploy/dialer.db"
+
+# Restore Asterisk config
+echo "📞 Restoring Asterisk configuration..."
+if [ -d "/home/user/Desktop/ava-asterisk-config" ]; then
+    cp -r "/home/user/Desktop/ava-asterisk-config" "/home/user/Desktop/ava-asterisk-config.before_restore_$TIMESTAMP"
+fi
+cp -r "$BACKUP_DIR/ava-asterisk-config" "/home/user/Desktop/"
+
+# Restore bot config
+echo "🤖 Restoring bot configuration..."
+cp "$BACKUP_DIR/bot_config_working.json" "$TARGET_DIR/exodus-kali-deploy/bot_config.json"
+
+echo ""
+echo "✅ RESTORE COMPLETE!"
+echo ""
+echo "Next steps:"
+echo "1. cd $TARGET_DIR/exodus-kali-deploy"
+echo "2. python3 dialer_api.py  # Start the API"
+echo "3. cd $TARGET_DIR/exodus-dashboard && npm start  # Start dashboard"
+echo ""
+echo "Previous version backed up with suffix: .before_restore_$TIMESTAMP"

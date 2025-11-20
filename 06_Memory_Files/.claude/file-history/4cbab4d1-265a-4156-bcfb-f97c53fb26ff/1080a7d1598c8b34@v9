@@ -1,0 +1,474 @@
+#!/usr/bin/env python3
+"""
+Ava - Business Funding Specialist Bot (AudioSocket Version)
+Uses Asterisk AudioSocket for telephony integration
+"""
+
+import asyncio
+import os
+import sys
+import json
+import logging
+from dotenv import load_dotenv
+
+from pipecat.pipeline.pipeline import Pipeline
+from pipecat.pipeline.runner import PipelineRunner
+from pipecat.pipeline.task import PipelineTask, PipelineParams
+from pipecat.processors.frame_processor import FrameProcessor
+from pipecat.processors.aggregators.llm_response import (
+    LLMAssistantContextAggregator,
+    LLMUserContextAggregator,
+)
+from pipecat.frames.frames import EndFrame, TranscriptionFrame, StartFrame
+from pipecat.audio.vad.silero import SileroVADAnalyzer
+from pipecat.audio.vad.vad_analyzer import VADParams
+from pipecat.processors.filters.stt_mute_filter import STTMuteFilter, STTMuteConfig, STTMuteStrategy
+from pipecat.audio.interruptions.min_words_interruption_strategy import MinWordsInterruptionStrategy
+from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
+from pipecat.services.deepgram import DeepgramSTTService
+from pipecat.services.groq import GroqSTTService
+
+# Add path for local services
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from edge_tts_service import EdgeTTSService
+from pipecat.services.openai.llm import OpenAILLMService
+from audiosocket_transport import (
+    AudioSocketTransport,
+    AudioSocketParams,
+    AudioSocketCallbacks,
+)
+
+# Load environment variables
+load_dotenv()
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+
+async def analyze_call_disposition(transcript: str) -> str:
+    """Analyze call transcript and return disposition code.
+
+    Uses LLM to analyze the conversation and determine the outcome.
+
+    Returns:
+        Disposition code: INTERESTED, NOT_INTERESTED, CALLBACK, VOICEMAIL, NO_DECISION, SALE
+    """
+    try:
+        from openai import AsyncOpenAI
+
+        # Use Cerebras for fast, cheap analysis
+        client = AsyncOpenAI(
+            api_key=os.getenv("CEREBRAS_API_KEY"),
+            base_url="https://api.cerebras.ai/v1"
+        )
+
+        analysis_prompt = f"""Analyze this sales call transcript and determine the disposition.
+
+Transcript:
+{transcript}
+
+Possible dispositions:
+- INTERESTED: Lead showed interest, wants follow-up or more information
+- NOT_INTERESTED: Lead clearly not interested, declined offer
+- CALLBACK: Lead asked to call back later at specific time
+- VOICEMAIL: Got voicemail, no conversation
+- NO_DECISION: Lead needs time to think, no clear yes/no
+- SALE: Lead agreed to proceed, provided email for application
+- WRONG_NUMBER: Wrong number or person
+
+Return ONLY the disposition code, nothing else."""
+
+        response = await client.chat.completions.create(
+            model="llama3.3-70b",
+            messages=[{"role": "user", "content": analysis_prompt}],
+            temperature=0.1,
+            max_tokens=20
+        )
+
+        disposition = response.choices[0].message.content.strip()
+
+        # Validate disposition
+        valid_dispositions = ["INTERESTED", "NOT_INTERESTED", "CALLBACK", "VOICEMAIL", "NO_DECISION", "SALE", "WRONG_NUMBER"]
+        if disposition not in valid_dispositions:
+            logger.warning(f"Invalid disposition '{disposition}', defaulting to NO_DECISION")
+            return "NO_DECISION"
+
+        return disposition
+
+    except Exception as e:
+        logger.error(f"Error analyzing disposition: {e}")
+        return "NO_DECISION"
+
+
+def load_bot_config():
+    """Load bot configuration from bot_config.json"""
+    config_path = os.path.join(os.path.dirname(__file__), "bot_config.json")
+    try:
+        with open(config_path, "r") as f:
+            all_configs = json.load(f)
+            return all_configs.get("ava_sales_bot", {})
+    except Exception as e:
+        logger.error(f"Error loading bot config: {e}")
+        # Return default config
+        return {
+            "llm": {
+                "provider": "cerebras",
+                "model": "llama3.3-70b",
+                "temperature": 0.7,
+            },
+            "tts": {
+                "provider": "edge",
+                "voice": "en-US-AvaNeural",
+                "rate": "+5%",
+                "pitch": "+2Hz",
+            },
+            "pipeline": {"allow_interruptions": True, "enable_metrics": True},
+            "script": {
+                "system_prompt": 'You are Ava from Fund Express. Qualify business funding leads.\n\nOpening: "Hey [name], calling about the money you were seeking for the business. Did you secure those funds?"\n\nAsk ONE question at a time:\n1. How much money can the business use?\n2. What will it help with?\n3. When do you need it?\n4. What\'s your gross revenue?\n5. Any existing loans?\n\nClose: Get their email for the application.\n\nRULES:\n- Keep responses under 40 words\n- Ask ONE question, then STOP\n- No descriptions like *smiling* or (laughs)\n- Stay on script exactly'
+            },
+        }
+
+
+async def main(
+    contact_name: str = "there", host: str = "0.0.0.0", port: int = 9092
+):
+    """Run Ava sales bot with AudioSocket transport"""
+
+    # Load configuration
+    config = load_bot_config()
+    logger.info("Loaded bot configuration")
+
+    # Initialize pipeline components
+    call_uuid = None  # Will be set when call connects
+    pipeline_task = None  # Will be set after task creation
+
+    # Transcript storage for this call
+    conversation_transcript = []
+    call_start_time = None
+
+    # Callbacks for AudioSocket events
+    async def on_call_connected(uuid: str):
+        nonlocal call_uuid, pipeline_task, call_start_time
+        call_uuid = uuid
+        call_start_time = asyncio.get_event_loop().time()
+        logger.info(f"✅ Call connected: {uuid}")
+
+        # Queue opening pitch to eliminate awkward silence at call start
+        if pipeline_task:
+            from pipecat.frames.frames import TextFrame
+
+            opening_pitch = f"Hey {contact_name}, this is Ava with Fund Express. Did you ever secure the money you were seeking for the business?"
+            logger.info(f"📣 Queuing opening pitch")
+
+            # Save opening to transcript
+            conversation_transcript.append({
+                "role": "assistant",
+                "text": opening_pitch,
+                "timestamp": asyncio.get_event_loop().time() - call_start_time
+            })
+
+            await pipeline_task.queue_frames([TextFrame(opening_pitch)])
+
+    async def on_call_disconnected(uuid: str):
+        nonlocal conversation_transcript, call_start_time
+        logger.info(f"📴 Call ended: {uuid}")
+
+        # Save transcript and analyze for disposition
+        if conversation_transcript:
+            import requests
+            from datetime import datetime
+
+            # Build full transcript text
+            full_transcript = "\n".join([
+                f"{msg['role'].upper()}: {msg['text']}"
+                for msg in conversation_transcript
+            ])
+
+            logger.info(f"📝 Saving transcript ({len(conversation_transcript)} messages)")
+
+            # Auto-analyze disposition (using LLM)
+            try:
+                disposition = await analyze_call_disposition(full_transcript)
+                logger.info(f"🎯 Auto-disposition: {disposition}")
+
+                # Send transcript and disposition to API
+                # (API will update call_log table)
+                try:
+                    requests.post(
+                        "http://localhost:8000/calls/transcript",
+                        json={
+                            "call_uuid": uuid,
+                            "transcript": full_transcript,
+                            "disposition": disposition,
+                            "duration": asyncio.get_event_loop().time() - call_start_time if call_start_time else 0
+                        },
+                        timeout=5
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to send transcript to API: {e}")
+
+            except Exception as e:
+                logger.error(f"Error analyzing disposition: {e}")
+
+        conversation_transcript = []
+
+    async def on_server_ready():
+        logger.info(f"🎙️  AudioSocket server ready on {host}:{port}")
+        logger.info("💡 Dial extension 9092 from SIP phone to connect to Ava")
+
+    # Initialize AudioSocket transport
+# VAD configuration - QWEN/LLAMA AGENT OPTIMIZED (Nov 3 fix)
+    vad = SileroVADAnalyzer(
+        params=VADParams(
+            start_secs=0.2,      # Quick detection without false triggers (Nov 2 working config)
+            stop_secs=1.2,       # Allow natural pauses - 1.2 seconds (Nov 2 working config)
+            min_volume=0.4,      # Sensitive enough to pick up speech (Nov 2 working config)
+            confidence=0.5       # Lower confidence to accept more speech (Nov 2 working config)
+        )
+    )
+# VAD configuration - QWEN/LLAMA AGENT OPTIMIZED (Nov 3 fix)
+    vad = SileroVADAnalyzer(
+        params=VADParams(
+            start_secs=0.2,      # Quick detection without false triggers (Nov 2 working config)
+            stop_secs=1.2,       # Allow natural pauses - 1.2 seconds (Nov 2 working config)
+            min_volume=0.4,      # Sensitive enough to pick up speech (Nov 2 working config)
+            confidence=0.5       # Lower confidence to accept more speech (Nov 2 working config)
+        )
+    )
+# VAD configuration - QWEN/LLAMA AGENT OPTIMIZED (Nov 3 fix)
+    vad = SileroVADAnalyzer(
+        params=VADParams(
+            start_secs=0.2,      # Quick detection without false triggers (Nov 2 working config)
+            stop_secs=1.2,       # Allow natural pauses - 1.2 seconds (Nov 2 working config)
+            min_volume=0.4,      # Sensitive enough to pick up speech (Nov 2 working config)
+            confidence=0.5       # Lower confidence to accept more speech (Nov 2 working config)
+        )
+    )
+# VAD configuration - QWEN/LLAMA AGENT OPTIMIZED (Nov 3 fix)
+    vad = SileroVADAnalyzer(
+        params=VADParams(
+            start_secs=0.2,      # Quick detection without false triggers (Nov 2 working config)
+            stop_secs=1.2,       # Allow natural pauses - 1.2 seconds (Nov 2 working config)
+            min_volume=0.4,      # Sensitive enough to pick up speech (Nov 2 working config)
+            confidence=0.5       # Lower confidence to accept more speech (Nov 2 working config)
+        )
+    )
+# VAD configuration - QWEN/LLAMA AGENT OPTIMIZED (Nov 3 fix)
+    vad = SileroVADAnalyzer(
+        params=VADParams(
+            start_secs=0.2,      # Quick detection without false triggers (Nov 2 working config)
+            stop_secs=1.2,       # Allow natural pauses - 1.2 seconds (Nov 2 working config)
+            min_volume=0.4,      # Sensitive enough to pick up speech (Nov 2 working config)
+            confidence=0.5       # Lower confidence to accept more speech (Nov 2 working config)
+        )
+    )
+# VAD configuration - QWEN/LLAMA AGENT OPTIMIZED (Nov 3 fix)
+    vad = SileroVADAnalyzer(
+        params=VADParams(
+            start_secs=0.2,      # Quick detection without false triggers (Nov 2 working config)
+            stop_secs=1.2,       # Allow natural pauses - 1.2 seconds (Nov 2 working config)
+            min_volume=0.4,      # Sensitive enough to pick up speech (Nov 2 working config)
+            confidence=0.5       # Lower confidence to accept more speech (Nov 2 working config)
+        )
+    )
+# VAD configuration - QWEN/LLAMA AGENT OPTIMIZED (Nov 3 fix)
+    vad = SileroVADAnalyzer(
+        params=VADParams(
+            start_secs=0.2,      # Quick detection without false triggers (Nov 2 working config)
+            stop_secs=1.2,       # Allow natural pauses - 1.2 seconds (Nov 2 working config)
+            min_volume=0.4,      # Sensitive enough to pick up speech (Nov 2 working config)
+            confidence=0.5       # Lower confidence to accept more speech (Nov 2 working config)
+        )
+    )
+# VAD configuration - QWEN/LLAMA AGENT OPTIMIZED (Nov 3 fix)
+    vad = SileroVADAnalyzer(
+        params=VADParams(
+            start_secs=0.2,      # Quick detection without false triggers (Nov 2 working config)
+            stop_secs=1.2,       # Allow natural pauses - 1.2 seconds (Nov 2 working config)
+            min_volume=0.4,      # Sensitive enough to pick up speech (Nov 2 working config)
+            confidence=0.5       # Lower confidence to accept more speech (Nov 2 working config)
+        )
+    )
+# VAD configuration - QWEN/LLAMA AGENT OPTIMIZED (Nov 3 fix)
+    vad = SileroVADAnalyzer(
+        params=VADParams(
+            start_secs=0.2,      # Quick detection without false triggers (Nov 2 working config)
+            stop_secs=1.2,       # Allow natural pauses - 1.2 seconds (Nov 2 working config)
+            min_volume=0.4,      # Sensitive enough to pick up speech (Nov 2 working config)
+            confidence=0.5       # Lower confidence to accept more speech (Nov 2 working config)
+        )
+    )
+
+    transport = AudioSocketTransport(
+        host=host,
+        port=port,
+        params=AudioSocketParams(
+            audio_out_enabled=True,
+            audio_in_enabled=True,
+            audio_in_passthrough=True,  # Required to pass audio to STT
+            vad_enabled=True,
+            vad_analyzer=vad,
+        ),
+        callbacks=AudioSocketCallbacks(
+            on_call_connected=on_call_connected,
+            on_call_disconnected=on_call_disconnected,
+            on_server_ready=on_server_ready,
+        ),
+    )
+    
+    # CRITICAL DEBUG: Verify audio_in_passthrough is actually True
+    logger.info(f"🔍 Transport params: audio_in_passthrough={transport._params.audio_in_passthrough}, audio_in_enabled={transport._params.audio_in_enabled}")
+
+    # STT - Deepgram or Groq (required for AudioSocket since we get raw audio)
+    stt_provider = os.getenv("STT_PROVIDER", "deepgram").lower()
+
+    if stt_provider == "groq":
+        stt = GroqSTTService(
+            api_key=os.getenv("GROQ_API_KEY"),
+            model="whisper-large-v3-turbo"
+        )
+        logger.info("✅ Using Groq Whisper STT ($0.01/hour)")
+    else:
+        stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
+        logger.info("✅ Using Deepgram STT ($0.26/hour)")
+
+    # LLM - from config (supports Groq and Cerebras)
+    llm_config = config.get("llm", {})
+    provider = llm_config.get("provider", "openai").lower()
+
+    if provider == "openai":
+        llm = OpenAILLMService(
+            model=llm_config.get("model", "gpt-4o-mini"),
+            api_key=os.getenv("OPENAI_API_KEY"),
+        )
+        logger.info(f"Using OpenAI {llm_config.get('model')} (temp={llm_config.get('temperature', 0.9)})")
+    elif provider == "cerebras":
+        llm = OpenAILLMService(
+            model=llm_config.get("model", "llama3.3-70b"),
+            api_key=os.getenv("CEREBRAS_API_KEY"),
+            base_url="https://api.cerebras.ai/v1",
+        )
+        logger.info(f"Using Cerebras {llm_config.get('model')} (temp={llm_config.get('temperature', 0.7)})")
+    elif provider == "groq":
+        llm = OpenAILLMService(
+            model=llm_config.get("model", "llama-3.3-70b-versatile"),
+            api_key=os.getenv("GROQ_API_KEY"),
+            base_url="https://api.groq.com/openai/v1",
+        )
+        logger.info(f"Using Groq {llm_config.get('model')} (temp={llm_config.get('temperature', 0.6)})")
+
+    # TTS - from config
+    tts_config = config.get("tts", {})
+    tts = EdgeTTSService(
+        voice=tts_config.get("voice", "en-US-AvaNeural"),
+        rate=tts_config.get("rate", "+5%"),
+        pitch=tts_config.get("pitch", "+2Hz"),
+    )
+    logger.info(f"Using Edge TTS ({tts_config.get('voice')})")
+
+    # Set up LLM context with system prompt from config
+    script_config = config.get("script", {})
+    system_prompt = script_config.get(
+        "system_prompt", "You are a helpful AI assistant."
+    )
+
+    # Add contact name context
+    system_prompt += f"\n\nProspect's first name: {contact_name}"
+
+    messages = [{"role": "system", "content": system_prompt}]
+    context = OpenAILLMContext(messages=messages)
+
+    # Custom aggregator wrapper to save messages to transcript
+    class TranscriptAwareUserAggregator(LLMUserContextAggregator):
+        async def process_frame(self, frame, direction):
+            nonlocal conversation_transcript, call_start_time
+            # Save user messages to transcript
+            if isinstance(frame, TranscriptionFrame) and frame.text:
+                conversation_transcript.append({
+                    "role": "user",
+                    "text": frame.text,
+                    "timestamp": asyncio.get_event_loop().time() - call_start_time if call_start_time else 0
+                })
+            return await super().process_frame(frame, direction)
+
+    class TranscriptAwareAssistantAggregator(LLMAssistantContextAggregator):
+        async def process_frame(self, frame, direction):
+            nonlocal conversation_transcript, call_start_time
+            # Save assistant messages to transcript
+            from pipecat.frames.frames import TextFrame
+
+            if isinstance(frame, TextFrame) and frame.text:
+                conversation_transcript.append({
+                    "role": "assistant",
+                    "text": frame.text,
+                    "timestamp": asyncio.get_event_loop().time() - call_start_time if call_start_time else 0
+                })
+            return await super().process_frame(frame, direction)
+
+    # Create aggregators with transcript awareness
+    user_aggregator = TranscriptAwareUserAggregator(context)
+    assistant_aggregator = TranscriptAwareAssistantAggregator(context)
+
+    # STT Mute Filter - Phase 9: prevents echo (bot hearing itself)
+    stt_mute_filter = STTMuteFilter(
+        config=STTMuteConfig(strategies={STTMuteStrategy.MUTE_UNTIL_FIRST_BOT_COMPLETE})
+    )
+
+    # Build pipeline with STTMuteFilter (Phase 9 optimized)
+    pipeline = Pipeline(
+        [
+            transport.input(),  # AudioSocket input (8kHz -> 16kHz)
+            stt,  # Groq/Deepgram STT (16kHz audio -> text)
+            stt_mute_filter,  # Prevent echo - CRITICAL
+            user_aggregator,  # Aggregate user transcription
+            llm,  # LLM processing
+            tts,  # Edge TTS (text -> 16kHz audio)
+            transport.output(),  # AudioSocket output (16kHz -> 8kHz)
+            assistant_aggregator,  # Aggregate assistant responses
+        ]
+    )
+
+    # SMART INTERRUPTION: Require 2 words to interrupt bot (Phase 9 optimal balance)
+    interruption_strategy = MinWordsInterruptionStrategy(min_words=2)
+
+    # Create task with pipeline settings from config
+    pipeline_config = config.get("pipeline", {})
+    task = PipelineTask(
+        pipeline,
+        params=PipelineParams(
+            allow_interruptions=True,  # Enable smart interruption
+            enable_metrics=pipeline_config.get("enable_metrics", True),
+            interruption_strategy=interruption_strategy,  # Min word threshold
+        ),
+        cancel_on_idle_timeout=False,  # Keep bot running, don't cancel on idle
+        idle_timeout_secs=None,  # Disable idle timeout completely
+    )
+
+    # Make task available to callbacks so they can queue frames
+    pipeline_task = task
+
+    # Run
+    runner = PipelineRunner()
+    await runner.run(task)
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Ava Sales Bot with AudioSocket (Asterisk)"
+    )
+    parser.add_argument(
+        "--host", default="0.0.0.0", help="Host to bind AudioSocket server"
+    )
+    parser.add_argument(
+        "--port", type=int, default=9092, help="Port to bind AudioSocket server"
+    )
+    parser.add_argument(
+        "--contact-name", default="there", help="Prospect's first name"
+    )
+    args = parser.parse_args()
+
+    asyncio.run(main(args.contact_name, args.host, args.port))

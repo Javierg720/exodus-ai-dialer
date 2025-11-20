@@ -1,0 +1,19 @@
+Alright, I found the differences between your two dashboards. Here's what's actually going on.
+
+Port 3003 is your React DEVELOPMENT server. It's running with hot reload, showing you live ESLint warnings in the browser console. This is the version you edit when you change source code files.
+
+Port 8002 is your PRODUCTION BUILD. It's serving static compiled files from the build directory using Python's simple HTTP server. This version doesn't show ESLint warnings because they get compiled out.
+
+Here are the actual differences:
+
+Number one: Development server shows live warnings in the browser console. You'll see React Hook dependency warnings about useEffect and other hooks. These are warnings, not errors - the app still works fine.
+
+Number two: Production build has NO warnings visible because the code is minified and compiled. All those warnings are stripped out during the build process.
+
+Number three: Development server allows hot reload. When you save a file, it automatically refreshes. Production build requires a full rebuild using npm run build to see changes.
+
+Number four: The development server uses more memory and CPU because it's constantly watching for file changes. The production build is just static files served efficiently.
+
+The source code last changed on October 27th. The production build was regenerated on November 3rd at 2:36 AM, so your build is actually NEWER than your source code, meaning it's up to date.
+
+Now, what specific problems are you seeing on each dashboard? Tell me exactly what's broken or looks wrong, and I'll fix it.

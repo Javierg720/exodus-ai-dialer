@@ -1,0 +1,89 @@
+================================================================================
+AVR MODULAR PIPELINE - WORKING CONFIGURATION QUICK REFERENCE
+================================================================================
+Last Updated: 2025-11-07
+User Confirmed: "working perfectly. It's doing everything we need."
+
+================================================================================
+THE CRITICAL FIX (DO NOT FORGET)
+================================================================================
+
+Response format in avr-llm-groq/index.js MUST be:
+
+    res.json({ type: 'text', content: responseText })
+
+NOT:
+    ❌ res.json({ response: responseText })
+    ❌ res.json({ content: responseText })
+    ❌ res.write(`data: ${JSON.stringify(...)}\n\n`)
+
+================================================================================
+WORKING STACK
+================================================================================
+
+LLM: Groq llama-3.3-70b-versatile (FREE)
+ASR: Deepgram nova-2-phonecall ($0.26/hour)
+TTS: Edge TTS en-US-AvaMultilingualNeural (FREE)
+
+Total: $0.26/hour per bot (vs $4.50 with STS)
+20 bots: $5.20/hour (vs $90/hour with STS)
+Savings: 94% cheaper
+
+================================================================================
+KEY FILES
+================================================================================
+
+Groq Provider: /home/user/Desktop/Projects_Organized/02_AVR_Voice_Platform/avr-app/custom-providers/avr-llm-groq/
+Docker Compose: /home/user/Desktop/Projects_Organized/01_Exodus_Dialer/exodus-kali-deploy/docker-compose-avr-bots.yml
+
+Backups: /home/user/Desktop/Projects_Organized/02_AVR_Voice_Platform/WORKING_CONFIGS_BACKUP/
+
+================================================================================
+BUILD & DEPLOY
+================================================================================
+
+cd /home/user/Desktop/Projects_Organized/02_AVR_Voice_Platform/avr-app/custom-providers/avr-llm-groq
+docker build -t avr-llm-groq:latest .
+
+cd /home/user/Desktop/Projects_Organized/01_Exodus_Dialer/exodus-kali-deploy
+docker-compose -f docker-compose-avr-bots.yml up -d
+
+docker exec ava-asterisk asterisk -rx "channel originate PJSIP/+13057768712@twilio extension 9092@audiosocket-dial"
+
+================================================================================
+VERIFY WORKING
+================================================================================
+
+Check logs for these lines:
+
+Bot: [INFO]: Received data from LLM service: {"type":"text","content":"..."}
+Bot: [INFO]: Sends text from LLM to TTS: ...
+Groq: [Groq] Response: ...
+TTS: [Edge TTS] Generating audio for: "..."
+
+NO ERRORS:
+    ❌ "Unknown data type: undefined"
+    ❌ "Error parsing LLM service response"
+
+================================================================================
+GROQ API KEY
+================================================================================
+
+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
+
+Model: llama-3.3-70b-versatile
+Temperature: 0.6
+
+================================================================================
+STATUS
+================================================================================
+
+✅ Intro plays
+✅ ASR transcribes
+✅ LLM responds
+✅ TTS generates audio
+✅ User hears bot
+✅ Multi-turn conversation
+✅ Ready for production
+
+PRODUCTION READY - 2025-11-07

@@ -1,0 +1,12 @@
+{
+  "name": "avr-tts-edge",
+  "version": "1.0.0",
+  "description": "AVR TTS Provider for Microsoft Edge TTS (Free)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

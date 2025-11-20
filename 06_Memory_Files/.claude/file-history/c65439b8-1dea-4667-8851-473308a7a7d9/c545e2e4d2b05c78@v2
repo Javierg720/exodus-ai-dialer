@@ -1,0 +1,118 @@
+const express = require('express');
+const { spawn } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+const app = express();
+app.use(express.json());
+
+const PORT = process.env.PORT || 6011;
+const VOICE = process.env.VOICE || 'en-US-AvaMultilingualNeural';
+const RATE = process.env.RATE || '+10%';
+const PITCH = process.env.PITCH || '+2Hz';
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    provider: 'edge-tts',
+    voice: VOICE,
+    cost: 'FREE'
+  });
+});
+
+// Main TTS endpoint
+app.post('/text-to-speech-stream', async (req, res) => {
+  try {
+    const { text } = req.body;
+
+    if (!text) {
+      return res.status(400).json({ error: 'Text is required' });
+    }
+
+    console.log(`[Edge TTS] Generating audio for: "${text.substring(0, 50)}..."`);
+
+    // Create temporary file for audio output
+    const tempFile = path.join('/tmp', `tts_${Date.now()}.wav`);
+
+    // Build edge-tts command
+    const args = [
+      '--text', text,
+      '--voice', VOICE,
+      '--rate', RATE,
+      '--pitch', PITCH,
+      '--write-media', tempFile
+    ];
+
+    const edgeTTS = spawn('edge-tts', args);
+
+    let errorOutput = '';
+
+    edgeTTS.stderr.on('data', (data) => {
+      errorOutput += data.toString();
+    });
+
+    edgeTTS.on('close', (code) => {
+      if (code !== 0) {
+        console.error('[Edge TTS] Error:', errorOutput);
+        res.status(500).json({
+          error: 'TTS generation failed',
+          details: errorOutput
+        });
+        return;
+      }
+
+      // Stream the audio file back
+      res.setHeader('Content-Type', 'audio/wav');
+
+      const audioStream = fs.createReadStream(tempFile);
+
+      audioStream.pipe(res);
+
+      audioStream.on('end', () => {
+        // Clean up temp file
+        fs.unlink(tempFile, (err) => {
+          if (err) console.error('[Edge TTS] Failed to delete temp file:', err);
+        });
+      });
+
+      audioStream.on('error', (err) => {
+        console.error('[Edge TTS] Stream error:', err);
+        res.status(500).json({ error: 'Audio streaming failed' });
+      });
+    });
+
+  } catch (error) {
+    console.error('[Edge TTS] Error:', error.message);
+    res.status(500).json({
+      error: error.message,
+      provider: 'edge-tts'
+    });
+  }
+});
+
+// List available voices
+app.get('/voices', async (req, res) => {
+  try {
+    const edgeTTS = spawn('edge-tts', ['--list-voices']);
+
+    let output = '';
+    edgeTTS.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+
+    edgeTTS.on('close', () => {
+      res.json({ voices: output.split('\n').filter(v => v.trim()) });
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[Edge TTS Provider] Running on port ${PORT}`);
+  console.log(`[Edge TTS] Voice: ${VOICE}`);
+  console.log(`[Edge TTS] Rate: ${RATE}, Pitch: ${PITCH}`);
+  console.log(`[Edge TTS] Cost: FREE!`);
+});

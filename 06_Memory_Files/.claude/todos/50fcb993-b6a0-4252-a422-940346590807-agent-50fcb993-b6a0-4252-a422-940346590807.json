@@ -1,0 +1,62 @@
+[
+  {
+    "content": "Perform comprehensive keyword research for business funding niche",
+    "status": "completed",
+    "activeForm": "Performing comprehensive keyword research"
+  },
+  {
+    "content": "Analyze top 3 competitors for SEO strategies",
+    "status": "completed",
+    "activeForm": "Analyzing competitor SEO strategies"
+  },
+  {
+    "content": "Optimize meta tags (title, description) for target keywords",
+    "status": "in_progress",
+    "activeForm": "Optimizing meta tags"
+  },
+  {
+    "content": "Implement schema markup for local business and financial services",
+    "status": "pending",
+    "activeForm": "Implementing schema markup"
+  },
+  {
+    "content": "Audit and optimize page load speed (Core Web Vitals)",
+    "status": "pending",
+    "activeForm": "Auditing page speed"
+  },
+  {
+    "content": "Create location-specific landing pages for local SEO",
+    "status": "pending",
+    "activeForm": "Creating location landing pages"
+  },
+  {
+    "content": "Build internal linking structure",
+    "status": "pending",
+    "activeForm": "Building internal links"
+  },
+  {
+    "content": "Optimize images with alt tags and compression",
+    "status": "pending",
+    "activeForm": "Optimizing images"
+  },
+  {
+    "content": "Create SEO-optimized blog content strategy",
+    "status": "pending",
+    "activeForm": "Creating content strategy"
+  },
+  {
+    "content": "Set up Google Business Profile and local citations",
+    "status": "pending",
+    "activeForm": "Setting up local SEO"
+  },
+  {
+    "content": "Build quality backlinks through outreach",
+    "status": "pending",
+    "activeForm": "Building backlinks"
+  },
+  {
+    "content": "Set up technical SEO monitoring (Search Console, Analytics)",
+    "status": "pending",
+    "activeForm": "Setting up monitoring"
+  }
+]

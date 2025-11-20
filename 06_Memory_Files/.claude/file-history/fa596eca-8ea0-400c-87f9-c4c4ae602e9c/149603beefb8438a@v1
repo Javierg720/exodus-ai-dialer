@@ -1,0 +1,442 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { 
+  ArrowLeft, Phone, User, Calendar, Clock, 
+  FileText, PlayCircle, Download, Copy,
+  Mic, Volume2, AlertCircle, CheckCircle,
+  PhoneCall, Building, Mail, Tag
+} from 'lucide-react';
+import axios from 'axios';
+import './CallDetail.css';
+
+function CallDetail() {
+  const { callId } = useParams();
+  const navigate = useNavigate();
+  
+  const [callData, setCallData] = useState(null);
+  const [transcript, setTranscript] = useState(null);
+  const [recording, setRecording] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('details');
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  useEffect(() => {
+    fetchCallDetails();
+  }, [callId]);
+
+  const fetchCallDetails = async () => {
+    setLoading(true);
+    try {
+      // Fetch call details
+      const callResponse = await axios.get(`http://localhost:8001/calls/${callId}`);
+      setCallData(callResponse.data);
+      
+      // Fetch transcript if available
+      try {
+        const transcriptResponse = await axios.get(`http://localhost:8001/calls/${callId}/transcript`);
+        setTranscript(transcriptResponse.data);
+      } catch (err) {
+        console.log('No transcript available');
+      }
+      
+      // Fetch recording URL if available
+      try {
+        const recordingResponse = await axios.get(`http://localhost:8001/calls/${callId}/recording`);
+        setRecording(recordingResponse.data.url);
+      } catch (err) {
+        console.log('No recording available');
+      }
+    } catch (error) {
+      console.error('Failed to fetch call details:', error);
+      
+      // Mock data for demo
+      setCallData({
+        id: callId,
+        uuid: `call-${callId}`,
+        phone_number: '555-123-4567',
+        lead_id: 123,
+        lead_name: 'John Smith',
+        lead_email: 'john.smith@example.com',
+        lead_company: 'TechCorp Inc.',
+        campaign_name: 'Solar Sales Q4',
+        campaign_id: 1,
+        start_time: new Date(Date.now() - 3600000).toISOString(),
+        end_time: new Date(Date.now() - 3000000).toISOString(),
+        duration: 600,
+        status: 'completed',
+        disposition: 'INTERESTED',
+        bot_port: 9092,
+        agent_name: 'Ava',
+        notes: 'Customer expressed interest in solar panel installation. Requested callback next week.',
+        callback_scheduled: '2025-10-25T14:00:00'
+      });
+      
+      setTranscript({
+        conversation: [
+          { speaker: 'Agent', text: 'Hello! This is Ava from Solar Solutions. I\'m calling about our special promotion on solar panel installations. Do you have a moment to discuss how you could save on your energy bills?', timestamp: '0:00' },
+          { speaker: 'Customer', text: 'Oh, hi. Yes, I\'ve been thinking about solar panels actually.', timestamp: '0:08' },
+          { speaker: 'Agent', text: 'That\'s wonderful! Many homeowners are making the switch to solar. Can you tell me about your current monthly electricity costs?', timestamp: '0:15' },
+          { speaker: 'Customer', text: 'We pay around $200-250 per month, sometimes more in summer.', timestamp: '0:23' },
+          { speaker: 'Agent', text: 'With those costs, solar could definitely help you save significantly. Based on your usage, you could reduce your bill by up to 70%. Would you be interested in a free consultation to see exactly how much you could save?', timestamp: '0:30' },
+          { speaker: 'Customer', text: 'Yes, that sounds interesting. Can someone come next week?', timestamp: '0:45' },
+          { speaker: 'Agent', text: 'Absolutely! I can schedule a free consultation for next week. What day works best for you?', timestamp: '0:52' },
+          { speaker: 'Customer', text: 'How about Thursday afternoon?', timestamp: '0:58' },
+          { speaker: 'Agent', text: 'Perfect! I have you scheduled for Thursday at 2 PM. Our solar specialist will visit your home, assess your roof, and provide a customized savings report. Is 555-123-4567 the best number to confirm this appointment?', timestamp: '1:05' },
+          { speaker: 'Customer', text: 'Yes, that\'s correct. Thank you.', timestamp: '1:20' },
+          { speaker: 'Agent', text: 'Excellent! You\'ll receive a confirmation text shortly. Thank you for your time, and we look forward to helping you save on energy costs!', timestamp: '1:25' }
+        ],
+        summary: 'Customer interested in solar panel installation. Currently paying $200-250/month for electricity. Scheduled free consultation for Thursday at 2 PM.',
+        sentiment: 'positive',
+        keywords: ['solar panels', 'energy savings', 'consultation', 'Thursday appointment']
+      });
+      
+      setRecording({
+        url: '/mock-recording.mp3',
+        duration: 95,
+        size: '1.2 MB'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDuration = (seconds) => {
+    if (!seconds) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatDateTime = (isoString) => {
+    if (!isoString) return '-';
+    return new Date(isoString).toLocaleString();
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2000);
+  };
+
+  const downloadTranscript = () => {
+    const transcriptText = transcript.conversation
+      .map(turn => `[${turn.timestamp}] ${turn.speaker}: ${turn.text}`)
+      .join('\n\n');
+    
+    const blob = new Blob([transcriptText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transcript_${callId}_${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  if (loading) {
+    return (
+      <div className="call-detail-loading">
+        <div className="spinner"></div>
+        <p>Loading call details...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="call-detail-page">
+      <div className="detail-header">
+        <button 
+          className="btn-back"
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeft size={20} />
+          Back to Call History
+        </button>
+        
+        <div className="header-info">
+          <h1>Call Details</h1>
+          <span className="call-id">ID: {callId}</span>
+        </div>
+      </div>
+
+      <div className="detail-content">
+        <div className="detail-sidebar">
+          <div className="call-summary-card">
+            <h3>Call Summary</h3>
+            
+            <div className="summary-item">
+              <Phone size={16} />
+              <div>
+                <span className="label">Phone Number</span>
+                <span className="value">{callData?.phone_number}</span>
+              </div>
+            </div>
+            
+            <div className="summary-item">
+              <User size={16} />
+              <div>
+                <span className="label">Lead Name</span>
+                <span className="value">{callData?.lead_name || 'Unknown'}</span>
+              </div>
+            </div>
+            
+            {callData?.lead_email && (
+              <div className="summary-item">
+                <Mail size={16} />
+                <div>
+                  <span className="label">Email</span>
+                  <span className="value">{callData.lead_email}</span>
+                </div>
+              </div>
+            )}
+            
+            {callData?.lead_company && (
+              <div className="summary-item">
+                <Building size={16} />
+                <div>
+                  <span className="label">Company</span>
+                  <span className="value">{callData.lead_company}</span>
+                </div>
+              </div>
+            )}
+            
+            <div className="summary-item">
+              <Calendar size={16} />
+              <div>
+                <span className="label">Date & Time</span>
+                <span className="value">{formatDateTime(callData?.start_time)}</span>
+              </div>
+            </div>
+            
+            <div className="summary-item">
+              <Clock size={16} />
+              <div>
+                <span className="label">Duration</span>
+                <span className="value">{formatDuration(callData?.duration)}</span>
+              </div>
+            </div>
+            
+            <div className="summary-item">
+              <PhoneCall size={16} />
+              <div>
+                <span className="label">Campaign</span>
+                <span className="value">{callData?.campaign_name}</span>
+              </div>
+            </div>
+            
+            <div className="summary-item">
+              <div>
+                <span className="label">Status</span>
+                <span className={`status-badge ${callData?.status}`}>
+                  {callData?.status}
+                </span>
+              </div>
+            </div>
+            
+            <div className="summary-item">
+              <div>
+                <span className="label">Disposition</span>
+                <span className={`disposition-badge ${callData?.disposition?.toLowerCase()}`}>
+                  {callData?.disposition || 'None'}
+                </span>
+              </div>
+            </div>
+            
+            {callData?.callback_scheduled && (
+              <div className="summary-item callback">
+                <AlertCircle size={16} />
+                <div>
+                  <span className="label">Callback Scheduled</span>
+                  <span className="value">{formatDateTime(callData.callback_scheduled)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {callData?.notes && (
+            <div className="notes-card">
+              <h3>Notes</h3>
+              <p>{callData.notes}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="detail-main">
+          <div className="detail-tabs">
+            <button 
+              className={`tab ${activeTab === 'details' ? 'active' : ''}`}
+              onClick={() => setActiveTab('details')}
+            >
+              <FileText size={16} />
+              Details
+            </button>
+            
+            <button 
+              className={`tab ${activeTab === 'transcript' ? 'active' : ''}`}
+              onClick={() => setActiveTab('transcript')}
+              disabled={!transcript}
+            >
+              <Mic size={16} />
+              Transcript
+            </button>
+            
+            <button 
+              className={`tab ${activeTab === 'recording' ? 'active' : ''}`}
+              onClick={() => setActiveTab('recording')}
+              disabled={!recording}
+            >
+              <Volume2 size={16} />
+              Recording
+            </button>
+          </div>
+
+          <div className="tab-content">
+            {activeTab === 'details' && (
+              <div className="details-content">
+                <h2>Call Information</h2>
+                
+                <div className="info-grid">
+                  <div className="info-group">
+                    <h4>Call Metrics</h4>
+                    <div className="info-item">
+                      <span className="info-label">Call UUID:</span>
+                      <span className="info-value">
+                        {callData?.uuid}
+                        <button 
+                          className="btn-copy"
+                          onClick={() => copyToClipboard(callData?.uuid)}
+                        >
+                          <Copy size={14} />
+                        </button>
+                      </span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Start Time:</span>
+                      <span className="info-value">{formatDateTime(callData?.start_time)}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">End Time:</span>
+                      <span className="info-value">{formatDateTime(callData?.end_time)}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Bot Port:</span>
+                      <span className="info-value">{callData?.bot_port}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Agent:</span>
+                      <span className="info-value">{callData?.agent_name || 'Ava'}</span>
+                    </div>
+                  </div>
+                  
+                  {transcript?.keywords && (
+                    <div className="info-group">
+                      <h4>Keywords Detected</h4>
+                      <div className="keywords">
+                        {transcript.keywords.map((keyword, i) => (
+                          <span key={i} className="keyword-tag">
+                            <Tag size={12} />
+                            {keyword}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {transcript?.sentiment && (
+                    <div className="info-group">
+                      <h4>Sentiment Analysis</h4>
+                      <div className={`sentiment sentiment-${transcript.sentiment}`}>
+                        {transcript.sentiment === 'positive' && <CheckCircle size={20} />}
+                        {transcript.sentiment === 'negative' && <AlertCircle size={20} />}
+                        <span>{transcript.sentiment}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {transcript?.summary && (
+                  <div className="call-summary">
+                    <h4>AI Summary</h4>
+                    <p>{transcript.summary}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'transcript' && transcript && (
+              <div className="transcript-content">
+                <div className="transcript-header">
+                  <h2>Call Transcript</h2>
+                  <button 
+                    className="btn-download"
+                    onClick={downloadTranscript}
+                  >
+                    <Download size={16} />
+                    Download
+                  </button>
+                </div>
+                
+                <div className="conversation">
+                  {transcript.conversation.map((turn, index) => (
+                    <div 
+                      key={index} 
+                      className={`conversation-turn ${turn.speaker.toLowerCase()}`}
+                    >
+                      <div className="speaker-info">
+                        <span className="speaker-name">{turn.speaker}</span>
+                        <span className="timestamp">{turn.timestamp}</span>
+                      </div>
+                      <div className="speaker-text">
+                        {turn.text}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'recording' && recording && (
+              <div className="recording-content">
+                <h2>Call Recording</h2>
+                
+                <div className="audio-player-container">
+                  <audio 
+                    controls 
+                    className="audio-player"
+                    src={recording.url || recording}
+                  >
+                    Your browser does not support the audio element.
+                  </audio>
+                  
+                  <div className="recording-info">
+                    <span>Duration: {formatDuration(recording.duration || callData?.duration)}</span>
+                    {recording.size && <span>Size: {recording.size}</span>}
+                  </div>
+                  
+                  <a 
+                    href={recording.url || recording}
+                    download={`recording_${callId}.mp3`}
+                    className="btn-download-recording"
+                  >
+                    <Download size={16} />
+                    Download Recording
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {copySuccess && (
+        <div className="copy-notification">
+          <CheckCircle size={16} />
+          Copied to clipboard!
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default CallDetail;
