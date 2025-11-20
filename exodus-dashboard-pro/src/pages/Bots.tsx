@@ -5,7 +5,7 @@ import GlassCard from '../components/GlassCard'
 import { motion } from 'framer-motion'
 
 interface BotData {
-  id: number
+  id?: number  // Optional - API uses port as identifier
   port: number
   status: string
   pid: number | null
@@ -36,21 +36,21 @@ export default function Bots() {
   })
 
   const startMutation = useMutation({
-    mutationFn: (botId: number) => api.startBot(botId),
+    mutationFn: (botPort: number) => api.startBot(botPort),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bots'] })
     },
   })
 
   const stopMutation = useMutation({
-    mutationFn: (botId: number) => api.stopBot(botId),
+    mutationFn: (botPort: number) => api.stopBot(botPort),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bots'] })
     },
   })
 
   const restartMutation = useMutation({
-    mutationFn: (botId: number) => api.restartBot(botId),
+    mutationFn: (botPort: number) => api.restartBot(botPort),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bots'] })
     },
@@ -168,15 +168,15 @@ export default function Bots() {
       {/* Bot Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {bots.map((bot: BotData) => (
-          <GlassCard key={bot.id} hover>
+          <GlassCard key={bot.port} hover>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className={`w-3 h-3 rounded-full ${
                   bot.status === 'RUNNING' ? 'bg-ios-green' : 'bg-ios-red'
                 } ${bot.status === 'RUNNING' ? 'animate-pulse' : ''}`} />
-                <span className="font-semibold">Bot #{bot.id}</span>
+                <span className="font-semibold">Bot {bot.port}</span>
               </div>
-              <span className="text-xs text-ios-gray-2">:{bot.port}</span>
+              <span className="text-xs text-ios-gray-2">Port {bot.port}</span>
             </div>
 
             <div className="space-y-2 mb-4">
@@ -221,7 +221,7 @@ export default function Bots() {
               {bot.status === 'RUNNING' ? (
                 <>
                   <button
-                    onClick={() => stopMutation.mutate(bot.id)}
+                    onClick={() => stopMutation.mutate(bot.port)}
                     disabled={stopMutation.isPending}
                     className="flex-1 ios-button bg-ios-red/20 hover:bg-ios-red/30 text-ios-red flex items-center justify-center gap-1"
                   >
@@ -229,7 +229,7 @@ export default function Bots() {
                     Stop
                   </button>
                   <button
-                    onClick={() => restartMutation.mutate(bot.id)}
+                    onClick={() => restartMutation.mutate(bot.port)}
                     disabled={restartMutation.isPending}
                     className="flex-1 ios-button bg-ios-orange/20 hover:bg-ios-orange/30 text-ios-orange flex items-center justify-center gap-1"
                   >
@@ -239,7 +239,7 @@ export default function Bots() {
                 </>
               ) : (
                 <button
-                  onClick={() => startMutation.mutate(bot.id)}
+                  onClick={() => startMutation.mutate(bot.port)}
                   disabled={startMutation.isPending}
                   className="w-full ios-button bg-ios-green/20 hover:bg-ios-green/30 text-ios-green flex items-center justify-center gap-1"
                 >

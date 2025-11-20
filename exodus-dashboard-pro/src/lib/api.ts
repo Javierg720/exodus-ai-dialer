@@ -201,20 +201,20 @@ class APIClient {
     return this.request('/bots')
   }
 
-  async restartBot(botId: number) {
-    return this.request(`/bots/${botId}/restart`, {
+  async restartBot(botPort: number) {
+    return this.request(`/bots/${botPort}/restart`, {
       method: 'POST',
     })
   }
 
-  async startBot(botId: number) {
-    return this.request(`/bots/${botId}/start`, {
+  async startBot(botPort: number) {
+    return this.request(`/bots/${botPort}/start`, {
       method: 'POST',
     })
   }
 
-  async stopBot(botId: number) {
-    return this.request(`/bots/${botId}/stop`, {
+  async stopBot(botPort: number) {
+    return this.request(`/bots/${botPort}/stop`, {
       method: 'POST',
     })
   }
