@@ -1298,7 +1298,7 @@ async def restart_bot(port: int):
 
 @app.post("/bots/{port}/stop")
 async def stop_bot(port: int):
-    """Stop a specific bot instance."""
+    """Stop a specific bot instance (AVR Docker container)."""
     logger.info(f"⏹️ STOP BOT: Request to stop bot on port {port}")
 
     try:
@@ -1306,17 +1306,19 @@ async def stop_bot(port: int):
             logger.warning(f"⚠️ STOP BOT: Bot on port {port} not found")
             raise HTTPException(status_code=404, detail=f"Bot on port {port} not found")
 
-        bot = bot_pool.bots[port]
-        logger.debug(f"   Current status: {bot.status.value}")
-
-        if bot.status == BotStatus.STOPPED:
-            logger.info(f"ℹ️ STOP BOT: Bot on port {port} is already stopped")
-            return {"message": f"Bot on port {port} is already stopped"}
-
-        await bot_pool._terminate_bot(port)
-        bot.status = BotStatus.STOPPED
-        logger.info(f"✅ STOP BOT: Bot on port {port} stopped successfully")
-        return {"message": f"Bot on port {port} stopped successfully"}
+        # For AVR Docker bots, use Docker to stop the container
+        from avr_bot_manager import AVRBotManager
+        avr_manager = AVRBotManager()
+        
+        container_name = f"avr-bot-{port}"
+        success = avr_manager.stop_bot(port)
+        
+        if success:
+            logger.info(f"✅ STOP BOT: Docker container {container_name} stopped successfully")
+            return {"message": f"Bot on port {port} stopped successfully"}
+        else:
+            logger.error(f"❌ STOP BOT: Failed to stop Docker container {container_name}")
+            raise HTTPException(status_code=500, detail=f"Failed to stop bot on port {port}")
     except HTTPException:
         raise
     except Exception as e:
@@ -1326,7 +1328,7 @@ async def stop_bot(port: int):
 
 @app.post("/bots/{port}/start")
 async def start_bot(port: int):
-    """Start a specific bot instance."""
+    """Start a specific bot instance (AVR Docker container)."""
     logger.info(f"▶️ START BOT: Request to start bot on port {port}")
 
     try:
@@ -1334,20 +1336,18 @@ async def start_bot(port: int):
             logger.warning(f"⚠️ START BOT: Bot on port {port} not found")
             raise HTTPException(status_code=404, detail=f"Bot on port {port} not found")
 
-        bot = bot_pool.bots[port]
-        logger.debug(f"   Current status: {bot.status.value}")
-
-        if bot.status != BotStatus.STOPPED:
-            logger.info(f"ℹ️ START BOT: Bot on port {port} is already running")
-            return {"message": f"Bot on port {port} is already running"}
-
-        # Use the internal spawn method to start the bot
-        success = await bot_pool._spawn_bot(port)
+        # For AVR Docker bots, use Docker to start the container
+        from avr_bot_manager import AVRBotManager
+        avr_manager = AVRBotManager()
+        
+        container_name = f"avr-bot-{port}"
+        success = avr_manager.start_bot(port)
+        
         if success:
-            logger.info(f"✅ START BOT: Bot on port {port} started successfully")
+            logger.info(f"✅ START BOT: Docker container {container_name} started successfully")
             return {"message": f"Bot on port {port} started successfully"}
         else:
-            logger.error(f"❌ START BOT: Failed to start bot on port {port}")
+            logger.error(f"❌ START BOT: Failed to start Docker container {container_name}")
             raise HTTPException(status_code=500, detail=f"Failed to start bot on port {port}")
     except HTTPException:
         raise
