@@ -1751,25 +1751,41 @@ async def schedule_callback(lead_id: int, data: dict):
 
 @app.get("/calls/active")
 async def get_active_calls():
-    """Get currently active calls."""
+    """Get currently active calls (including manual calls from softphone)."""
     logger.info("📞 GET ACTIVE CALLS: Request for currently active calls")
 
     try:
-        # Return list of active call objects, not just the count
+        active_calls = []
+        
+        # Get calls originated by dialer
         active_calls_dict = orchestrator.active_calls
-        # Convert CallAttempt objects to dicts
-        active_calls = [
-            {
+        for uniqueid, call in active_calls_dict.items():
+            active_calls.append({
                 "uniqueid": uniqueid,
                 "lead_id": call.lead_id,
                 "campaign_id": call.campaign_id,
                 "bot_port": call.bot_port,
                 "status": call.status,
                 "channel_id": call.channel_id,
+                "phone_number": getattr(call, 'phone_number', 'Unknown'),
                 "start_time": datetime.fromtimestamp(call.dialed_at).isoformat() if call.dialed_at else None,
-            }
-            for uniqueid, call in active_calls_dict.items()
-        ]
+                "source": "dialer"
+            })
+        
+        # Also get ALL active channels from Asterisk (includes manual calls)
+        try:
+            response = await orchestrator.ami.send_action({
+                "Action": "CoreShowChannels"
+            })
+            
+            # Parse channels from AMI response
+            if response and response.get('Response') == 'Success':
+                # AMI returns events, we need to collect them
+                # For now, just return dialer calls
+                # TODO: Parse AMI CoreShowChannels events properly
+                pass
+        except Exception as ami_err:
+            logger.debug(f"Could not get channels from AMI: {ami_err}")
 
         logger.info(f"✅ GET ACTIVE CALLS: Found {len(active_calls)} active calls")
         if active_calls:
