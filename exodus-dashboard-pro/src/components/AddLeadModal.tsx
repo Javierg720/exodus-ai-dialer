@@ -33,9 +33,13 @@ export default function AddLeadModal({ isOpen, onClose }: AddLeadModalProps) {
   const createLeadMutation = useMutation({
     mutationFn: (data: any) => api.createLead(data),
     onSuccess: (response: any) => {
-      if (response.status === 'success') {
+      // Backend returns { lead_id: number, message: string } on success
+      if (response.lead_id) {
         queryClient.invalidateQueries({ queryKey: ['leads'] })
         handleClose()
+      } else if (response.detail) {
+        // FastAPI error format
+        setError(response.detail)
       } else {
         setError(response.message || 'Failed to create lead')
       }
@@ -76,18 +80,28 @@ export default function AddLeadModal({ isOpen, onClose }: AddLeadModalProps) {
       return
     }
 
-    // Normalize phone number
+    // Normalize phone number to E.164 format (+1XXXXXXXXXX for US)
     let phone = formData.phone_number.replace(/\D/g, '')
+    
+    // Apply normalization rules to prevent double +1 prefix
+    let normalizedPhone = ''
     if (phone.length === 10) {
-      phone = '1' + phone
-    }
-    if (!phone.startsWith('1') && phone.length === 11) {
-      phone = '1' + phone
+      // 10 digits - US number without country code
+      normalizedPhone = '+1' + phone
+    } else if (phone.length === 11 && phone.startsWith('1')) {
+      // 11 digits starting with 1 - already has country code
+      normalizedPhone = '+' + phone
+    } else if (phone.length === 11 && !phone.startsWith('1')) {
+      // 11 digits NOT starting with 1 - add +1
+      normalizedPhone = '+1' + phone
+    } else {
+      // International or other - just add +
+      normalizedPhone = '+' + phone
     }
 
     createLeadMutation.mutate({
       ...formData,
-      phone_number: '+' + phone,
+      phone_number: normalizedPhone,
       campaign_id: parseInt(formData.campaign_id)
     })
   }
@@ -274,8 +288,12 @@ export default function AddLeadModal({ isOpen, onClose }: AddLeadModalProps) {
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"
-                    onClick={handleClose}
-                    className="flex-1 ios-button-secondary"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleClose()
+                    }}
+                    className="flex-1 ios-button-secondary cursor-pointer"
                   >
                     Cancel
                   </button>

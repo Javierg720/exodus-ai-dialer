@@ -3,7 +3,7 @@
 import asyncio
 import socket
 import threading
-from typing import Dict, Callable, Optional
+from typing import Dict, Callable, Optional, Any
 from loguru import logger
 
 
@@ -73,7 +73,9 @@ class SimpleAMIManager:
             self._connected = True
 
             # Start listening thread
-            self._listen_thread = threading.Thread(target=self._listen_for_events_blocking, daemon=True)
+            self._listen_thread = threading.Thread(
+                target=self._listen_for_events_blocking, daemon=True
+            )
             self._listen_thread.start()
 
         except Exception as e:
@@ -141,7 +143,9 @@ class SimpleAMIManager:
                         future = self._pending_actions.pop(action_id)
                         if not future.done():
                             # Schedule future completion in event loop
-                            self._event_loop.call_soon_threadsafe(future.set_result, message)
+                            self._event_loop.call_soon_threadsafe(
+                                future.set_result, message
+                            )
                         continue
 
                     # Check if this is an event (has "Event:" field)
@@ -156,22 +160,34 @@ class SimpleAMIManager:
                                 try:
                                     # Schedule handler in event loop - DON'T block the listener thread
                                     # Store future so it completes even if we don't wait
-                                    future = asyncio.run_coroutine_threadsafe(handler(self, message), self._event_loop)
+                                    future = asyncio.run_coroutine_threadsafe(
+                                        handler(self, message), self._event_loop
+                                    )
+
                                     # Add callback to log completion/errors
                                     def _on_complete(f):
                                         try:
                                             f.result()  # Re-raise any exceptions
                                         except Exception as e:
-                                            logger.error(f"Error in async event handler for {event_name}: {e}", exc_info=True)
+                                            logger.error(
+                                                f"Error in async event handler for {event_name}: {e}",
+                                                exc_info=True,
+                                            )
+
                                     future.add_done_callback(_on_complete)
                                 except Exception as e:
-                                    logger.error(f"Error scheduling event handler for {event_name}: {e}", exc_info=True)
+                                    logger.error(
+                                        f"Error scheduling event handler for {event_name}: {e}",
+                                        exc_info=True,
+                                    )
 
         except Exception as e:
             logger.error(f"❌ AMI event listener error: {e}")
             self._connected = False
 
-    async def send_action(self, action: Dict[str, any], timeout: float = 5.0) -> Dict[str, str]:
+    async def send_action(
+        self, action: Dict[str, Any], timeout: float = 5.0
+    ) -> Dict[str, str]:
         """Send an AMI action and wait for response."""
         # Create future in current event loop
         future = asyncio.Future()
@@ -187,7 +203,7 @@ class SimpleAMIManager:
             logger.error(f"⏱️ AMI action timeout: {action.get('Action')}")
             raise
 
-    def _blocking_send_action(self, action: Dict[str, any], future: asyncio.Future):
+    def _blocking_send_action(self, action: Dict[str, Any], future: asyncio.Future):
         """Send action (blocking, like test_ami.py that works)."""
         with self._lock:
             # Use provided ActionID or generate unique one
@@ -216,7 +232,9 @@ class SimpleAMIManager:
             action_str += "\r\n"
 
             # Send action (blocking)
-            logger.debug(f"📤 Sending AMI action: {action.get('Action')} (ID: {action_id})")
+            logger.debug(
+                f"📤 Sending AMI action: {action.get('Action')} (ID: {action_id})"
+            )
             logger.debug(f"📤 Full AMI command:\n{action_str}")
 
             self._socket.sendall(action_str.encode())

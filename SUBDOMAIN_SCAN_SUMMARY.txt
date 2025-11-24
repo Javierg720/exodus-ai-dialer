@@ -1,0 +1,183 @@
+================================================================================
+WARMCONNECT.COM SUBDOMAIN SCAN RESULTS
+Complete Active Subdomain Discovery Report
+================================================================================
+
+EXECUTIVE SUMMARY
+--------------------------------------------------------------------------------
+Domain Scanned: warmconnect.com
+Scan Date: November 21, 2025
+Total Active Subdomains Found: 329
+
+SCAN BREAKDOWN
+--------------------------------------------------------------------------------
+
+1. COMMON SUBDOMAINS (34 scanned, 29 active)
+   - Main site: www
+   - Infrastructure: admin, vicidial, dialer, pbx, asterisk
+   - Environments: prod, production, staging, dev, test
+   - Services: voip, sip, portal, dashboard, web, bot, ava, vici
+   - Nodes: server1-3, node1-2, cc, client, customer, demo, support
+
+2. NUMBERED SERVERS (300 scanned, 300 active) - 100% ACTIVE!
+   - server1 through server50 (50 total) - ALL ACTIVE
+   - node1 through node50 (50 total) - ALL ACTIVE  
+   - host1 through host50 (50 total) - ALL ACTIVE
+   - vici1 through vici50 (50 total) - ALL ACTIVE
+   - dialer1 through dialer50 (50 total) - ALL ACTIVE
+   - pbx1 through pbx50 (50 total) - ALL ACTIVE
+
+COMPLETE ACTIVE SUBDOMAIN LIST
+--------------------------------------------------------------------------------
+
+INFRASTRUCTURE & MANAGEMENT:
+  - admin.warmconnect.com
+  - asterisk.warmconnect.com
+  - dashboard.warmconnect.com
+  - portal.warmconnect.com
+  - web.warmconnect.com
+  - www.warmconnect.com
+
+ENVIRONMENTS:
+  - prod.warmconnect.com
+  - production.warmconnect.com
+  - staging.warmconnect.com
+  - dev.warmconnect.com
+  - test.warmconnect.com
+  - demo.warmconnect.com
+
+DIALER/VICIDIAL SERVICES:
+  - dialer.warmconnect.com
+  - vicidial.warmconnect.com
+  - vici.warmconnect.com
+  - dialer1-50.warmconnect.com (50 instances)
+  - vici1-50.warmconnect.com (50 instances)
+
+TELEPHONY/PBX:
+  - pbx.warmconnect.com
+  - sip.warmconnect.com
+  - voip.warmconnect.com
+  - pbx1-50.warmconnect.com (50 instances)
+
+AI/BOT SERVICES:
+  - ava.warmconnect.com
+  - bot.warmconnect.com
+
+SERVERS & NODES:
+  - server1-50.warmconnect.com (50 instances)
+  - node1-50.warmconnect.com (50 instances)
+  - host1-50.warmconnect.com (50 instances)
+
+CLIENT/CUSTOMER:
+  - cc.warmconnect.com
+  - client.warmconnect.com
+  - customer.warmconnect.com
+  - support.warmconnect.com
+
+NUMBERED SUBDOMAIN PATTERNS (ALL ACTIVE)
+--------------------------------------------------------------------------------
+
+SERVER PATTERN (server1-50):
+  server1.warmconnect.com through server50.warmconnect.com
+  All 50 instances ACTIVE and responding on HTTPS
+
+NODE PATTERN (node1-50):
+  node1.warmconnect.com through node50.warmconnect.com
+  All 50 instances ACTIVE and responding on HTTPS
+
+HOST PATTERN (host1-50):
+  host1.warmconnect.com through host50.warmconnect.com
+  All 50 instances ACTIVE and responding on HTTPS
+
+VICI PATTERN (vici1-50):
+  vici1.warmconnect.com through vici50.warmconnect.com
+  All 50 instances ACTIVE and responding on HTTPS
+
+DIALER PATTERN (dialer1-50):
+  dialer1.warmconnect.com through dialer50.warmconnect.com
+  All 50 instances ACTIVE and responding on HTTPS
+
+PBX PATTERN (pbx1-50):
+  pbx1.warmconnect.com through pbx50.warmconnect.com
+  All 50 instances ACTIVE and responding on HTTPS
+
+KEY FINDINGS
+--------------------------------------------------------------------------------
+
+1. MASSIVE INFRASTRUCTURE
+   - 329 total active subdomains discovered
+   - 300 numbered instances across 6 patterns (server, node, host, vici, dialer, pbx)
+   - 100% response rate on numbered subdomains (300/300 active)
+
+2. VICIDIAL/DIALER DEPLOYMENT
+   - 100+ dialer/vicidial related subdomains
+   - Suggests massive call center operation
+   - Multiple numbered instances for scalability
+
+3. MULTI-ENVIRONMENT SETUP
+   - Separate prod, production, staging, dev, test environments
+   - Indicates professional development workflow
+
+4. SECURITY CONSIDERATIONS
+   - All subdomains respond on HTTPS
+   - /wiz.php endpoint accessible on all instances
+   - Wildcard SSL certificate likely in use
+
+5. ARCHITECTURE PATTERN
+   - Horizontally scaled infrastructure
+   - 50 instances each of: servers, nodes, hosts, vici, dialers, pbx
+   - Suggests load-balanced, distributed system
+
+ACCESS URLS
+--------------------------------------------------------------------------------
+All subdomains accessible via:
+  https://[subdomain].warmconnect.com/wiz.php
+
+Examples:
+  https://www.warmconnect.com/wiz.php
+  https://vicidial.warmconnect.com/wiz.php
+  https://dialer1.warmconnect.com/wiz.php
+  https://server1.warmconnect.com/wiz.php
+  https://vici25.warmconnect.com/wiz.php
+
+COMPARISON WITH GETCELERITY.COM
+--------------------------------------------------------------------------------
+getcelerity.com (unidial subdomains):
+  - Scanned ranges: 1-100, 1000-1800, 1800-1950, 2000-2100
+  - Total scanned: 1,153 subdomains
+  - Active found: 0 (DNS resolution failed - internal only)
+
+warmconnect.com:
+  - Total scanned: 334 subdomains
+  - Active found: 329 (98.5% success rate)
+  - All publicly accessible via HTTPS
+
+SCAN METHODOLOGY
+--------------------------------------------------------------------------------
+- Concurrent scanning with 20 workers
+- Both HTTP and HTTPS protocols tested
+- 5-second timeout per subdomain
+- Pattern-based enumeration:
+  * Common names (admin, vicidial, etc.)
+  * Numbered patterns (1-50)
+  * Multiple prefixes (server, node, host, vici, dialer, pbx)
+
+FILES GENERATED
+--------------------------------------------------------------------------------
+1. warmconnect_scan_common_results.txt - Common subdomain scan
+2. warmconnect_scan_numeric_results.txt - Numbered subdomain scan
+3. warmconnect_scan_love_results.txt - Love pattern scan
+4. SUBDOMAIN_SCAN_SUMMARY.txt - This summary file
+
+SCAN TOOLS
+--------------------------------------------------------------------------------
+- scan_warmconnect_main.py - Main scanner script
+- Available scan modes:
+  * common - Common subdomain names
+  * numeric - Numbered servers (server1-50, node1-50, etc.)
+  * numeric-cc - Numeric .cc subdomains
+  * love - *love.cc patterns
+
+================================================================================
+END OF REPORT
+================================================================================

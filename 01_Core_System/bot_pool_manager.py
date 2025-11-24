@@ -37,6 +37,7 @@ import asyncio
 import os
 import subprocess
 import time
+from datetime import datetime
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict
 from enum import Enum
@@ -46,6 +47,7 @@ from loguru import logger
 
 class BotStatus(Enum):
     """Bot instance status."""
+
     STARTING = "starting"
     IDLE = "idle"
     BUSY = "busy"
@@ -118,7 +120,7 @@ class BotPoolManager:
         contact_name: str = "there",
         health_check_interval: int = 30,
         max_restart_attempts: int = 3,
-        wrap_up_duration: int = 5  # Seconds of wrap-up time after each call
+        wrap_up_duration: int = 5,  # Seconds of wrap-up time after each call
     ):
         """Initialize bot pool manager.
 
@@ -154,8 +156,10 @@ class BotPoolManager:
         # Round-robin index for load balancing
         self._next_bot_index = 0
 
-        logger.info(f"🏊 Bot Pool Manager initialized: {num_instances} instances, "
-                   f"ports {base_port}-{base_port + num_instances - 1}")
+        logger.info(
+            f"🏊 Bot Pool Manager initialized: {num_instances} instances, "
+            f"ports {base_port}-{base_port + num_instances - 1}"
+        )
 
     async def start(self):
         """Start all bot instances and begin monitoring."""
@@ -206,9 +210,12 @@ class BotPoolManager:
             cmd = [
                 self.python_path,
                 self.bot_script,
-                "--host", "0.0.0.0",
-                "--port", str(port),
-                "--contact-name", self.contact_name
+                "--host",
+                "0.0.0.0",
+                "--port",
+                str(port),
+                "--contact-name",
+                self.contact_name,
             ]
 
             # Spawn process with environment variables
@@ -217,7 +224,7 @@ class BotPoolManager:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 cwd="/home/user/Desktop/Projects_Organized/01_Exodus_Dialer/exodus-kali-deploy",
-                env=os.environ.copy()
+                env=os.environ.copy(),
             )
 
             # Create bot instance
@@ -230,7 +237,9 @@ class BotPoolManager:
             # Check if it's still running
             if process.poll() is None:
                 bot.status = BotStatus.IDLE
-                logger.info(f"✅ Bot spawned successfully on port {port} (PID: {process.pid})")
+                logger.info(
+                    f"✅ Bot spawned successfully on port {port} (PID: {process.pid})"
+                )
                 return True
             else:
                 # Process died immediately
@@ -244,7 +253,7 @@ class BotPoolManager:
             return False
 
     async def _terminate_bot(self, port: int):
-        """Terminate a bot instance.
+        """Terminate a bot instance (resource leak fix: verify process actually dies).
 
         Args:
             port: Port number of bot to terminate
@@ -263,10 +272,33 @@ class BotPoolManager:
                 bot.process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 # Force kill if didn't stop
+                logger.warning(f"⚠️ Bot {port} didn't terminate gracefully, killing...")
                 bot.process.kill()
-                bot.process.wait()
+                bot.process.wait(timeout=3)
 
-            logger.info(f"✅ Bot on port {port} terminated")
+            # RESOURCE LEAK FIX: Verify process is actually dead
+            if bot.process.poll() is None:
+                # Process still alive - force kill with SIGKILL
+                logger.error(
+                    f"❌ Bot {port} still alive after kill, sending SIGKILL..."
+                )
+                import signal
+
+                try:
+                    if bot.process.pid:
+                        os.kill(bot.process.pid, signal.SIGKILL)
+                        bot.process.wait(timeout=2)
+                except Exception as e:
+                    logger.error(f"Failed to SIGKILL bot {port}: {e}")
+
+            # Final verification
+            if bot.process.poll() is not None:
+                logger.info(
+                    f"✅ Bot on port {port} terminated (exit code: {bot.process.poll()})"
+                )
+            else:
+                logger.error(f"❌ Bot {port} process may still be running!")
+
         except Exception as e:
             logger.error(f"Error terminating bot on port {port}: {e}")
 
@@ -289,7 +321,9 @@ class BotPoolManager:
         # Check if process is still running
         if bot.process.poll() is not None:
             # Process exited
-            logger.warning(f"⚠️  Bot on port {port} crashed (exit code: {bot.process.poll()})")
+            logger.warning(
+                f"⚠️  Bot on port {port} crashed (exit code: {bot.process.poll()})"
+            )
             bot.status = BotStatus.CRASHED
             bot.crashes += 1
             return False
@@ -314,11 +348,17 @@ class BotPoolManager:
 
         # Check restart attempts
         if bot.crashes >= self.max_restart_attempts:
-            logger.error(f"❌ POOL: Bot {port} exceeded max restart attempts ({bot.crashes}/{self.max_restart_attempts})")
-            logger.warning(f"   Bot {port} will remain CRASHED - manual intervention required")
+            logger.error(
+                f"❌ POOL: Bot {port} exceeded max restart attempts ({bot.crashes}/{self.max_restart_attempts})"
+            )
+            logger.warning(
+                f"   Bot {port} will remain CRASHED - manual intervention required"
+            )
             return False
 
-        logger.info(f"🔄 POOL: Restarting bot {port} - Attempt {bot.crashes + 1}/{self.max_restart_attempts}")
+        logger.info(
+            f"🔄 POOL: Restarting bot {port} - Attempt {bot.crashes + 1}/{self.max_restart_attempts}"
+        )
         logger.debug(f"   Previous status: {bot.status.value}, Crashes: {bot.crashes}")
 
         # Cleanup old process
@@ -329,7 +369,9 @@ class BotPoolManager:
 
         if success:
             logger.info(f"✅ POOL: Bot {port} restarted successfully")
-            logger.debug(f"   New PID: {self.bots[port].process.pid if self.bots[port].process else 'N/A'}")
+            logger.debug(
+                f"   New PID: {self.bots[port].process.pid if self.bots[port].process else 'N/A'}"
+            )
         else:
             logger.error(f"❌ POOL: Failed to restart bot {port} - spawn failed")
 
@@ -357,11 +399,19 @@ class BotPoolManager:
                         await self._restart_bot(port)
 
                 # Log pool status
-                idle_count = sum(1 for b in self.bots.values() if b.status == BotStatus.IDLE)
-                busy_count = sum(1 for b in self.bots.values() if b.status == BotStatus.BUSY)
-                crashed_count = sum(1 for b in self.bots.values() if b.status == BotStatus.CRASHED)
+                idle_count = sum(
+                    1 for b in self.bots.values() if b.status == BotStatus.IDLE
+                )
+                busy_count = sum(
+                    1 for b in self.bots.values() if b.status == BotStatus.BUSY
+                )
+                crashed_count = sum(
+                    1 for b in self.bots.values() if b.status == BotStatus.CRASHED
+                )
 
-                logger.info(f"📊 Pool status: {idle_count} idle, {busy_count} busy, {crashed_count} crashed")
+                logger.info(
+                    f"📊 Pool status: {idle_count} idle, {busy_count} busy, {crashed_count} crashed"
+                )
 
         except asyncio.CancelledError:
             logger.info("👀 Bot pool monitoring stopped")
@@ -405,7 +455,9 @@ class BotPoolManager:
                 bot.status = BotStatus.BUSY
                 bot.current_call_uuid = call_uuid
                 bot.last_call_time = time.time()
-                logger.info(f"📞 POOL: Bot {selected_port} ATOMICALLY assigned to call {call_uuid}")
+                logger.info(
+                    f"📞 POOL: Bot {selected_port} ATOMICALLY assigned to call {call_uuid}"
+                )
 
             return selected_port
 
@@ -423,11 +475,13 @@ class BotPoolManager:
             bot.current_call_uuid = call_uuid
             bot.last_call_time = time.time()
             logger.info(f"📞 POOL: Bot {port} marked BUSY - handling call {call_uuid}")
-            logger.debug(f"   Previous status: {previous_status.value}, Total calls: {bot.total_calls_handled}")
+            logger.debug(
+                f"   Previous status: {previous_status.value}, Total calls: {bot.total_calls_handled}"
+            )
         else:
             logger.error(f"❌ POOL: Cannot mark bot {port} as BUSY - bot not found")
 
-    def mark_bot_idle(self, port: int):
+    def mark_bot_idle(self, port: int) -> None:
         """Mark a bot as idle (call ended).
 
         Sets wrap-up time to prevent immediate reassignment (TCPA compliance).
@@ -444,8 +498,12 @@ class BotPoolManager:
             bot.current_call_uuid = None
             # Set wrap-up end time (prevents over-dialing)
             bot.wrap_up_end_time = time.time() + self.wrap_up_duration
-            wrap_up_until = datetime.fromtimestamp(bot.wrap_up_end_time).strftime('%H:%M:%S')
-            logger.info(f"✅ POOL: Bot {port} marked IDLE - completed call {previous_uuid}")
+            wrap_up_until = datetime.fromtimestamp(bot.wrap_up_end_time).strftime(
+                "%H:%M:%S"
+            )
+            logger.info(
+                f"✅ POOL: Bot {port} marked IDLE - completed call {previous_uuid}"
+            )
             logger.debug(
                 f"   Total calls handled: {bot.total_calls_handled}, Wrap-up until: {wrap_up_until}"
             )
@@ -462,23 +520,31 @@ class BotPoolManager:
             "total_instances": len(self.bots),
             "idle": sum(1 for b in self.bots.values() if b.status == BotStatus.IDLE),
             "busy": sum(1 for b in self.bots.values() if b.status == BotStatus.BUSY),
-            "crashed": sum(1 for b in self.bots.values() if b.status == BotStatus.CRASHED),
-            "starting": sum(1 for b in self.bots.values() if b.status == BotStatus.STARTING),
-            "total_calls_handled": sum(b.total_calls_handled for b in self.bots.values()),
+            "crashed": sum(
+                1 for b in self.bots.values() if b.status == BotStatus.CRASHED
+            ),
+            "starting": sum(
+                1 for b in self.bots.values() if b.status == BotStatus.STARTING
+            ),
+            "total_calls_handled": sum(
+                b.total_calls_handled for b in self.bots.values()
+            ),
             "total_crashes": sum(b.crashes for b in self.bots.values()),
-            "bots": []
+            "bots": [],
         }
 
         for port, bot in sorted(self.bots.items()):
-            stats["bots"].append({
-                "port": port,
-                "status": bot.status.value,
-                "current_call": bot.current_call_uuid,
-                "total_calls": bot.total_calls_handled,
-                "crashes": bot.crashes,
-                "uptime_seconds": bot.uptime(),
-                "last_health_check": bot.last_health_check
-            })
+            stats["bots"].append(
+                {
+                    "port": port,
+                    "status": bot.status.value,
+                    "current_call": bot.current_call_uuid,
+                    "total_calls": bot.total_calls_handled,
+                    "crashes": bot.crashes,
+                    "uptime_seconds": bot.uptime(),
+                    "last_health_check": bot.last_health_check,
+                }
+            )
 
         return stats
 
@@ -497,7 +563,7 @@ async def main():
         num_instances=20,  # Full production pool
         bot_script="ava_sales_bot_audiosocket.py",
         python_path="/home/user/Desktop/Projects_Organized/01_Exodus_Dialer/exodus-kali-deploy/pipecat_env_new/bin/python3",
-        contact_name="Test User"
+        contact_name="Test User",
     )
 
     # Start pool

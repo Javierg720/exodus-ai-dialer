@@ -1,0 +1,10 @@
+Warmconnect.com Subdomain Scan Results
+Mode: common
+
+Total Scanned: 31
+Active Found: 0
+
+======================================================================
+ACTIVE SUBDOMAINS:
+======================================================================
+

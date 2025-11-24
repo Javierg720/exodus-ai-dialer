@@ -1,0 +1,259 @@
+================================================================================
+COMPLETE SUBDOMAIN SCAN REPORT
+getcelerity.com vs warmconnect.com
+================================================================================
+
+Scan Date: November 21, 2025
+Scan Location: Remote server (not on internal network)
+
+================================================================================
+1. GETCELERITY.COM - DNS RESOLUTION FAILED
+================================================================================
+
+DOMAINS TESTED:
+- getcelerity.com
+- www.getcelerity.com  
+- unidial.getcelerity.com
+- unidial1875.getcelerity.com (and 1,152 other numbered variants)
+
+SCAN RANGES ATTEMPTED:
+- unidial1 - unidial100 (100 subdomains)
+- unidial1000 - unidial1800 (801 subdomains)
+- unidial1800 - unidial1950 (151 subdomains)
+- unidial2000 - unidial2100 (101 subdomains)
+
+TOTAL SCANNED: 1,153 subdomain patterns
+ACTIVE FOUND: 0
+
+RESULT: DNS RESOLUTION FAILURE
+- All getcelerity.com domains fail to resolve
+- Not publicly accessible via DNS
+- Likely internal-only/private network domains
+- May require VPN or specific network access
+
+CONCLUSION:
+getcelerity.com and all unidial*.getcelerity.com subdomains are NOT 
+publicly accessible. They appear to be internal-only infrastructure.
+
+================================================================================
+2. WARMCONNECT.COM - 329 ACTIVE SUBDOMAINS DISCOVERED
+================================================================================
+
+TOTAL SCANNED: 334 subdomain patterns
+TOTAL ACTIVE: 329 subdomains (98.5% success rate)
+
+BREAKDOWN BY CATEGORY:
+--------------------------------------------------------------------------------
+
+A. NUMBERED INSTANCES (300 active, 100% success rate)
+   
+   SERVER INSTANCES (50 active):
+   - server1.warmconnect.com through server50.warmconnect.com
+   - All accessible via HTTPS
+   
+   NODE INSTANCES (50 active):
+   - node1.warmconnect.com through node50.warmconnect.com
+   - All accessible via HTTPS
+   
+   HOST INSTANCES (50 active):
+   - host1.warmconnect.com through host50.warmconnect.com
+   - All accessible via HTTPS
+   
+   VICIDIAL INSTANCES (50 active):
+   - vici1.warmconnect.com through vici50.warmconnect.com
+   - All accessible via HTTPS
+   
+   DIALER INSTANCES (50 active):
+   - dialer1.warmconnect.com through dialer50.warmconnect.com
+   - All accessible via HTTPS
+   
+   PBX INSTANCES (50 active):
+   - pbx1.warmconnect.com through pbx50.warmconnect.com
+   - All accessible via HTTPS
+
+B. INFRASTRUCTURE & ADMIN (6 active):
+   - admin.warmconnect.com
+   - asterisk.warmconnect.com
+   - dashboard.warmconnect.com
+   - portal.warmconnect.com
+   - web.warmconnect.com
+   - www.warmconnect.com
+
+C. ENVIRONMENTS (6 active):
+   - prod.warmconnect.com
+   - production.warmconnect.com
+   - staging.warmconnect.com
+   - dev.warmconnect.com
+   - test.warmconnect.com
+   - demo.warmconnect.com
+
+D. DIALER/VICIDIAL SERVICES (3 base + 100 numbered = 103 active):
+   - dialer.warmconnect.com
+   - vicidial.warmconnect.com
+   - vici.warmconnect.com
+   - Plus dialer1-50 and vici1-50
+
+E. TELEPHONY/PBX (3 base + 50 numbered = 53 active):
+   - pbx.warmconnect.com
+   - sip.warmconnect.com
+   - voip.warmconnect.com
+   - Plus pbx1-50
+
+F. AI/BOT SERVICES (2 active):
+   - ava.warmconnect.com
+   - bot.warmconnect.com
+
+G. CLIENT/CUSTOMER (4 active):
+   - cc.warmconnect.com
+   - client.warmconnect.com
+   - customer.warmconnect.com
+   - support.warmconnect.com
+
+H. SERVERS & NODES (150 active):
+   - server1-50, node1-50, host1-50
+   - All accessible and responding
+
+================================================================================
+3. WARMCONNECT.COM - DETAILED ANALYSIS
+================================================================================
+
+INFRASTRUCTURE SCALE:
+- 329 active subdomains = MASSIVE infrastructure
+- 300 numbered instances across 6 patterns
+- 100% availability on all numbered subdomains
+- Suggests enterprise-grade, load-balanced architecture
+
+VICIDIAL/CALL CENTER DEPLOYMENT:
+- 100+ Vicidial/dialer-related subdomains
+- 50 dedicated dialer instances
+- 50 dedicated vici instances
+- Indicates large-scale call center operations
+
+ARCHITECTURE PATTERN:
+- Horizontal scaling with 50 instances per service type
+- Multiple environment tiers (prod, staging, dev, test)
+- Wildcard SSL certificates (all HTTPS)
+- Consistent naming convention
+
+SECURITY OBSERVATIONS:
+- All subdomains respond via HTTPS
+- /wiz.php endpoint accessible on all instances
+- Wildcard certificate in use
+- Public DNS resolution enabled
+
+LIKELY USE CASE:
+- Enterprise call center platform
+- Multi-tenant Vicidial hosting
+- Managed dialer service provider
+- Cloud-based PBX/telephony platform
+
+================================================================================
+4. COMPARISON SUMMARY
+================================================================================
+
+                    getcelerity.com          warmconnect.com
+--------------------------------------------------------------------------------
+DNS Resolution      FAILED                   SUCCESS
+Public Access       NO                       YES
+Subdomains Found    0                        329
+Infrastructure      Internal/Private         Public/Cloud
+Accessibility       VPN/Internal Only        Public HTTPS
+Architecture        Unknown                  Massive/Scaled
+
+================================================================================
+5. KEY FINDINGS
+================================================================================
+
+1. GETCELERITY.COM IS PRIVATE/INTERNAL
+   - No public DNS records
+   - Requires internal network access
+   - unidial*.getcelerity.com subdomains not publicly routable
+
+2. WARMCONNECT.COM IS PUBLIC & MASSIVE
+   - 329 active subdomains
+   - 300 numbered instances (100% active)
+   - Enterprise-scale call center infrastructure
+   - All publicly accessible via HTTPS
+
+3. INFRASTRUCTURE COMPARISON
+   - getcelerity.com: Private/internal deployment
+   - warmconnect.com: Public cloud deployment
+   - Different security models
+   - warmconnect appears to be commercial hosting platform
+
+4. VICIDIAL DEPLOYMENT MODELS
+   - getcelerity: Internal corporate use (assumed)
+   - warmconnect: Multi-tenant hosting platform (likely)
+
+================================================================================
+6. ACCESS INFORMATION
+================================================================================
+
+GETCELERITY.COM:
+- Not accessible from public internet
+- Requires VPN or internal network connection
+- DNS does not resolve publicly
+
+WARMCONNECT.COM:
+- All subdomains accessible via HTTPS
+- Standard endpoint: https://[subdomain].warmconnect.com/wiz.php
+- Examples:
+  * https://www.warmconnect.com/wiz.php
+  * https://vicidial.warmconnect.com/wiz.php
+  * https://dialer1.warmconnect.com/wiz.php
+  * https://server25.warmconnect.com/wiz.php
+  * https://vici42.warmconnect.com/wiz.php
+
+================================================================================
+7. SCAN TOOLS & FILES GENERATED
+================================================================================
+
+GETCELERITY.COM SCANS:
+- subdomain_scan_results_1-100.txt
+- subdomain_scan_results_1000-1800.txt
+- subdomain_scan_results_1800-1950.txt
+- subdomain_scan_results_1870-1885.txt
+- subdomain_scan_results_2000-2100.txt
+
+WARMCONNECT.COM SCANS:
+- warmconnect_scan_common_results.txt
+- warmconnect_scan_numeric_results.txt
+- warmconnect_scan_love_results.txt
+
+SUMMARY DOCUMENTS:
+- SUBDOMAIN_SCAN_SUMMARY.txt
+- COMPLETE_SUBDOMAIN_SCAN_REPORT.txt (this file)
+
+SCANNER SCRIPTS:
+- scan_subdomains.py (getcelerity scanner)
+- scan_warmconnect.py (warmconnect .cc subdomain scanner)
+- scan_warmconnect_main.py (warmconnect main scanner)
+
+================================================================================
+8. RECOMMENDATIONS
+================================================================================
+
+FOR GETCELERITY.COM ACCESS:
+1. Connect to internal VPN if available
+2. Run scans from within their network
+3. Check with network admin for DNS configuration
+4. May need to add to local hosts file
+5. Verify correct URL format with administrator
+
+FOR WARMCONNECT.COM:
+1. All subdomains publicly accessible
+2. Can access directly via browser
+3. Consider security implications of public exposure
+4. Review /wiz.php endpoint permissions
+5. May want to scan for additional patterns beyond 1-50
+
+SECURITY CONSIDERATIONS:
+1. warmconnect.com has 329 public-facing endpoints
+2. Each may have different security configurations
+3. Consider running security assessment
+4. Check for default credentials
+5. Review firewall rules and access controls
+
+================================================================================
+END OF REPORT
+================================================================================

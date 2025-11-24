@@ -1,0 +1,125 @@
+Warmconnect.com Subdomain Scan Results
+Mode: common
+Total Scanned: 34
+Active Found: 29
+
+======================================================================
+ACTIVE SUBDOMAINS:
+======================================================================
+
+admin.warmconnect.com
+  Status: HTTPS 200 - Active (3606 bytes)
+  URL: https://admin.warmconnect.com/wiz.php
+
+asterisk.warmconnect.com
+  Status: HTTPS 200 - Active (3612 bytes)
+  URL: https://asterisk.warmconnect.com/wiz.php
+
+ava.warmconnect.com
+  Status: HTTPS 200 - Active (3602 bytes)
+  URL: https://ava.warmconnect.com/wiz.php
+
+bot.warmconnect.com
+  Status: HTTPS 200 - Active (3602 bytes)
+  URL: https://bot.warmconnect.com/wiz.php
+
+cc.warmconnect.com
+  Status: HTTPS 200 - Active (3600 bytes)
+  URL: https://cc.warmconnect.com/wiz.php
+
+client.warmconnect.com
+  Status: HTTPS 200 - Active (3606 bytes)
+  URL: https://client.warmconnect.com/wiz.php
+
+customer.warmconnect.com
+  Status: HTTPS 200 - Active (3612 bytes)
+  URL: https://customer.warmconnect.com/wiz.php
+
+dashboard.warmconnect.com
+  Status: HTTPS 200 - Active (3614 bytes)
+  URL: https://dashboard.warmconnect.com/wiz.php
+
+demo.warmconnect.com
+  Status: HTTPS 200 - Active (3604 bytes)
+  URL: https://demo.warmconnect.com/wiz.php
+
+dev.warmconnect.com
+  Status: HTTPS 200 - Active (3602 bytes)
+  URL: https://dev.warmconnect.com/wiz.php
+
+dialer.warmconnect.com
+  Status: HTTPS 200 - Active (3608 bytes)
+  URL: https://dialer.warmconnect.com/wiz.php
+
+node1.warmconnect.com
+  Status: HTTPS 200 - Active (3606 bytes)
+  URL: https://node1.warmconnect.com/wiz.php
+
+node2.warmconnect.com
+  Status: HTTPS 200 - Active (3606 bytes)
+  URL: https://node2.warmconnect.com/wiz.php
+
+pbx.warmconnect.com
+  Status: HTTPS 200 - Active (3602 bytes)
+  URL: https://pbx.warmconnect.com/wiz.php
+
+portal.warmconnect.com
+  Status: HTTPS 200 - Active (3608 bytes)
+  URL: https://portal.warmconnect.com/wiz.php
+
+prod.warmconnect.com
+  Status: HTTPS 200 - Active (3604 bytes)
+  URL: https://prod.warmconnect.com/wiz.php
+
+production.warmconnect.com
+  Status: HTTPS 200 - Active (3616 bytes)
+  URL: https://production.warmconnect.com/wiz.php
+
+server1.warmconnect.com
+  Status: HTTPS 200 - Active (3610 bytes)
+  URL: https://server1.warmconnect.com/wiz.php
+
+server2.warmconnect.com
+  Status: HTTPS 200 - Active (3610 bytes)
+  URL: https://server2.warmconnect.com/wiz.php
+
+server3.warmconnect.com
+  Status: HTTPS 200 - Active (3610 bytes)
+  URL: https://server3.warmconnect.com/wiz.php
+
+sip.warmconnect.com
+  Status: HTTPS 200 - Active (3602 bytes)
+  URL: https://sip.warmconnect.com/wiz.php
+
+staging.warmconnect.com
+  Status: HTTPS 200 - Active (3608 bytes)
+  URL: https://staging.warmconnect.com/wiz.php
+
+support.warmconnect.com
+  Status: HTTPS 200 - Active (3610 bytes)
+  URL: https://support.warmconnect.com/wiz.php
+
+test.warmconnect.com
+  Status: HTTPS 200 - Active (3604 bytes)
+  URL: https://test.warmconnect.com/wiz.php
+
+vici.warmconnect.com
+  Status: HTTPS 200 - Active (3602 bytes)
+  URL: https://vici.warmconnect.com/wiz.php
+
+vicidial.warmconnect.com
+  Status: HTTPS 200 - Active (3612 bytes)
+  URL: https://vicidial.warmconnect.com/wiz.php
+
+voip.warmconnect.com
+  Status: HTTPS 200 - Active (3604 bytes)
+  URL: https://voip.warmconnect.com/wiz.php
+
+web.warmconnect.com
+  Status: HTTPS 200 - Active (3602 bytes)
+  URL: https://web.warmconnect.com/wiz.php
+
+www.warmconnect.com
+  Status: HTTPS 200 - Active (29016 bytes)
+  URL: https://www.warmconnect.com/wiz.php
+

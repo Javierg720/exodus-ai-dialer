@@ -37,11 +37,10 @@ export default function Sidebar() {
         className="hidden md:flex md:flex-col w-[280px] glass-card border-r border-dark-3 m-4 rounded-3xl overflow-hidden"
       >
         {/* Logo */}
-        <div className="p-8 border-b border-dark-3/50">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-ios-blue to-purple-500 bg-clip-text text-transparent">
-            Exodus Dialer
+        <div className="p-6 border-b border-dark-3/50">
+          <h1 className="text-4xl font-black tracking-wide text-[#4A90E2] whitespace-nowrap text-center" style={{ fontFamily: 'Arial, sans-serif', letterSpacing: '0.05em', fontWeight: 900 }}>
+            EXODUS AI
           </h1>
-          <p className="text-sm text-ios-gray-1 mt-1">AI Cold Calling</p>
         </div>
 
         {/* Navigation */}
@@ -63,6 +62,17 @@ export default function Sidebar() {
             </NavLink>
           ))}
         </nav>
+
+        {/* AI Network Visualization */}
+        <div className="px-4 pb-4">
+          <div className="relative w-3/4 mx-auto aspect-square flex items-center justify-center">
+            <img 
+              src="/ai-network.svg" 
+              alt="AI Network" 
+              className="w-full h-full object-contain"
+            />
+          </div>
+        </div>
 
         {/* Dark Mode Toggle */}
         <div className="p-4 border-t border-dark-3/50">

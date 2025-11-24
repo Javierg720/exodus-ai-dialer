@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Search, Trash2, Upload, Download } from 'lucide-react'
 import { api } from '../lib/api'
 import GlassCard from '../components/GlassCard'
+import ErrorAlert from '../components/ErrorAlert'
 import { motion } from 'framer-motion'
 import { DNCEntry } from '../types'
 import { useState } from 'react'
@@ -12,8 +13,9 @@ export default function DNCList() {
   const [searchTerm, setSearchTerm] = useState('')
   const [newNumber, setNewNumber] = useState('')
   const [newReason, setNewReason] = useState('')
+  const [mutationError, setMutationError] = useState<Error | null>(null)
   
-  const { data: dncList, isLoading } = useQuery<DNCEntry[]>({
+  const { data: dncList, isLoading, error, refetch } = useQuery<DNCEntry[]>({
     queryKey: ['dnc'],
     queryFn: () => api.getDNC(),
   })
@@ -25,6 +27,10 @@ export default function DNCList() {
       queryClient.invalidateQueries({ queryKey: ['dnc'] })
       setNewNumber('')
       setNewReason('')
+      setMutationError(null)
+    },
+    onError: (error: Error) => {
+      setMutationError(error)
     },
   })
 
@@ -32,6 +38,10 @@ export default function DNCList() {
     mutationFn: (phoneNumber: string) => api.removeDNC(phoneNumber),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dnc'] })
+      setMutationError(null)
+    },
+    onError: (error: Error) => {
+      setMutationError(error)
     },
   })
 
@@ -40,6 +50,10 @@ export default function DNCList() {
       api.importDNC(numbers, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dnc'] })
+      setMutationError(null)
+    },
+    onError: (error: Error) => {
+      setMutationError(error)
     },
   })
 
@@ -151,6 +165,23 @@ export default function DNCList() {
           </button>
         </div>
       </div>
+
+      {/* Error Alerts */}
+      {error && (
+        <ErrorAlert
+          error={error as Error}
+          onRetry={() => refetch()}
+          title="Failed to load DNC list"
+        />
+      )}
+      
+      {mutationError && (
+        <ErrorAlert
+          error={mutationError}
+          onDismiss={() => setMutationError(null)}
+          title="DNC operation failed"
+        />
+      )}
 
       {/* Add Number Form */}
       <GlassCard>

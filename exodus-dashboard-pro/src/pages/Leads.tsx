@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Upload, Phone, Plus, Search } from 'lucide-react'
 import { api } from '../lib/api'
 import GlassCard from '../components/GlassCard'
+import ErrorAlert from '../components/ErrorAlert'
 import { motion } from 'framer-motion'
 import { Lead } from '../types'
 import { useState, useRef, useMemo } from 'react'
@@ -14,6 +15,7 @@ export default function Leads() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [importing, setImporting] = useState(false)
+  const [importError, setImportError] = useState<Error | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [filters, setFilters] = useState<LeadFilterState>({
     status: '',
@@ -28,7 +30,7 @@ export default function Leads() {
     direction: 'desc'
   })
   
-  const { data: leads, isLoading } = useQuery<Lead[]>({
+  const { data: leads, isLoading, error, refetch } = useQuery<Lead[]>({
     queryKey: ['leads'],
     queryFn: () => api.getLeads(),
   })
@@ -71,13 +73,19 @@ export default function Leads() {
     if (!file) return
 
     setImporting(true)
+    setImportError(null)
     try {
       await api.importLeads(file)
       queryClient.invalidateQueries({ queryKey: ['leads'] })
     } catch (error) {
       console.error('Import failed:', error)
+      setImportError(error as Error)
     } finally {
       setImporting(false)
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }
 
@@ -202,9 +210,12 @@ export default function Leads() {
             className="hidden"
           />
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+              console.log('Import CSV clicked, fileInputRef:', fileInputRef.current)
+              fileInputRef.current?.click()
+            }}
             disabled={importing}
-            className="ios-button-secondary flex items-center gap-2"
+            className="ios-button-secondary flex items-center gap-2 cursor-pointer"
           >
             <Upload className="w-5 h-5" />
             {importing ? 'Importing...' : 'Import CSV'}
@@ -218,6 +229,23 @@ export default function Leads() {
           </button>
         </div>
       </div>
+
+      {/* Error Alerts */}
+      {error && (
+        <ErrorAlert
+          error={error as Error}
+          onRetry={() => refetch()}
+          title="Failed to load leads"
+        />
+      )}
+      
+      {importError && (
+        <ErrorAlert
+          error={importError}
+          onDismiss={() => setImportError(null)}
+          title="Failed to import leads"
+        />
+      )}
 
       {/* Search & Filters */}
       <div className="space-y-4">
@@ -269,6 +297,11 @@ export default function Leads() {
                   }`}>
                     {lead.status}
                   </span>
+                  {(lead as any).attempts !== undefined && (
+                    <span className="ios-badge bg-ios-orange/20 text-ios-orange">
+                      {(lead as any).attempts} / {(lead as any).max_attempts || 3} attempts
+                    </span>
+                  )}
                 </div>
                 {(lead as any).company && (
                   <p className="text-base font-medium text-ios-blue mb-1">🏢 {(lead as any).company}</p>

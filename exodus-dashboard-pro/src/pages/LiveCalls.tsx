@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import LiveCallCard from '../components/LiveCallCard'
+import ErrorAlert from '../components/ErrorAlert'
 import { motion } from 'framer-motion'
 import { LiveCall } from '../types'
 import { Phone } from 'lucide-react'
@@ -10,7 +11,7 @@ export default function LiveCalls() {
   const queryClient = useQueryClient()
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null)
 
-  const { data: activeCalls, isLoading } = useQuery<LiveCall[]>({
+  const { data: activeCalls, isLoading, error, refetch } = useQuery<LiveCall[]>({
     queryKey: ['activeCalls'],
     queryFn: () => api.getActiveCalls(),
     refetchInterval: 1000, // Refresh every second for live updates
@@ -101,6 +102,15 @@ export default function LiveCalls() {
           <span className="text-ios-green font-semibold">LIVE</span>
         </div>
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <ErrorAlert
+          error={error as Error}
+          onRetry={() => refetch()}
+          title="Failed to load active calls"
+        />
+      )}
 
       {/* Active Calls Grid */}
       {activeCalls && activeCalls.length > 0 ? (

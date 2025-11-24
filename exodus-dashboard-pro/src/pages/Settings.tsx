@@ -1,8 +1,10 @@
 import GlassCard from '../components/GlassCard'
 import { motion } from 'framer-motion'
 import { useStore } from '../lib/store'
-import { Moon, Sun, Bell, Shield, Database, Settings as SettingsIcon, Save } from 'lucide-react'
+import { Moon, Sun, Bell, Shield, Database, Settings as SettingsIcon, Save, Power } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { api } from '../lib/api'
+import VoiceSettings from '../components/Settings/VoiceSettings'
 
 interface SystemSettings {
   dial_ratio: number
@@ -39,7 +41,7 @@ export default function Settings() {
   const [selectedCampaign, setSelectedCampaign] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [saveMessage, setSaveMessage] = useState('')
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001'
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
   useEffect(() => {
     fetchSettings()
@@ -47,17 +49,18 @@ export default function Settings() {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch(`${API_URL}/settings`)
+      const response = await fetch(`${API_URL}/campaigns`)
       const data = await response.json()
       if (data.status === 'success') {
-        setSystemSettings(data.system_defaults)
-        setCampaigns(data.campaigns)
-        if (data.campaigns.length > 0) {
-          setSelectedCampaign(data.campaigns[0].id)
+        const availableCampaigns = data.campaigns || []
+        setCampaigns(availableCampaigns)
+        if (availableCampaigns.length > 0) {
+          setSelectedCampaign(availableCampaigns[0].id)
         }
       }
     } catch (error) {
       console.error('Failed to fetch settings:', error)
+      setCampaigns([])
     } finally {
       setLoading(false)
     }
@@ -86,7 +89,15 @@ export default function Settings() {
     }
   }
 
-  const selectedCampaignData = campaigns.find(c => c.id === selectedCampaign)
+  const selectedCampaignData = campaigns?.find(c => c.id === selectedCampaign)
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-ios-gray-2">Loading settings...</div>
+      </div>
+    )
+  }
 
   return (
     <motion.div
@@ -216,6 +227,11 @@ export default function Settings() {
         </GlassCard>
       )}
 
+      {/* Voice Settings */}
+      {selectedCampaignData && (
+        <VoiceSettings campaignId={selectedCampaignData.id} />
+      )}
+
       {/* STT & Recording */}
       {selectedCampaignData && (
         <GlassCard>
@@ -255,6 +271,43 @@ export default function Settings() {
           </div>
         </GlassCard>
       )}
+
+      {/* System Reboot */}
+      <GlassCard>
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Power className="w-5 h-5" />
+          System Control
+        </h3>
+        <div className="space-y-3">
+          <p className="text-sm text-ios-gray-2">
+            Restart the dialer API and all bot instances. This will briefly interrupt active calls.
+          </p>
+          <button 
+            onClick={async () => {
+              if (!window.confirm('Are you sure you want to reboot the system? This will restart all bots and the API.')) {
+                return
+              }
+              setSaveMessage('Rebooting system...')
+              try {
+                await api.rebootSystem()
+                setSaveMessage('System reboot initiated. Please wait...')
+                setTimeout(() => {
+                  window.location.reload()
+                }, 5000)
+              } catch (error) {
+                setSaveMessage('Reboot initiated - refreshing in 5 seconds...')
+                setTimeout(() => {
+                  window.location.reload()
+                }, 5000)
+              }
+            }}
+            className="w-full ios-button bg-ios-orange hover:bg-ios-orange/90 text-white flex items-center justify-center gap-2"
+          >
+            <Power className="w-5 h-5" />
+            Reboot System
+          </button>
+        </div>
+      </GlassCard>
 
       {/* Appearance */}
       <GlassCard>
@@ -315,11 +368,11 @@ export default function Settings() {
         </div>
       </GlassCard>
 
-      {/* System */}
+      {/* System Info */}
       <GlassCard>
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Database className="w-5 h-5" />
-          System
+          System Information
         </h3>
         <div className="space-y-3">
           <div className="flex justify-between text-sm">

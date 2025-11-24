@@ -1,0 +1,92 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                     RESOURCE LEAK FIXES - QUICK REFERENCE                     ║
+║                              Date: 2025-11-23                                 ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 1. PENDING ORIGINATES CLEANUP (dialer_orchestrator.py)                       │
+├───────────────────────────────────────────────────────────────────────────────┤
+│ • Background task removes stale pending originates after 60 seconds          │
+│ • Runs every 30 seconds automatically                                        │
+│ • Prevents memory leak from failed/timeout Originate attempts                │
+│ • Affected dictionaries: _pending_originates, _pending_timeouts              │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 2. ACTIVE CALLS CLEANUP ON STOP (dialer_orchestrator.py)                     │
+├───────────────────────────────────────────────────────────────────────────────┤
+│ • Hangup all active calls before stopping orchestrator                       │
+│ • Clears all tracking dicts: active_calls, pending_originates, etc.          │
+│ • Prevents orphaned Asterisk channels on restart                             │
+│ • Log: "Hanging up N active calls..."                                        │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 3. BOT PROCESS LEAK FIX (bot_pool_manager.py)                                │
+├───────────────────────────────────────────────────────────────────────────────┤
+│ • Verifies bot process actually dies after terminate/kill                    │
+│ • Sends SIGKILL if process won't die                                         │
+│ • Prevents zombie processes accumulating                                     │
+│ • Log: "Bot terminated (exit code: N)" or "Bot may still be running!"        │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 4. TEMP FILE LEAK FIX (dialer_api.py)                                        │
+├───────────────────────────────────────────────────────────────────────────────┤
+│ • Background task deletes temp recording files after 5 seconds               │
+│ • Runs after FileResponse is sent                                            │
+│ • Prevents disk space exhaustion from /tmp/*.wav files                       │
+│ • Log: "Cleaned up temp recording file: /tmp/xyz.wav"                        │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 5. CHANNEL MAPPING LOCK (dialer_orchestrator.py)                             │
+├───────────────────────────────────────────────────────────────────────────────┤
+│ • asyncio.Lock() protects channel_to_uniqueid dict access                    │
+│ • Prevents race conditions in high-volume scenarios                          │
+│ • All read/write operations use: async with self._channel_mapping_lock:      │
+│ • No performance impact (async locks are fast)                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                             MONITORING COMMANDS                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+Memory Usage:
+  watch -n 5 'ps aux | grep dialer_orchestrator | grep -v grep'
+
+Zombie Processes:
+  ps aux | grep defunct
+
+Temp Files:
+  watch -n 5 'ls -lh /tmp/*.wav 2>/dev/null | wc -l'
+
+Active Channels:
+  asterisk -rx "core show channels"
+
+Dialer Logs (watch for cleanup messages):
+  tail -f logs/dialer_orchestrator.log | grep -E "Cleaned up|Hanging up"
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                              TESTING CHECKLIST                                ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+[ ] Run dialer for 1+ hour, monitor memory (should be stable)
+[ ] Start/stop bot pool multiple times, check for zombie processes
+[ ] Download recordings, verify temp files are auto-cleaned
+[ ] Run high-volume campaign, check for race condition errors
+[ ] Stop orchestrator with active calls, verify clean hangup
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                            FILES MODIFIED (3)                                 ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+1. 01_Core_System/dialer_orchestrator.py    (~120 lines added)
+2. 01_Core_System/bot_pool_manager.py       (~20 lines added)
+3. 01_Core_System/dialer_api.py             (~20 lines added)
+
+Total: ~160 lines added, ~10 lines removed
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                            STATUS: ✅ COMPLETE                                ║
+╚═══════════════════════════════════════════════════════════════════════════════╝

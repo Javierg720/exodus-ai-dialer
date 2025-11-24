@@ -1,0 +1,81 @@
+╔════════════════════════════════════════════════════════════════════════╗
+║         PHONE NORMALIZATION - BEFORE/AFTER QUICK REFERENCE              ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+INPUT FORMAT                BEFORE (BROKEN)          AFTER (FIXED)
+─────────────────────────   ───────────────────      ──────────────────
+555-123-4567                +11555-123-4567 ❌       +15551234567 ✅
+(555) 123-4567              +11(555) 123-4567 ❌     +15551234567 ✅
+555 123 4567                +11555 123 4567 ❌       +15551234567 ✅
+5551234567                  +115551234567 ❌         +15551234567 ✅
+15551234567                 +1115551234567 ❌        +15551234567 ✅
++15551234567                +11+15551234567 ❌       +15551234567 ✅
++1 555 123 4567             +11+1 555 123 4567 ❌    +15551234567 ✅
+111111111111                +1111111111111 ❌        REJECTED ✅
+1111111111                  +11111111111 ❌          REJECTED ✅
+12345                       +112345 ❌                REJECTED ✅
+(empty string)              +1 ❌                     REJECTED ✅
+
+╔════════════════════════════════════════════════════════════════════════╗
+║                        VALIDATION RULES                                  ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+✅ ACCEPTS:
+   • 10-digit US numbers: 5551234567 → +15551234567
+   • 11-digit with country code: 15551234567 → +15551234567
+   • Already formatted: +15551234567 → +15551234567
+   • Various formats: (555) 123-4567, 555-123-4567, etc.
+
+❌ REJECTS:
+   • Too few digits: 12345, 555123 (< 10 digits)
+   • Too many digits: 111111111111111 (> 15 digits)
+   • Repeated digits: 1111111111, 2222222222
+   • Sequential: 1234567890, 0123456789
+   • Invalid country codes: +211111111111
+
+╔════════════════════════════════════════════════════════════════════════╗
+║                    DATABASE DUPLICATE PREVENTION                         ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+BEFORE:
+  Campaign 1: +15551234567 (Lead ID 1)
+  Campaign 1: +15551234567 (Lead ID 2) ← Duplicate allowed ❌
+  Campaign 1: +15551234567 (Lead ID 3) ← Duplicate allowed ❌
+
+AFTER:
+  Campaign 1: +15551234567 (Lead ID 1) ✅
+  Campaign 1: +15551234567 → REJECTED (duplicate) ✅
+  Campaign 2: +15551234567 (Lead ID 2) ✅ (different campaign, OK)
+
+╔════════════════════════════════════════════════════════════════════════╗
+║                      IMPLEMENTATION STATUS                               ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+✅ COMPLETED:
+   [√] phone_normalization_fixes.py - Sanitization module
+   [√] add_phone_unique_constraint.sql - Database migration
+   [√] Unit tests passing (11/11)
+   [√] Documentation created
+
+⏳ TO APPLY:
+   [ ] Update dialer_db_async.py add_lead() method
+   [ ] Update dialer_db_async.py bulk_import_leads() method
+   [ ] Update AddLeadModal.tsx frontend validation
+   [ ] Run database migration script
+   [ ] Test end-to-end workflow
+
+╔════════════════════════════════════════════════════════════════════════╗
+║                        FILES CREATED                                     ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+1. 01_Core_System/phone_normalization_fixes.py
+   └─ Phone sanitization and validation logic
+
+2. 01_Core_System/add_phone_unique_constraint.sql
+   └─ Database schema migration
+
+3. PHONE_NORMALIZATION_FIXES_SUMMARY.md
+   └─ Complete implementation guide with code examples
+
+4. PHONE_FORMAT_QUICK_REFERENCE.txt (this file)
+   └─ Quick reference for phone number formatting rules

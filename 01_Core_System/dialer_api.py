@@ -14,7 +14,17 @@ Provides REST endpoints for:
 Used by dashboard.html frontend for dialer control panel.
 """
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, status, UploadFile, File, Form
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+    Depends,
+    status,
+    UploadFile,
+    File,
+    Form,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
@@ -38,6 +48,7 @@ from dialer_orchestrator import DialerOrchestrator, CallAttempt
 
 try:
     from dialer_logging import setup_logging, get_logger
+
     setup_logging(json_output=False)
     api_logger = get_logger("dialer_api")
     STRUCTURED_LOGGING = True
@@ -48,6 +59,7 @@ except ImportError:
 try:
     from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
     from dialer_metrics import metrics, registry
+
     PROMETHEUS_ENABLED = True
 except ImportError:
     PROMETHEUS_ENABLED = False
@@ -66,40 +78,49 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 480
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
+
 class Token(BaseModel):
     access_token: str
     token_type: str
 
+
 class TokenData(BaseModel):
     username: Optional[str] = None
+
 
 class User(BaseModel):
     username: str
     disabled: Optional[bool] = None
 
+
 class UserInDB(User):
     hashed_password: str
+
 
 # Temporarily disabled authentication for testing
 USERS_DB = {
     "admin": {
         "username": "admin",
         "hashed_password": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LeehbQiRk/SzKzKz",
-        "disabled": False
+        "disabled": False,
     }
 }
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
+
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
+
 
 def get_user(username: str):
     if username in USERS_DB:
         user_dict = USERS_DB[username]
         return UserInDB(**user_dict)
     return None
+
 
 def authenticate_user(username: str, password: str):
     user = get_user(username)
@@ -108,6 +129,7 @@ def authenticate_user(username: str, password: str):
     if not verify_password(password, user.hashed_password):
         return False
     return user
+
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -119,7 +141,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -139,20 +164,26 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         raise credentials_exception
     return user
 
+
 async def get_current_active_user(current_user: User = Depends(get_current_user)):
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
+
 # ============================================================================
 # Pydantic Models (Request/Response schemas)
 # ============================================================================
 
+
 class CampaignCreate(BaseModel):
     """Request model for creating a campaign."""
+
     name: str = Field(..., min_length=1, max_length=100)
     description: str = ""
-    dial_method: str = Field(default="PROGRESSIVE", pattern="^(PROGRESSIVE|PREDICTIVE|POWER|PREVIEW)$")
+    dial_method: str = Field(
+        default="PROGRESSIVE", pattern="^(PROGRESSIVE|PREDICTIVE|POWER|PREVIEW)$"
+    )
     dial_ratio: float = Field(default=3.0, ge=1.0, le=10.0)
     max_dial_ratio: float = Field(default=5.0, ge=1.0, le=10.0)
     stt_provider: str = Field(default="deepgram", pattern="^(deepgram|groq)$")
@@ -161,6 +192,7 @@ class CampaignCreate(BaseModel):
 
 class LeadCreate(BaseModel):
     """Request model for adding a lead."""
+
     campaign_id: int
     phone_number: str = Field(..., min_length=10, max_length=20)
     first_name: str = ""
@@ -176,18 +208,21 @@ class LeadCreate(BaseModel):
 
 class LeadBulkImport(BaseModel):
     """Request model for bulk lead import."""
+
     campaign_id: int
     leads: List[Dict]
 
 
 class DNCAdd(BaseModel):
     """Request model for adding to DNC list."""
+
     phone_number: str = Field(..., min_length=10, max_length=20)
     reason: str = "Manual addition"
 
 
 class CallOriginate(BaseModel):
     """Request model for originating a manual call."""
+
     phone_number: str = Field(..., min_length=10, max_length=20)
     lead_id: Optional[int] = None
     contact_name: Optional[str] = None
@@ -196,6 +231,7 @@ class CallOriginate(BaseModel):
 
 class CallDispositionUpdate(BaseModel):
     """Request model for updating call disposition and transcript."""
+
     transcript: str = Field(..., description="Full conversation transcript.")
     disposition: str = Field(..., description="Auto-analyzed disposition code.")
 
@@ -207,7 +243,7 @@ class CallDispositionUpdate(BaseModel):
 app = FastAPI(
     title="Exodus Dialer API",
     description="REST API for predictive dialer system",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # CORS middleware for dashboard access
@@ -227,6 +263,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 import json
 
+
 class LoggingMiddleware(BaseHTTPMiddleware):
     """Middleware to log all requests and responses."""
 
@@ -236,15 +273,20 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
         # Log request details
         client_host = request.client.host if request.client else "unknown"
-        logger.info(f"📥 REQUEST: {request.method} {request.url.path} from {client_host}")
+        logger.info(
+            f"📥 REQUEST: {request.method} {request.url.path} from {client_host}"
+        )
 
         # Log query parameters if present
         if request.query_params:
             logger.debug(f"   Query params: {dict(request.query_params)}")
 
         # Log request headers (excluding sensitive ones)
-        safe_headers = {k: v for k, v in request.headers.items()
-                       if k.lower() not in ['authorization', 'cookie']}
+        safe_headers = {
+            k: v
+            for k, v in request.headers.items()
+            if k.lower() not in ["authorization", "cookie"]
+        }
         logger.debug(f"   Headers: {safe_headers}")
 
         # Get request body for POST/PUT/PATCH
@@ -256,7 +298,9 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                         body_json = json.loads(body)
                         logger.debug(f"   Body: {body_json}")
                     except json.JSONDecodeError:
-                        logger.debug(f"   Body (raw): {body[:200]}...")  # First 200 chars
+                        logger.debug(
+                            f"   Body (raw): {body[:200]}..."
+                        )  # First 200 chars
             except Exception as e:
                 logger.debug(f"   Body read error: {e}")
 
@@ -267,15 +311,19 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         process_time = time.time() - start_time
 
         # Log response
-        logger.info(f"📤 RESPONSE: {response.status_code} for {request.method} {request.url.path} ({process_time:.3f}s)")
+        logger.info(
+            f"📤 RESPONSE: {response.status_code} for {request.method} {request.url.path} ({process_time:.3f}s)"
+        )
 
         # Add custom headers
         response.headers["X-Process-Time"] = str(process_time)
 
         return response
 
+
 # Add the logging middleware
 app.add_middleware(LoggingMiddleware)
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
@@ -295,10 +343,8 @@ async def validation_exception_handler(request, exc):
     except:
         pass
 
-    return JSONResponse(
-        status_code=422,
-        content={"detail": exc.errors()}
-    )
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request, exc):
@@ -308,9 +354,9 @@ async def general_exception_handler(request, exc):
     logger.error(f"   Exception: {str(exc)}", exc_info=True)
 
     return JSONResponse(
-        status_code=500,
-        content={"detail": f"Internal server error: {str(exc)}"}
+        status_code=500, content={"detail": f"Internal server error: {str(exc)}"}
     )
+
 
 # Mount static files for React dashboard
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -318,9 +364,11 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Mount recordings directory for call playback
 import os
 import glob
+
 recordings_dir = "/home/user/Desktop/ava-asterisk-config/recordings"
 if not os.path.exists(recordings_dir):
     os.makedirs(recordings_dir)
+
 
 # Custom endpoint to find recordings by UUID (must be BEFORE mount to work)
 @app.get("/api/recording/{call_uuid}")
@@ -329,33 +377,35 @@ async def get_recording_by_uuid(call_uuid: str):
     try:
         # First, try to find the recording file inside the Asterisk container
         find_cmd = [
-            "docker", "exec", "ava-asterisk",
-            "find", "/var/spool/asterisk/monitor",
-            "-name", f"*{call_uuid}*.wav"
+            "docker",
+            "exec",
+            "ava-asterisk",
+            "find",
+            "/var/spool/asterisk/monitor",
+            "-name",
+            f"*{call_uuid}*.wav",
         ]
-        
+
         result = subprocess.run(find_cmd, capture_output=True, text=True, timeout=5)
-        
+
         if result.returncode == 0 and result.stdout.strip():
             # Found the file - get the path
-            container_path = result.stdout.strip().split('\n')[0]
+            container_path = result.stdout.strip().split("\n")[0]
             logger.info(f"Found recording in container: {container_path}")
-            
+
             # Copy file from container to temp location
             import tempfile
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
+
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
             temp_path = temp_file.name
             temp_file.close()
-            
+
             copy_cmd = ["docker", "cp", f"ava-asterisk:{container_path}", temp_path]
             copy_result = subprocess.run(copy_cmd, capture_output=True, timeout=10)
-            
+
             if copy_result.returncode == 0:
                 # Return the file with CORS headers
-                response = FileResponse(
-                    temp_path, 
-                    media_type="audio/wav"
-                )
+                response = FileResponse(temp_path, media_type="audio/wav")
                 response.headers["Access-Control-Allow-Origin"] = "*"
                 response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
                 response.headers["Access-Control-Allow-Headers"] = "*"
@@ -364,22 +414,25 @@ async def get_recording_by_uuid(call_uuid: str):
                 return response
             else:
                 logger.error(f"Failed to copy recording: {copy_result.stderr}")
-        
+
         # Fallback: try local filesystem
         pattern = f"{recordings_dir}/**/*{call_uuid}*.wav"
         matches = glob.glob(pattern, recursive=True)
-        
+
         if matches:
             response = FileResponse(matches[0], media_type="audio/wav")
             response.headers["Access-Control-Allow-Origin"] = "*"
             response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
             response.headers["Access-Control-Allow-Headers"] = "*"
             return response
-            
+
     except Exception as e:
         logger.error(f"Error retrieving recording: {e}")
-    
-    raise HTTPException(status_code=404, detail=f"Recording not found for UUID: {call_uuid}")
+
+    raise HTTPException(
+        status_code=404, detail=f"Recording not found for UUID: {call_uuid}"
+    )
+
 
 # Mount static files for direct date-based access (e.g., /recordings/2025-11-11/file.wav)
 app.mount("/recordings", StaticFiles(directory=recordings_dir), name="recordings")
@@ -387,15 +440,18 @@ app.mount("/recordings", StaticFiles(directory=recordings_dir), name="recordings
 # Mount root files for dashboard
 from fastapi.responses import FileResponse, Response
 
+
 @app.get("/manifest.json")
 async def get_manifest():
     """Serve manifest.json."""
     return FileResponse("manifest.json")
 
-@app.get("/favicon.ico") 
+
+@app.get("/favicon.ico")
 async def get_favicon():
     """Serve favicon.ico."""
     return FileResponse("favicon.ico")
+
 
 @app.get("/sounds/success.mp3")
 async def get_success_sound():
@@ -403,6 +459,7 @@ async def get_success_sound():
     if os.path.exists("static/sounds/success.mp3"):
         return FileResponse("static/sounds/success.mp3")
     return Response(content=b"", media_type="audio/mpeg")
+
 
 # Global instances (initialized on startup)
 db: Optional[AsyncDialerDB] = None
@@ -416,6 +473,7 @@ active_websockets: List[WebSocket] = []
 # ============================================================================
 # Startup/Shutdown Events
 # ============================================================================
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -438,7 +496,9 @@ async def startup_event():
     try:
         bot_pool = BotPoolManager(base_port=9092, num_instances=10, wrap_up_time=5.0)
         await bot_pool.start()
-        logger.info("✅ Bot pool: AVR Docker Bot Pool Manager initialized (20 bots, ports 9092-9111)")
+        logger.info(
+            "✅ Bot pool: AVR Docker Bot Pool Manager initialized (20 bots, ports 9092-9111)"
+        )
     except Exception as e:
         logger.error(f"❌ Failed to initialize AVR bot pool: {e}")
         raise RuntimeError(f"Bot pool initialization failed: {e}")
@@ -454,21 +514,27 @@ async def startup_event():
                 bot_pool=bot_pool,
                 ami_host=os.getenv("AMI_HOST", "localhost"),
                 ami_username=os.getenv("AMI_USERNAME", "admin"),
-                ami_password=os.getenv("AMI_PASSWORD", "admin123")
+                ami_password=os.getenv("AMI_PASSWORD", "admin123"),
             )
             await orchestrator.start()
             logger.info("✅ Dialer orchestrator started")
             break
         except ConnectionRefusedError:
             if attempt < max_retries - 1:
-                logger.warning(f"⚠️ AMI connection refused (attempt {attempt+1}/{max_retries}), retrying in 2s...")
+                logger.warning(
+                    f"⚠️ AMI connection refused (attempt {attempt + 1}/{max_retries}), retrying in 2s..."
+                )
                 await asyncio.sleep(2)
             else:
-                logger.warning("⚠️ Asterisk AMI unavailable - API starting in read-only mode")
+                logger.warning(
+                    "⚠️ Asterisk AMI unavailable - API starting in read-only mode"
+                )
                 orchestrator = None
                 break
         except Exception as e:
-            logger.warning(f"⚠️ Orchestrator init failed: {e} - API starting in read-only mode")
+            logger.warning(
+                f"⚠️ Orchestrator init failed: {e} - API starting in read-only mode"
+            )
             orchestrator = None
             break
 
@@ -501,7 +567,7 @@ async def shutdown_event():
             logger.info("✅ Bot pool stopped")
     except Exception as e:
         logger.error(f"❌ Error stopping bot pool: {e}")
-    
+
     try:
         if db:
             db.dispose_pool()
@@ -516,14 +582,11 @@ async def shutdown_event():
 # Health Check
 # ============================================================================
 
+
 @app.get("/api")
 async def api_info():
     """API info endpoint."""
-    return {
-        "service": "Exodus Dialer API",
-        "version": "1.0.0",
-        "status": "running"
-    }
+    return {"service": "Exodus Dialer API", "version": "1.0.0", "status": "running"}
 
 
 @app.get("/health")
@@ -536,29 +599,33 @@ async def health_check():
     else:
         # Check if AVR bots are running via Docker
         import subprocess
+
         try:
             result = subprocess.run(
                 ["docker", "ps", "--filter", "name=avr-bot", "--format", "{{.Names}}"],
                 capture_output=True,
                 text=True,
-                timeout=2
+                timeout=2,
             )
-            avr_bots = result.stdout.strip().split('\n') if result.stdout.strip() else []
+            avr_bots = (
+                result.stdout.strip().split("\n") if result.stdout.strip() else []
+            )
             bots_available = len(avr_bots) > 0
         except Exception:
             bots_available = False
-    
+
     return {
         "status": "healthy",
         "database": db is not None,
         "bot_pool": bots_available,
-        "orchestrator": orchestrator is not None
+        "orchestrator": orchestrator is not None,
     }
 
 
 # ============================================================================
 # Authentication Endpoints
 # ============================================================================
+
 
 @app.post("/auth/login", response_model=Token)
 async def login(username: str, password: str):
@@ -582,13 +649,16 @@ async def login(username: str, password: str):
 # Campaign Endpoints
 # ============================================================================
 
+
 @app.post("/campaigns", status_code=201)
 async def create_campaign(campaign: CampaignCreate):
     """Create a new campaign."""
     logger.info(f"🔵 CREATE CAMPAIGN: Request to create campaign '{campaign.name}'")
-    logger.debug(f"   Campaign details: dial_method={campaign.dial_method}, "
-                f"dial_ratio={campaign.dial_ratio}, max_dial_ratio={campaign.max_dial_ratio}, "
-                f"stt_provider={campaign.stt_provider}, enable_recording={campaign.enable_recording}")
+    logger.debug(
+        f"   Campaign details: dial_method={campaign.dial_method}, "
+        f"dial_ratio={campaign.dial_ratio}, max_dial_ratio={campaign.max_dial_ratio}, "
+        f"stt_provider={campaign.stt_provider}, enable_recording={campaign.enable_recording}"
+    )
     try:
         campaign_id = await db.create_campaign(
             name=campaign.name,
@@ -597,9 +667,11 @@ async def create_campaign(campaign: CampaignCreate):
             dial_ratio=campaign.dial_ratio,
             max_dial_ratio=campaign.max_dial_ratio,
             stt_provider=campaign.stt_provider,
-            enable_recording=campaign.enable_recording
+            enable_recording=campaign.enable_recording,
         )
-        logger.info(f"✅ CREATE CAMPAIGN: Successfully created campaign '{campaign.name}' with ID={campaign_id}")
+        logger.info(
+            f"✅ CREATE CAMPAIGN: Successfully created campaign '{campaign.name}' with ID={campaign_id}"
+        )
         return {"campaign_id": campaign_id, "message": "Campaign created successfully"}
     except Exception as e:
         logger.error(f"❌ CREATE CAMPAIGN: Failed to create campaign '{campaign.name}'")
@@ -627,10 +699,14 @@ async def list_campaigns():
             campaigns = [dict(row) for row in rows]
             logger.info(f"✅ LIST CAMPAIGNS: Retrieved {len(campaigns)} campaigns")
             for camp in campaigns:
-                logger.debug(f"   Campaign: ID={camp['id']}, Name={camp['name']}, Status={camp['status']}, Leads={camp['total_leads']}")
+                logger.debug(
+                    f"   Campaign: ID={camp['id']}, Name={camp['name']}, Status={camp['status']}, Leads={camp['total_leads']}"
+                )
             return campaigns
     except Exception as e:
-        logger.error(f"❌ LIST CAMPAIGNS: Failed to list campaigns - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ LIST CAMPAIGNS: Failed to list campaigns - {str(e)}", exc_info=True
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -640,9 +716,13 @@ async def list_active_campaigns():
     logger.info("🔴 LIST ACTIVE CAMPAIGNS: Request to list active campaigns")
     try:
         campaigns = await db.get_active_campaigns()
-        logger.info(f"✅ LIST ACTIVE CAMPAIGNS: Found {len(campaigns)} active campaigns")
+        logger.info(
+            f"✅ LIST ACTIVE CAMPAIGNS: Found {len(campaigns)} active campaigns"
+        )
         for camp in campaigns:
-            logger.debug(f"   Active Campaign: ID={camp['id']}, Name={camp['name']}, Dial Ratio={camp.get('dial_ratio', 'N/A')}")
+            logger.debug(
+                f"   Active Campaign: ID={camp['id']}, Name={camp['name']}, Dial Ratio={camp.get('dial_ratio', 'N/A')}"
+            )
         return campaigns
     except Exception as e:
         logger.error(f"❌ LIST ACTIVE CAMPAIGNS: Failed - {str(e)}", exc_info=True)
@@ -658,13 +738,19 @@ async def get_campaign(campaign_id: int):
         if not campaign:
             logger.warning(f"⚠️ GET CAMPAIGN: Campaign ID={campaign_id} not found")
             raise HTTPException(status_code=404, detail="Campaign not found")
-        logger.info(f"✅ GET CAMPAIGN: Retrieved campaign ID={campaign_id}, Name={campaign['name']}, Status={campaign['status']}")
-        logger.debug(f"   Details: Dial Method={campaign.get('dial_method')}, Dial Ratio={campaign.get('dial_ratio')}")
+        logger.info(
+            f"✅ GET CAMPAIGN: Retrieved campaign ID={campaign_id}, Name={campaign['name']}, Status={campaign['status']}"
+        )
+        logger.debug(
+            f"   Details: Dial Method={campaign.get('dial_method')}, Dial Ratio={campaign.get('dial_ratio')}"
+        )
         return campaign
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ GET CAMPAIGN: Failed for ID={campaign_id} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ GET CAMPAIGN: Failed for ID={campaign_id} - {str(e)}", exc_info=True
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -685,11 +771,17 @@ async def update_campaign(campaign_id: int, campaign_data: dict):
         logger.info(f"   Updating fields: {', '.join(updated_fields)}")
 
         await db.update_campaign(campaign_id, campaign_data)
-        logger.info(f"✅ UPDATE CAMPAIGN: Campaign ID={campaign_id} updated successfully")
-        logger.debug(f"   Campaign '{campaign['name']}' updated with {len(updated_fields)} field(s)")
+        logger.info(
+            f"✅ UPDATE CAMPAIGN: Campaign ID={campaign_id} updated successfully"
+        )
+        logger.debug(
+            f"   Campaign '{campaign['name']}' updated with {len(updated_fields)} field(s)"
+        )
         return {"message": f"Campaign {campaign_id} updated successfully"}
     except Exception as e:
-        logger.error(f"❌ UPDATE CAMPAIGN: Failed for ID={campaign_id} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ UPDATE CAMPAIGN: Failed for ID={campaign_id} - {str(e)}", exc_info=True
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -704,14 +796,18 @@ async def delete_campaign(campaign_id: int):
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     try:
-        campaign_name = campaign['name']
+        campaign_name = campaign["name"]
         logger.info(f"   Deleting campaign '{campaign_name}' and all associated leads")
 
         await db.delete_campaign(campaign_id)
-        logger.info(f"✅ DELETE CAMPAIGN: Campaign ID={campaign_id} ('{campaign_name}') deleted successfully")
+        logger.info(
+            f"✅ DELETE CAMPAIGN: Campaign ID={campaign_id} ('{campaign_name}') deleted successfully"
+        )
         return {"message": f"Campaign {campaign_id} deleted successfully"}
     except Exception as e:
-        logger.error(f"❌ DELETE CAMPAIGN: Failed for ID={campaign_id} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ DELETE CAMPAIGN: Failed for ID={campaign_id} - {str(e)}", exc_info=True
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -726,15 +822,23 @@ async def start_campaign(campaign_id: int):
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     try:
-        current_status = campaign['status']
-        logger.info(f"   Current status: {current_status}, Campaign: '{campaign['name']}'")
+        current_status = campaign["status"]
+        logger.info(
+            f"   Current status: {current_status}, Campaign: '{campaign['name']}'"
+        )
 
         await db.start_campaign(campaign_id)
-        logger.info(f"✅ START CAMPAIGN: Campaign ID={campaign_id} ('{campaign['name']}') started successfully")
-        logger.debug(f"   Dial Method: {campaign.get('dial_method')}, Dial Ratio: {campaign.get('dial_ratio')}")
+        logger.info(
+            f"✅ START CAMPAIGN: Campaign ID={campaign_id} ('{campaign['name']}') started successfully"
+        )
+        logger.debug(
+            f"   Dial Method: {campaign.get('dial_method')}, Dial Ratio: {campaign.get('dial_ratio')}"
+        )
         return {"message": f"Campaign {campaign_id} started"}
     except Exception as e:
-        logger.error(f"❌ START CAMPAIGN: Failed for ID={campaign_id} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ START CAMPAIGN: Failed for ID={campaign_id} - {str(e)}", exc_info=True
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -749,21 +853,29 @@ async def pause_campaign(campaign_id: int):
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     try:
-        current_status = campaign['status']
-        logger.info(f"   Current status: {current_status}, Campaign: '{campaign['name']}'")
+        current_status = campaign["status"]
+        logger.info(
+            f"   Current status: {current_status}, Campaign: '{campaign['name']}'"
+        )
 
         await db.pause_campaign(campaign_id)
-        logger.info(f"✅ PAUSE CAMPAIGN: Campaign ID={campaign_id} ('{campaign['name']}') paused successfully")
+        logger.info(
+            f"✅ PAUSE CAMPAIGN: Campaign ID={campaign_id} ('{campaign['name']}') paused successfully"
+        )
         return {"message": f"Campaign {campaign_id} paused"}
     except Exception as e:
-        logger.error(f"❌ PAUSE CAMPAIGN: Failed for ID={campaign_id} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ PAUSE CAMPAIGN: Failed for ID={campaign_id} - {str(e)}", exc_info=True
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.put("/campaigns/{campaign_id}/status")
 async def update_campaign_status(campaign_id: int, status: str):
     """Update campaign status via query parameter."""
-    logger.info(f"🔄 UPDATE CAMPAIGN STATUS: Request to update campaign ID={campaign_id} to status={status}")
+    logger.info(
+        f"🔄 UPDATE CAMPAIGN STATUS: Request to update campaign ID={campaign_id} to status={status}"
+    )
 
     campaign = await db.get_campaign(campaign_id)
     if not campaign:
@@ -771,14 +883,20 @@ async def update_campaign_status(campaign_id: int, status: str):
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     status = status.upper()
-    logger.debug(f"   Normalized status: {status}, Current status: {campaign['status']}")
+    logger.debug(
+        f"   Normalized status: {status}, Current status: {campaign['status']}"
+    )
 
     if status not in ["ACTIVE", "PAUSED", "COMPLETED", "DRAFT"]:
-        logger.warning(f"⚠️ UPDATE CAMPAIGN STATUS: Invalid status '{status}' for campaign ID={campaign_id}")
+        logger.warning(
+            f"⚠️ UPDATE CAMPAIGN STATUS: Invalid status '{status}' for campaign ID={campaign_id}"
+        )
         raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
 
     try:
-        logger.info(f"   Updating campaign '{campaign['name']}' from {campaign['status']} to {status}")
+        logger.info(
+            f"   Updating campaign '{campaign['name']}' from {campaign['status']} to {status}"
+        )
 
         if status == "ACTIVE":
             await db.start_campaign(campaign_id)
@@ -788,10 +906,15 @@ async def update_campaign_status(campaign_id: int, status: str):
             # For COMPLETED and DRAFT, just update the status field
             await db.update_campaign(campaign_id, {"status": status})
 
-        logger.info(f"✅ UPDATE CAMPAIGN STATUS: Campaign ID={campaign_id} status updated to {status}")
+        logger.info(
+            f"✅ UPDATE CAMPAIGN STATUS: Campaign ID={campaign_id} status updated to {status}"
+        )
         return {"message": f"Campaign {campaign_id} status updated to {status}"}
     except Exception as e:
-        logger.error(f"❌ UPDATE CAMPAIGN STATUS: Failed for ID={campaign_id} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ UPDATE CAMPAIGN STATUS: Failed for ID={campaign_id} - {str(e)}",
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -803,38 +926,54 @@ async def get_campaign_stats(campaign_id: int):
     try:
         stats = await db.get_campaign_stats_today(campaign_id)
         if stats:
-            logger.info(f"✅ GET CAMPAIGN STATS: Retrieved stats for campaign ID={campaign_id}")
-            logger.debug(f"   Total Calls: {stats.get('total_calls', 0)}, Answered: {stats.get('answered_calls', 0)}, Drop Rate: {stats.get('drop_rate', 0):.2%}")
+            logger.info(
+                f"✅ GET CAMPAIGN STATS: Retrieved stats for campaign ID={campaign_id}"
+            )
+            logger.debug(
+                f"   Total Calls: {stats.get('total_calls', 0)}, Answered: {stats.get('answered_calls', 0)}, Drop Rate: {stats.get('drop_rate', 0):.2%}"
+            )
         else:
             logger.info(f"   No stats available for campaign ID={campaign_id}")
         return {"campaign_id": campaign_id, "stats": stats}
     except Exception as e:
-        logger.error(f"❌ GET CAMPAIGN STATS: Failed for ID={campaign_id} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ GET CAMPAIGN STATS: Failed for ID={campaign_id} - {str(e)}",
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/campaigns/{campaign_id}/leads")
 async def get_campaign_leads(campaign_id: int, limit: int = 100, offset: int = 0):
     """Get all leads for a specific campaign."""
-    logger.info(f"📋 GET CAMPAIGN LEADS: Request for campaign ID={campaign_id}, limit={limit}, offset={offset}")
+    logger.info(
+        f"📋 GET CAMPAIGN LEADS: Request for campaign ID={campaign_id}, limit={limit}, offset={offset}"
+    )
 
     try:
         leads = await db.get_leads_by_campaign(campaign_id, limit=limit, offset=offset)
         total = await db.get_campaign_lead_count(campaign_id)
 
-        logger.info(f"✅ GET CAMPAIGN LEADS: Retrieved {len(leads)} of {total} total leads for campaign ID={campaign_id}")
+        logger.info(
+            f"✅ GET CAMPAIGN LEADS: Retrieved {len(leads)} of {total} total leads for campaign ID={campaign_id}"
+        )
         if leads:
-            logger.debug(f"   Sample lead: {leads[0].get('phone_number', 'N/A')} - Status: {leads[0].get('status', 'N/A')}")
+            logger.debug(
+                f"   Sample lead: {leads[0].get('phone_number', 'N/A')} - Status: {leads[0].get('status', 'N/A')}"
+            )
 
         return {
             "campaign_id": campaign_id,
             "leads": leads,
             "total": total,
             "limit": limit,
-            "offset": offset
+            "offset": offset,
         }
     except Exception as e:
-        logger.error(f"❌ GET CAMPAIGN LEADS: Failed for campaign ID={campaign_id} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ GET CAMPAIGN LEADS: Failed for campaign ID={campaign_id} - {str(e)}",
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -847,14 +986,29 @@ async def update_lead_status(lead_id: int, status_data: dict):
     try:
         new_status = status_data.get("status", "").upper()
         if not new_status:
-            logger.warning(f"⚠️ UPDATE LEAD STATUS: No status provided for lead ID={lead_id}")
+            logger.warning(
+                f"⚠️ UPDATE LEAD STATUS: No status provided for lead ID={lead_id}"
+            )
             raise HTTPException(status_code=400, detail="Status is required")
 
         # Validate status matches database CHECK constraint
-        valid_statuses = ['NEW', 'CALLING', 'ANSWERED', 'NO_ANSWER', 'BUSY', 'FAILED', 'COMPLETED']
+        valid_statuses = [
+            "NEW",
+            "CALLING",
+            "ANSWERED",
+            "NO_ANSWER",
+            "BUSY",
+            "FAILED",
+            "COMPLETED",
+        ]
         if new_status not in valid_statuses:
-            logger.warning(f"⚠️ UPDATE LEAD STATUS: Invalid status '{new_status}' for lead ID={lead_id}")
-            raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+            logger.warning(
+                f"⚠️ UPDATE LEAD STATUS: Invalid status '{new_status}' for lead ID={lead_id}"
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}",
+            )
 
         logger.info(f"   Updating lead ID={lead_id} to status: {new_status}")
 
@@ -862,7 +1016,7 @@ async def update_lead_status(lead_id: int, status_data: dict):
         # Also reset attempts to 0 to prevent auto_complete_lead_on_max_attempts trigger
         await db.db.execute(
             "UPDATE leads SET status = ?, attempts = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            (new_status, lead_id)
+            (new_status, lead_id),
         )
         await db.db.commit()
 
@@ -871,7 +1025,10 @@ async def update_lead_status(lead_id: int, status_data: dict):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ UPDATE LEAD STATUS: Failed for lead ID={lead_id} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ UPDATE LEAD STATUS: Failed for lead ID={lead_id} - {str(e)}",
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -884,21 +1041,40 @@ async def update_lead_disposition(lead_id: int, disposition_data: dict):
     try:
         disposition = disposition_data.get("disposition", "").upper()
         if not disposition:
-            logger.warning(f"⚠️ UPDATE LEAD DISPOSITION: No disposition provided for lead ID={lead_id}")
+            logger.warning(
+                f"⚠️ UPDATE LEAD DISPOSITION: No disposition provided for lead ID={lead_id}"
+            )
             raise HTTPException(status_code=400, detail="Disposition is required")
 
         # Validate disposition
-        valid_dispositions = ['NEW', 'CALLING', 'ANSWERED', 'NO_ANSWER', 'BUSY', 'FAILED', 'COMPLETED', 'CALLBACK', 'DNC']
+        valid_dispositions = [
+            "NEW",
+            "CALLING",
+            "ANSWERED",
+            "NO_ANSWER",
+            "BUSY",
+            "FAILED",
+            "COMPLETED",
+            "CALLBACK",
+            "DNC",
+        ]
         if disposition not in valid_dispositions:
-            logger.warning(f"⚠️ UPDATE LEAD DISPOSITION: Invalid disposition '{disposition}' for lead ID={lead_id}")
-            raise HTTPException(status_code=400, detail=f"Invalid disposition. Must be one of: {', '.join(valid_dispositions)}")
+            logger.warning(
+                f"⚠️ UPDATE LEAD DISPOSITION: Invalid disposition '{disposition}' for lead ID={lead_id}"
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid disposition. Must be one of: {', '.join(valid_dispositions)}",
+            )
 
         logger.info(f"   Updating lead ID={lead_id} to disposition: {disposition}")
 
         # Update the lead
         await db.update_lead_after_call(lead_id, disposition)
 
-        logger.info(f"✅ UPDATE LEAD DISPOSITION: Lead ID={lead_id} updated to {disposition}")
+        logger.info(
+            f"✅ UPDATE LEAD DISPOSITION: Lead ID={lead_id} updated to {disposition}"
+        )
         if disposition == "DNC":
             logger.warning(f"   🚫 Lead ID={lead_id} added to DNC list")
         elif disposition == "CALLBACK":
@@ -908,7 +1084,10 @@ async def update_lead_disposition(lead_id: int, disposition_data: dict):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ UPDATE LEAD DISPOSITION: Failed for lead ID={lead_id} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ UPDATE LEAD DISPOSITION: Failed for lead ID={lead_id} - {str(e)}",
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -919,7 +1098,10 @@ async def delete_lead(lead_id: int):
 
     try:
         # Verify lead exists
-        async with db.db.execute("SELECT phone_number, first_name, last_name FROM leads WHERE id = ?", (lead_id,)) as cursor:
+        async with db.db.execute(
+            "SELECT phone_number, first_name, last_name FROM leads WHERE id = ?",
+            (lead_id,),
+        ) as cursor:
             row = await cursor.fetchone()
             if not row:
                 logger.warning(f"⚠️ DELETE LEAD: Lead ID={lead_id} not found")
@@ -937,7 +1119,9 @@ async def delete_lead(lead_id: int):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ DELETE LEAD: Failed for lead ID={lead_id} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ DELETE LEAD: Failed for lead ID={lead_id} - {str(e)}", exc_info=True
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -953,7 +1137,7 @@ async def get_lead_notes(lead_id: int):
                FROM call_log
                WHERE lead_id = ? AND notes IS NOT NULL
                ORDER BY start_time DESC""",
-            (lead_id,)
+            (lead_id,),
         ) as cursor:
             rows = await cursor.fetchall()
             notes = [
@@ -962,15 +1146,19 @@ async def get_lead_notes(lead_id: int):
                     "timestamp": row[1],
                     "call_status": row[2],
                     "notes": row[3],
-                    "disposition": row[4]
+                    "disposition": row[4],
                 }
                 for row in rows
             ]
 
-        logger.info(f"✅ GET LEAD NOTES: Retrieved {len(notes)} notes for lead ID={lead_id}")
+        logger.info(
+            f"✅ GET LEAD NOTES: Retrieved {len(notes)} notes for lead ID={lead_id}"
+        )
         return {"notes": notes}
     except Exception as e:
-        logger.error(f"❌ GET LEAD NOTES: Failed for lead ID={lead_id} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ GET LEAD NOTES: Failed for lead ID={lead_id} - {str(e)}", exc_info=True
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -983,35 +1171,47 @@ async def add_lead_note(lead_id: int, note: dict):
         # Get most recent call for this lead
         async with db.db.execute(
             "SELECT id FROM call_log WHERE lead_id = ? ORDER BY start_time DESC LIMIT 1",
-            (lead_id,)
+            (lead_id,),
         ) as cursor:
             row = await cursor.fetchone()
             if not row:
                 logger.warning(f"⚠️ ADD LEAD NOTE: No calls found for lead ID={lead_id}")
-                raise HTTPException(status_code=404, detail="No calls found for this lead")
+                raise HTTPException(
+                    status_code=404, detail="No calls found for this lead"
+                )
 
             call_id = row[0]
 
         # Update the call note
         await db.db.execute(
-            "UPDATE call_log SET notes = ? WHERE id = ?",
-            (note.get("notes"), call_id)
+            "UPDATE call_log SET notes = ? WHERE id = ?", (note.get("notes"), call_id)
         )
         await db.db.commit()
 
-        logger.info(f"✅ ADD LEAD NOTE: Note added to call ID={call_id} for lead ID={lead_id}")
+        logger.info(
+            f"✅ ADD LEAD NOTE: Note added to call ID={call_id} for lead ID={lead_id}"
+        )
         return {"message": "Note added successfully", "call_id": call_id}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ ADD LEAD NOTE: Failed for lead ID={lead_id} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ ADD LEAD NOTE: Failed for lead ID={lead_id} - {str(e)}", exc_info=True
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/leads")
-async def get_leads(campaign_id: Optional[int] = None, status: Optional[str] = None, limit: int = 100000, offset: int = 0):
+async def get_leads(
+    campaign_id: Optional[int] = None,
+    status: Optional[str] = None,
+    limit: int = 100000,
+    offset: int = 0,
+):
     """Get leads, optionally filtered by campaign and/or status."""
-    logger.info(f"📋 GET LEADS: Request with filters - campaign_id={campaign_id}, status={status}, limit={limit}, offset={offset}")
+    logger.info(
+        f"📋 GET LEADS: Request with filters - campaign_id={campaign_id}, status={status}, limit={limit}, offset={offset}"
+    )
 
     try:
         # Build query with optional filters
@@ -1051,7 +1251,7 @@ async def get_leads(campaign_id: Optional[int] = None, status: Optional[str] = N
         if leads:
             statuses = {}
             for lead in leads:
-                status = lead.get('status', 'UNKNOWN')
+                status = lead.get("status", "UNKNOWN")
                 statuses[status] = statuses.get(status, 0) + 1
             logger.debug(f"   Status breakdown: {statuses}")
 
@@ -1065,8 +1265,12 @@ async def get_leads(campaign_id: Optional[int] = None, status: Optional[str] = N
 @app.post("/leads", status_code=201)
 async def create_lead(lead: LeadCreate):
     """Create a single lead."""
-    logger.info(f"➕ CREATE LEAD: Request to add lead for campaign ID={lead.campaign_id}")
-    logger.debug(f"   Lead details: Phone={lead.phone_number}, Name={lead.first_name} {lead.last_name}, Timezone={lead.timezone}")
+    logger.info(
+        f"➕ CREATE LEAD: Request to add lead for campaign ID={lead.campaign_id}"
+    )
+    logger.debug(
+        f"   Lead details: Phone={lead.phone_number}, Name={lead.first_name} {lead.last_name}, Timezone={lead.timezone}"
+    )
 
     try:
         campaign = await db.get_campaign(lead.campaign_id)
@@ -1087,44 +1291,56 @@ async def create_lead(lead: LeadCreate):
             state=lead.state,
             zip_code=lead.zip_code,
             timezone=lead.timezone,
-            custom_data=lead.custom_data
+            custom_data=lead.custom_data,
         )
 
         if lead_id is None:
-            logger.warning(f"🚫 CREATE LEAD: Phone {lead.phone_number} is in DNC list, rejected")
+            logger.warning(
+                f"🚫 CREATE LEAD: Phone {lead.phone_number} is in DNC list, rejected"
+            )
             raise HTTPException(status_code=400, detail="Phone number is in DNC list")
 
-        logger.info(f"✅ CREATE LEAD: Successfully created lead ID={lead_id} for campaign ID={lead.campaign_id}")
+        logger.info(
+            f"✅ CREATE LEAD: Successfully created lead ID={lead_id} for campaign ID={lead.campaign_id}"
+        )
         logger.debug(f"   Lead {lead.phone_number} added with status 'NEW'")
 
-        return {
-            "lead_id": lead_id,
-            "message": "Lead created successfully"
-        }
+        return {"lead_id": lead_id, "message": "Lead created successfully"}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ CREATE LEAD: Failed for campaign ID={lead.campaign_id} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ CREATE LEAD: Failed for campaign ID={lead.campaign_id} - {str(e)}",
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/leads/bulk", status_code=201)
 async def bulk_import_leads(import_data: LeadBulkImport):
     """Bulk import leads for a campaign."""
-    logger.info(f"📦 BULK IMPORT LEADS: Request to import {len(import_data.leads)} leads for campaign ID={import_data.campaign_id}")
+    logger.info(
+        f"📦 BULK IMPORT LEADS: Request to import {len(import_data.leads)} leads for campaign ID={import_data.campaign_id}"
+    )
 
     try:
         campaign = await db.get_campaign(import_data.campaign_id)
         if not campaign:
-            logger.warning(f"⚠️ BULK IMPORT LEADS: Campaign ID={import_data.campaign_id} not found")
+            logger.warning(
+                f"⚠️ BULK IMPORT LEADS: Campaign ID={import_data.campaign_id} not found"
+            )
             raise HTTPException(status_code=404, detail="Campaign not found")
 
         logger.info(f"   Importing leads into campaign '{campaign['name']}'")
         logger.debug(f"   Processing {len(import_data.leads)} leads...")
 
-        imported = await db.bulk_import_leads(import_data.campaign_id, import_data.leads)
+        imported = await db.bulk_import_leads(
+            import_data.campaign_id, import_data.leads
+        )
 
-        logger.info(f"✅ BULK IMPORT LEADS: Successfully imported {imported} of {len(import_data.leads)} leads")
+        logger.info(
+            f"✅ BULK IMPORT LEADS: Successfully imported {imported} of {len(import_data.leads)} leads"
+        )
         if imported < len(import_data.leads):
             rejected = len(import_data.leads) - imported
             logger.warning(f"   ⚠️ {rejected} leads rejected (likely DNC or duplicates)")
@@ -1133,12 +1349,15 @@ async def bulk_import_leads(import_data: LeadBulkImport):
             "message": f"Successfully imported {imported} leads",
             "campaign_id": import_data.campaign_id,
             "imported_count": imported,
-            "total_submitted": len(import_data.leads)
+            "total_submitted": len(import_data.leads),
         }
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ BULK IMPORT LEADS: Failed for campaign ID={import_data.campaign_id} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ BULK IMPORT LEADS: Failed for campaign ID={import_data.campaign_id} - {str(e)}",
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1154,12 +1373,19 @@ async def get_bots():
             # Get actual Docker container status
             try:
                 from avr_bot_manager import AVRBotManager
+
                 avr_manager = AVRBotManager()
                 avr_bots = avr_manager.get_running_bots()
 
                 bots_list = []
-                status_counts = {"idle": 0, "busy": 0, "crashed": 0, "stopped": 0, "running": 0}
-                
+                status_counts = {
+                    "idle": 0,
+                    "busy": 0,
+                    "crashed": 0,
+                    "stopped": 0,
+                    "running": 0,
+                }
+
                 for bot in avr_bots:
                     status = "idle" if bot["running"] else "stopped"
                     if bot["status"] == "EXITED":
@@ -1169,17 +1395,19 @@ async def get_bots():
                     elif bot["status"] == "RUNNING":
                         status = "idle"  # Assume idle if running but not in call
 
-                    bots_list.append({
-                        "port": bot["port"],
-                        "status": status,
-                        "running": bot["running"],
-                        "pid": None,
-                        "calls_handled": 0,
-                        "last_activity": None,
-                        "type": "avr_docker",
-                        "container_status": bot["status"]
-                    })
-                    
+                    bots_list.append(
+                        {
+                            "port": bot["port"],
+                            "status": status,
+                            "running": bot["running"],
+                            "pid": None,
+                            "calls_handled": 0,
+                            "last_activity": None,
+                            "type": "avr_docker",
+                            "container_status": bot["status"],
+                        }
+                    )
+
                     # Count statuses for summary
                     if status == "idle":
                         status_counts["idle"] += 1
@@ -1189,12 +1417,14 @@ async def get_bots():
                         status_counts["crashed"] += 1
                     elif status == "stopped":
                         status_counts["stopped"] += 1
-                    
+
                     if bot["running"]:
                         status_counts["running"] += 1
 
-                logger.info(f"✅ GET BOTS: Retrieved {len(bots_list)} AVR bots (actual Docker status)")
-                
+                logger.info(
+                    f"✅ GET BOTS: Retrieved {len(bots_list)} AVR bots (actual Docker status)"
+                )
+
                 return {
                     "bots": bots_list,
                     "summary": {
@@ -1202,23 +1432,25 @@ async def get_bots():
                         "running": status_counts["running"],
                         "stopped": status_counts["stopped"],
                         "idle": status_counts["idle"],
-                        "busy": status_counts["busy"]
-                    }
+                        "busy": status_counts["busy"],
+                    },
                 }
             except Exception as e:
                 logger.error(f"Failed to get AVR bot status: {e}")
                 # Fallback to static list if Docker check fails
                 bots_list = []
                 for port in range(9092, 9102):
-                    bots_list.append({
-                        "port": port,
-                        "status": "unknown",
-                        "running": False,
-                        "pid": None,
-                        "calls_handled": 0,
-                        "last_activity": None,
-                        "type": "avr_docker"
-                    })
+                    bots_list.append(
+                        {
+                            "port": port,
+                            "status": "unknown",
+                            "running": False,
+                            "pid": None,
+                            "calls_handled": 0,
+                            "last_activity": None,
+                            "type": "avr_docker",
+                        }
+                    )
                 return {
                     "bots": bots_list,
                     "summary": {
@@ -1226,8 +1458,8 @@ async def get_bots():
                         "running": 0,
                         "stopped": len(bots_list),
                         "idle": 0,
-                        "busy": 0
-                    }
+                        "busy": 0,
+                    },
                 }
 
         bots_list = []
@@ -1236,11 +1468,17 @@ async def get_bots():
         for port, bot in bot_pool.bots.items():
             bot_info = {
                 "port": port,
-                "status": bot.status.value if hasattr(bot.status, 'value') else str(bot.status),
-                "running": bot.status in [BotStatus.IDLE, BotStatus.BUSY] if hasattr(bot, 'status') else False,
-                "pid": getattr(bot.process, 'pid', None) if hasattr(bot, 'process') and bot.process else None,
-                "calls_handled": getattr(bot, 'calls_handled', 0),
-                "last_activity": None
+                "status": bot.status.value
+                if hasattr(bot.status, "value")
+                else str(bot.status),
+                "running": bot.status in [BotStatus.IDLE, BotStatus.BUSY]
+                if hasattr(bot, "status")
+                else False,
+                "pid": getattr(bot.process, "pid", None)
+                if hasattr(bot, "process") and bot.process
+                else None,
+                "calls_handled": getattr(bot, "calls_handled", 0),
+                "last_activity": None,
             }
             bots_list.append(bot_info)
 
@@ -1255,7 +1493,9 @@ async def get_bots():
                 status_counts["stopped"] += 1
 
         logger.info(f"✅ GET BOTS: Retrieved {len(bots_list)} bots")
-        logger.debug(f"   Status breakdown: {status_counts['idle']} idle, {status_counts['busy']} busy, {status_counts['crashed']} crashed, {status_counts['stopped']} stopped")
+        logger.debug(
+            f"   Status breakdown: {status_counts['idle']} idle, {status_counts['busy']} busy, {status_counts['crashed']} crashed, {status_counts['stopped']} stopped"
+        )
 
         return {
             "bots": bots_list,
@@ -1264,12 +1504,13 @@ async def get_bots():
                 "running": status_counts["idle"] + status_counts["busy"],
                 "stopped": status_counts["stopped"] + status_counts["crashed"],
                 "idle": status_counts["idle"],
-                "busy": status_counts["busy"]
-            }
+                "busy": status_counts["busy"],
+            },
         }
     except Exception as e:
         logger.error(f"❌ GET BOTS: Failed - {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/bots/status")
 async def get_bots_status():
@@ -1277,6 +1518,7 @@ async def get_bots_status():
     logger.info("🤖 GET BOTS STATUS: Request for bot status summary")
     # Call the existing get_bots function
     return await get_bots()
+
 
 @app.get("/bots/restart/{port}")
 async def restart_bot(port: int):
@@ -1286,13 +1528,17 @@ async def restart_bot(port: int):
     try:
         if port in bot_pool.bots:
             bot = bot_pool.bots[port]
-            logger.debug(f"   Current status: {bot.status.value}, PID: {bot.process.pid if bot.process else 'None'}")
+            logger.debug(
+                f"   Current status: {bot.status.value}, PID: {bot.process.pid if bot.process else 'None'}"
+            )
 
         await bot_pool._restart_bot(port)
         logger.info(f"✅ RESTART BOT: Bot on port {port} restarted successfully")
         return {"message": f"Bot on port {port} restarted successfully"}
     except Exception as e:
-        logger.error(f"❌ RESTART BOT: Failed for port {port} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ RESTART BOT: Failed for port {port} - {str(e)}", exc_info=True
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1308,17 +1554,24 @@ async def stop_bot(port: int):
 
         # For AVR Docker bots, use Docker to stop the container
         from avr_bot_manager import AVRBotManager
+
         avr_manager = AVRBotManager()
-        
+
         container_name = f"avr-bot-{port}"
         success = avr_manager.stop_bot(port)
-        
+
         if success:
-            logger.info(f"✅ STOP BOT: Docker container {container_name} stopped successfully")
+            logger.info(
+                f"✅ STOP BOT: Docker container {container_name} stopped successfully"
+            )
             return {"message": f"Bot on port {port} stopped successfully"}
         else:
-            logger.error(f"❌ STOP BOT: Failed to stop Docker container {container_name}")
-            raise HTTPException(status_code=500, detail=f"Failed to stop bot on port {port}")
+            logger.error(
+                f"❌ STOP BOT: Failed to stop Docker container {container_name}"
+            )
+            raise HTTPException(
+                status_code=500, detail=f"Failed to stop bot on port {port}"
+            )
     except HTTPException:
         raise
     except Exception as e:
@@ -1338,17 +1591,24 @@ async def start_bot(port: int):
 
         # For AVR Docker bots, use Docker to start the container
         from avr_bot_manager import AVRBotManager
+
         avr_manager = AVRBotManager()
-        
+
         container_name = f"avr-bot-{port}"
         success = avr_manager.start_bot(port)
-        
+
         if success:
-            logger.info(f"✅ START BOT: Docker container {container_name} started successfully")
+            logger.info(
+                f"✅ START BOT: Docker container {container_name} started successfully"
+            )
             return {"message": f"Bot on port {port} started successfully"}
         else:
-            logger.error(f"❌ START BOT: Failed to start Docker container {container_name}")
-            raise HTTPException(status_code=500, detail=f"Failed to start bot on port {port}")
+            logger.error(
+                f"❌ START BOT: Failed to start Docker container {container_name}"
+            )
+            raise HTTPException(
+                status_code=500, detail=f"Failed to start bot on port {port}"
+            )
     except HTTPException:
         raise
     except Exception as e:
@@ -1366,31 +1626,43 @@ async def restart_bot_post(port: int):
         if bot_pool is None:
             logger.info(f"🐳 Using AVR Docker - restarting container for port {port}")
             from avr_bot_manager import AVRBotManager
+
             avr_manager = AVRBotManager()
             success = avr_manager.restart_bot(port)
 
             if success:
-                logger.info(f"✅ RESTART BOT: AVR bot on port {port} restarted successfully")
+                logger.info(
+                    f"✅ RESTART BOT: AVR bot on port {port} restarted successfully"
+                )
                 return {"message": f"AVR bot on port {port} restarted successfully"}
             else:
-                logger.error(f"❌ RESTART BOT: Failed to restart AVR bot on port {port}")
-                raise HTTPException(status_code=500, detail=f"Failed to restart AVR bot on port {port}")
+                logger.error(
+                    f"❌ RESTART BOT: Failed to restart AVR bot on port {port}"
+                )
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to restart AVR bot on port {port}"
+                )
 
         # Original Pipecat bot pool logic
         if port in bot_pool.bots:
             bot = bot_pool.bots[port]
-            logger.debug(f"   Current status: {bot.status.value}, PID: {bot.process.pid if bot.process else 'None'}")
+            logger.debug(
+                f"   Current status: {bot.status.value}, PID: {bot.process.pid if bot.process else 'None'}"
+            )
 
         await bot_pool._restart_bot(port)
         logger.info(f"✅ RESTART BOT: Bot on port {port} restarted successfully")
         return {"message": f"Bot on port {port} restarted successfully"}
     except Exception as e:
-        logger.error(f"❌ RESTART BOT: Failed for port {port} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ RESTART BOT: Failed for port {port} - {str(e)}", exc_info=True
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
 class BotPoolAdjust(BaseModel):
     """Request model for adjusting bot pool size."""
+
     target_count: int = Field(..., ge=0, le=20)
 
 
@@ -1404,6 +1676,7 @@ async def adjust_bot_pool(request: BotPoolAdjust):
         # Use AVR Docker bot management instead
         try:
             from avr_bot_manager import AVRBotManager
+
             avr_manager = AVRBotManager()
             result = avr_manager.scale_bots(request.target_count)
 
@@ -1414,16 +1687,13 @@ async def adjust_bot_pool(request: BotPoolAdjust):
                     "current_count": result["actual_count"],
                     "target_count": result["target_count"],
                     "final_count": result["actual_count"],
-                    "success": True
+                    "success": True,
                 }
             else:
                 logger.error(f"❌ Failed to scale AVR bots: {result['message']}")
                 return JSONResponse(
                     status_code=500,
-                    content={
-                        "message": result["message"],
-                        "success": False
-                    }
+                    content={"message": result["message"], "success": False},
                 )
         except ImportError:
             logger.warning("❌ AVR bot manager not available")
@@ -1431,26 +1701,27 @@ async def adjust_bot_pool(request: BotPoolAdjust):
                 status_code=501,
                 content={
                     "message": "AVR bot manager not installed. Install docker package: pip install docker",
-                    "success": False
-                }
+                    "success": False,
+                },
             )
         except Exception as e:
             logger.error(f"❌ Error managing AVR bots: {e}")
             return JSONResponse(
-                status_code=500,
-                content={
-                    "message": str(e),
-                    "success": False
-                }
+                status_code=500, content={"message": str(e), "success": False}
             )
 
     try:
         # Get current bot statuses
-        running_bots = [port for port, bot in bot_pool.bots.items()
-                       if bot.status not in [BotStatus.STOPPED, BotStatus.CRASHED]]
+        running_bots = [
+            port
+            for port, bot in bot_pool.bots.items()
+            if bot.status not in [BotStatus.STOPPED, BotStatus.CRASHED]
+        ]
         current_count = len(running_bots)
 
-        logger.debug(f"   Current running: {current_count}, Target: {request.target_count}")
+        logger.debug(
+            f"   Current running: {current_count}, Target: {request.target_count}"
+        )
 
         if current_count < request.target_count:
             # Need to start more bots
@@ -1465,12 +1736,14 @@ async def adjust_bot_pool(request: BotPoolAdjust):
                         started += 1
                     await asyncio.sleep(0.5)  # Brief delay between starts
 
-            logger.info(f"✅ ADJUST BOT POOL: Started {started} bots (now {current_count + started}/{request.target_count})")
+            logger.info(
+                f"✅ ADJUST BOT POOL: Started {started} bots (now {current_count + started}/{request.target_count})"
+            )
             return {
                 "message": f"Started {started} bots",
                 "current_count": current_count + started,
                 "target_count": request.target_count,
-                "final_count": current_count + started
+                "final_count": current_count + started,
             }
 
         elif current_count > request.target_count:
@@ -1486,12 +1759,14 @@ async def adjust_bot_pool(request: BotPoolAdjust):
                     stopped += 1
                     await asyncio.sleep(0.5)  # Brief delay between stops
 
-            logger.info(f"✅ ADJUST BOT POOL: Stopped {stopped} bots (now {current_count - stopped}/{request.target_count})")
+            logger.info(
+                f"✅ ADJUST BOT POOL: Stopped {stopped} bots (now {current_count - stopped}/{request.target_count})"
+            )
             return {
                 "message": f"Stopped {stopped} bots",
                 "current_count": current_count - stopped,
                 "target_count": request.target_count,
-                "final_count": current_count - stopped
+                "final_count": current_count - stopped,
             }
         else:
             logger.info(f"ℹ️ ADJUST BOT POOL: Already at target count ({current_count})")
@@ -1499,7 +1774,7 @@ async def adjust_bot_pool(request: BotPoolAdjust):
                 "message": "Already at target count",
                 "current_count": current_count,
                 "target_count": request.target_count,
-                "final_count": current_count
+                "final_count": current_count,
             }
 
     except Exception as e:
@@ -1510,6 +1785,7 @@ async def adjust_bot_pool(request: BotPoolAdjust):
 # ============================================================================
 # Orchestrator Endpoints
 # ============================================================================
+
 
 @app.get("/stats")
 async def get_stats():
@@ -1534,12 +1810,7 @@ async def get_stats():
                 "dialing": 0,
                 "answered": 0,
                 "current_dial_ratio": 0.0,
-                "bot_pool": {
-                    "mode": "avr_docker",
-                    "total": 20,
-                    "idle": 20,
-                    "busy": 0
-                }
+                "bot_pool": {"mode": "avr_docker", "total": 20, "idle": 20, "busy": 0},
             }
         else:
             base_stats = orchestrator.get_statistics()
@@ -1563,17 +1834,19 @@ async def get_stats():
                 "no_answer": today_stats.get("no_answer", 0),
                 "busy": today_stats.get("busy", 0),
                 "failed": today_stats.get("failed", 0),
-                "avg_duration": today_stats.get("avg_duration", 0)
+                "avg_duration": today_stats.get("avg_duration", 0),
             },
             "compliance": {
                 "compliant": drop_rate_30d < 0.03,
-                "drop_rate_30d": round(drop_rate_30d * 100, 2)
+                "drop_rate_30d": round(drop_rate_30d * 100, 2),
             },
             "leads": lead_stats,
-            "disposition_breakdown": today_stats.get("dispositions", {})
+            "disposition_breakdown": today_stats.get("dispositions", {}),
         }
 
-        logger.debug(f"   Today's Calls: {full_stats['todaysCalls']}, Answered: {full_stats['todaysAnswered']}")
+        logger.debug(
+            f"   Today's Calls: {full_stats['todaysCalls']}, Answered: {full_stats['todaysAnswered']}"
+        )
         logger.debug(f"   30-Day Drop Rate: {full_stats['dropRate']}%")
         return full_stats
     except Exception as e:
@@ -1587,7 +1860,9 @@ async def get_dialer_stats():
     logger.info("📊 GET DIALER STATS: Request for real-time dialer statistics")
     try:
         stats = orchestrator.get_statistics()
-        logger.debug(f"   Dial Ratio: {stats.get('dial_ratio', 0)}, Bots Available: {stats.get('bots_available', 0)}")
+        logger.debug(
+            f"   Dial Ratio: {stats.get('dial_ratio', 0)}, Bots Available: {stats.get('bots_available', 0)}"
+        )
         return stats
     except Exception as e:
         logger.error(f"❌ GET DIALER STATS: Failed - {str(e)}", exc_info=True)
@@ -1598,6 +1873,7 @@ async def get_dialer_stats():
 # DNC List Endpoints
 # ============================================================================
 
+
 @app.post("/dnc", status_code=201)
 async def add_to_dnc(dnc_entry: DNCAdd):
     """Add phone number to DNC list."""
@@ -1606,10 +1882,15 @@ async def add_to_dnc(dnc_entry: DNCAdd):
 
     try:
         await db.add_to_dnc(dnc_entry.phone_number, dnc_entry.reason)
-        logger.info(f"✅ ADD TO DNC: Successfully added {dnc_entry.phone_number} to DNC list")
+        logger.info(
+            f"✅ ADD TO DNC: Successfully added {dnc_entry.phone_number} to DNC list"
+        )
         return {"message": f"Added {dnc_entry.phone_number} to DNC list"}
     except Exception as e:
-        logger.error(f"❌ ADD TO DNC: Failed for {dnc_entry.phone_number} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ ADD TO DNC: Failed for {dnc_entry.phone_number} - {str(e)}",
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1620,17 +1901,23 @@ async def check_dnc(phone_number: str):
 
     try:
         is_dnc = await db.is_in_dnc(phone_number)
-        logger.info(f"   Result: {phone_number} {'IS' if is_dnc else 'is NOT'} in DNC list")
+        logger.info(
+            f"   Result: {phone_number} {'IS' if is_dnc else 'is NOT'} in DNC list"
+        )
         return {"phone_number": phone_number, "is_dnc": is_dnc}
     except Exception as e:
-        logger.error(f"❌ CHECK DNC: Failed for {phone_number} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ CHECK DNC: Failed for {phone_number} - {str(e)}", exc_info=True
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/dnc")
 async def list_dnc(limit: int = 100, offset: int = 0):
     """List all numbers in DNC list."""
-    logger.info(f"📋 LIST DNC: Request to list DNC entries, limit={limit}, offset={offset}")
+    logger.info(
+        f"📋 LIST DNC: Request to list DNC entries, limit={limit}, offset={offset}"
+    )
 
     try:
         async with db.db.execute(
@@ -1639,7 +1926,7 @@ async def list_dnc(limit: int = 100, offset: int = 0):
             ORDER BY added_at DESC
             LIMIT ? OFFSET ?
             """,
-            (limit, offset)
+            (limit, offset),
         ) as cursor:
             rows = await cursor.fetchall()
 
@@ -1658,6 +1945,7 @@ async def list_dnc(limit: int = 100, offset: int = 0):
 # Disposition Endpoints
 # ============================================================================
 
+
 @app.get("/dispositions")
 async def get_dispositions():
     """Get all available disposition codes."""
@@ -1675,11 +1963,13 @@ async def get_dispositions():
             rows = await cursor.fetchall()
             dispositions = [dict(row) for row in rows]
 
-        logger.info(f"✅ GET DISPOSITIONS: Retrieved {len(dispositions)} disposition codes")
+        logger.info(
+            f"✅ GET DISPOSITIONS: Retrieved {len(dispositions)} disposition codes"
+        )
         # Count by category for debug logging
         categories = {}
         for d in dispositions:
-            cat = d.get('category', 'UNKNOWN')
+            cat = d.get("category", "UNKNOWN")
             categories[cat] = categories.get(cat, 0) + 1
         logger.debug(f"   Categories: {categories}")
 
@@ -1710,44 +2000,58 @@ async def schedule_callback(lead_id: int, data: dict):
         if callback_date_str:
             # Parse ISO format date
             from datetime import datetime
-            callback_time = datetime.fromisoformat(callback_date_str.replace('Z', '+00:00'))
+
+            callback_time = datetime.fromisoformat(
+                callback_date_str.replace("Z", "+00:00")
+            )
             logger.info(f"   Scheduling callback at specific time: {callback_time}")
         elif callback_delay_days:
             # Calculate from delay
             from datetime import datetime, timedelta
+
             callback_time = datetime.now() + timedelta(days=callback_delay_days)
-            logger.info(f"   Scheduling callback in {callback_delay_days} days: {callback_time}")
+            logger.info(
+                f"   Scheduling callback in {callback_delay_days} days: {callback_time}"
+            )
         else:
-            logger.warning(f"⚠️ SCHEDULE CALLBACK: Missing required parameters for lead ID={lead_id}")
+            logger.warning(
+                f"⚠️ SCHEDULE CALLBACK: Missing required parameters for lead ID={lead_id}"
+            )
             raise HTTPException(
                 status_code=400,
-                detail="Must provide either callback_date or callback_delay_days"
+                detail="Must provide either callback_date or callback_delay_days",
             )
 
         # Update lead with callback time
         await db.db.execute(
             "UPDATE leads SET next_call_time = ?, status = 'ANSWERED' WHERE id = ?",
-            (callback_time, lead_id)
+            (callback_time, lead_id),
         )
         await db.db.commit()
 
-        logger.info(f"✅ SCHEDULE CALLBACK: Lead ID={lead_id} scheduled for {callback_time.isoformat()}")
+        logger.info(
+            f"✅ SCHEDULE CALLBACK: Lead ID={lead_id} scheduled for {callback_time.isoformat()}"
+        )
 
         return {
             "message": "Callback scheduled",
             "lead_id": lead_id,
-            "callback_time": callback_time.isoformat()
+            "callback_time": callback_time.isoformat(),
         }
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ SCHEDULE CALLBACK: Failed for lead ID={lead_id} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ SCHEDULE CALLBACK: Failed for lead ID={lead_id} - {str(e)}",
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================================================
 # Call Log Endpoints
 # ============================================================================
+
 
 @app.get("/calls/active")
 async def get_active_calls():
@@ -1756,30 +2060,34 @@ async def get_active_calls():
 
     try:
         active_calls = []
-        
+
         # Get calls originated by dialer
         active_calls_dict = orchestrator.active_calls
         for uniqueid, call in active_calls_dict.items():
-            active_calls.append({
-                "uniqueid": uniqueid,
-                "lead_id": call.lead_id,
-                "campaign_id": call.campaign_id,
-                "bot_port": call.bot_port,
-                "status": call.status,
-                "channel_id": call.channel_id,
-                "phone_number": getattr(call, 'phone_number', 'Unknown'),
-                "start_time": datetime.fromtimestamp(call.dialed_at).isoformat() if call.dialed_at else None,
-                "source": "dialer"
-            })
-        
+            active_calls.append(
+                {
+                    "uniqueid": uniqueid,
+                    "lead_id": call.lead_id,
+                    "campaign_id": call.campaign_id,
+                    "bot_port": call.bot_port,
+                    "status": call.status,
+                    "channel_id": call.channel_id,
+                    "phone_number": getattr(call, "phone_number", "Unknown"),
+                    "start_time": datetime.fromtimestamp(call.dialed_at).isoformat()
+                    if call.dialed_at
+                    else None,
+                    "source": "dialer",
+                }
+            )
+
         # Also get ALL active channels from Asterisk (includes manual calls)
         try:
-            response = await orchestrator.ami.send_action({
-                "Action": "CoreShowChannels"
-            })
-            
+            response = await orchestrator.ami.send_action(
+                {"Action": "CoreShowChannels"}
+            )
+
             # Parse channels from AMI response
-            if response and response.get('Response') == 'Success':
+            if response and response.get("Response") == "Success":
                 # AMI returns events, we need to collect them
                 # For now, just return dialer calls
                 # TODO: Parse AMI CoreShowChannels events properly
@@ -1789,7 +2097,9 @@ async def get_active_calls():
 
         logger.info(f"✅ GET ACTIVE CALLS: Found {len(active_calls)} active calls")
         if active_calls:
-            logger.debug(f"   Sample call: Bot port {active_calls[0]['bot_port']}, Status: {active_calls[0]['status']}")
+            logger.debug(
+                f"   Sample call: Bot port {active_calls[0]['bot_port']}, Status: {active_calls[0]['status']}"
+            )
 
         return active_calls
     except Exception as e:
@@ -1815,7 +2125,7 @@ async def originate_call(call: CallOriginate):
                 phone_number=call.phone_number,
                 first_name=call.contact_name or "Manual",
                 last_name="Call",
-                company="Manual Dial"
+                company="Manual Dial",
             )
             logger.info(f"   Created lead {lead_id} for manual call")
         else:
@@ -1823,7 +2133,9 @@ async def originate_call(call: CallOriginate):
 
         # Get an available bot port
         if bot_pool:
-            bot_port = await bot_pool.get_idle_bot_port(call_uuid=None)  # None = just check, don't assign
+            bot_port = await bot_pool.get_idle_bot_port(
+                call_uuid=None
+            )  # None = just check, don't assign
             if not bot_port:
                 logger.warning("⚠️ ORIGINATE CALL: No bots available")
                 raise HTTPException(status_code=503, detail="No bots available")
@@ -1842,45 +2154,55 @@ async def originate_call(call: CallOriginate):
         action_id = f"manual-{lead_id}-{int(time.time() * 1000)}"
 
         try:
-            logger.debug(f"   Sending AMI Originate action to Asterisk with ActionID: {action_id}")
-            response = await orchestrator.ami.send_action({
-                "Action": "Originate",
-                "ActionID": action_id,  # CRITICAL: Must provide ActionID for tracking
-                "Channel": f"PJSIP/{call.phone_number}@twilio",
-                "Context": "audiosocket-dial",
-                "Exten": str(bot_port),
-                "Priority": "1",
-                "CallerID": call.caller_id,
-                "Timeout": "30000",
-                "Async": "true",
-                "Variable": f"LEAD_ID={lead_id}",  # Pass lead ID to Asterisk
-            })
+            logger.debug(
+                f"   Sending AMI Originate action to Asterisk with ActionID: {action_id}"
+            )
+            response = await orchestrator.ami.send_action(
+                {
+                    "Action": "Originate",
+                    "ActionID": action_id,  # CRITICAL: Must provide ActionID for tracking
+                    "Channel": f"IAX2/vicidial/1{call.phone_number}",
+                    "Context": "audiosocket-dial",
+                    "Exten": str(bot_port),
+                    "Priority": "1",
+                    "CallerID": call.caller_id,
+                    "Timeout": "30000",
+                    "Async": "true",
+                    "Variable": f"LEAD_ID={lead_id}",  # Pass lead ID to Asterisk
+                }
+            )
 
             # Create CallAttempt for tracking (like campaign calls)
             call_attempt = CallAttempt(
                 lead_id=lead_id,
                 phone_number=call.phone_number,
                 campaign_id=MANUAL_CAMPAIGN_ID,
-                action_id=action_id
+                action_id=action_id,
             )
 
             # Store in orchestrator's tracking (for proper logging on hangup)
             orchestrator._pending_originates[action_id] = call_attempt
 
-            logger.info(f"✅ ORIGINATE CALL: Call initiated to {call.phone_number}, ActionID: {action_id}, Lead: {lead_id}")
+            logger.info(
+                f"✅ ORIGINATE CALL: Call initiated to {call.phone_number}, ActionID: {action_id}, Lead: {lead_id}"
+            )
 
             return {
                 "message": f"Call originated successfully to {call.phone_number}",
                 "bot_port": bot_port,
                 "action_id": action_id,
                 "lead_id": lead_id,
-                "campaign_id": MANUAL_CAMPAIGN_ID
+                "campaign_id": MANUAL_CAMPAIGN_ID,
             }
         except Exception as e:
             # Update lead status on failure
             await orchestrator.db.update_lead_after_call(lead_id, "FAILED")
-            logger.error(f"❌ ORIGINATE CALL: AMI action failed - {str(e)}", exc_info=True)
-            raise HTTPException(status_code=500, detail=f"Failed to originate call: {str(e)}")
+            logger.error(
+                f"❌ ORIGINATE CALL: AMI action failed - {str(e)}", exc_info=True
+            )
+            raise HTTPException(
+                status_code=500, detail=f"Failed to originate call: {str(e)}"
+            )
 
     except HTTPException:
         raise
@@ -1892,7 +2214,9 @@ async def originate_call(call: CallOriginate):
 @app.get("/calls/history")
 async def get_call_history(limit: int = 100, campaign_id: Optional[int] = None):
     """Get call history with optional campaign filter."""
-    logger.info(f"📜 GET CALL HISTORY: Request for call history, limit={limit}, campaign_id={campaign_id}")
+    logger.info(
+        f"📜 GET CALL HISTORY: Request for call history, limit={limit}, campaign_id={campaign_id}"
+    )
 
     try:
         query = """
@@ -1923,19 +2247,19 @@ async def get_call_history(limit: int = 100, campaign_id: Optional[int] = None):
         # Convert recording paths to web-accessible URLs
         # Only set recording_url if the database actually has a recording path
         for call in calls:
-            if call.get('recording_url'):
+            if call.get("recording_url"):
                 # Database has a recording path - make it a full API URL
-                call['recording_url'] = f"/api/recording/{call['call_uuid']}"
+                call["recording_url"] = f"/api/recording/{call['call_uuid']}"
             else:
                 # No recording in database - don't create a URL
-                call['recording_url'] = None
+                call["recording_url"] = None
 
         logger.info(f"✅ GET CALL HISTORY: Retrieved {len(calls)} call records")
         if calls:
             # Summarize disposition statistics
             dispositions = {}
             for call in calls:
-                disp = call.get('disposition', 'UNKNOWN')
+                disp = call.get("disposition", "UNKNOWN")
                 dispositions[disp] = dispositions.get(disp, 0) + 1
             logger.debug(f"   Disposition breakdown: {dispositions}")
 
@@ -1954,46 +2278,68 @@ async def save_call_transcript(data: dict):
     disposition = data.get("disposition")
     duration = data.get("duration", 0)
 
-    logger.info(f"📝 SAVE TRANSCRIPT: Request for call UUID={call_uuid}, disposition={disposition}")
-    logger.debug(f"   Transcript length: {len(transcript) if transcript else 0} chars, Duration: {duration}s")
+    logger.info(
+        f"📝 SAVE TRANSCRIPT: Request for call UUID={call_uuid}, disposition={disposition}"
+    )
+    logger.debug(
+        f"   Transcript length: {len(transcript) if transcript else 0} chars, Duration: {duration}s"
+    )
 
     try:
         # Update call_log table with transcript and disposition
         await db.update_call_transcript(call_uuid, transcript, disposition)
-        logger.info(f"✅ SAVE TRANSCRIPT: Successfully saved transcript for call {call_uuid}")
+        logger.info(
+            f"✅ SAVE TRANSCRIPT: Successfully saved transcript for call {call_uuid}"
+        )
         return {"message": "Transcript saved successfully"}
     except Exception as e:
-        logger.error(f"❌ SAVE TRANSCRIPT: Failed for call {call_uuid} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ SAVE TRANSCRIPT: Failed for call {call_uuid} - {str(e)}", exc_info=True
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/calls/{call_uuid}/disposition", status_code=200)
 async def update_call_disposition(call_uuid: str, data: CallDispositionUpdate):
     """Update call log with final transcript and auto-analyzed disposition."""
-    logger.info(f"📝 AUTO-DISPOSITION: Request for call UUID={call_uuid}, disposition={data.disposition}")
+    logger.info(
+        f"📝 AUTO-DISPOSITION: Request for call UUID={call_uuid}, disposition={data.disposition}"
+    )
     logger.debug(f"   Transcript length: {len(data.transcript)} chars")
 
     try:
         # 1. Update call_log table with transcript and disposition
         await db.update_call_transcript(call_uuid, data.transcript, data.disposition)
-        
+
         # 2. Get lead_id from call_log to update lead status
-        async with db.db.execute("SELECT lead_id FROM call_log WHERE call_uuid = ?", (call_uuid,)) as cursor:
+        async with db.db.execute(
+            "SELECT lead_id FROM call_log WHERE call_uuid = ?", (call_uuid,)
+        ) as cursor:
             row = await cursor.fetchone()
             if not row:
-                logger.warning(f"⚠️ AUTO-DISPOSITION: Call UUID {call_uuid} not found in call_log.")
+                logger.warning(
+                    f"⚠️ AUTO-DISPOSITION: Call UUID {call_uuid} not found in call_log."
+                )
                 raise HTTPException(status_code=404, detail="Call UUID not found")
             lead_id = row[0]
 
         # 3. Update lead status based on the final disposition
         await db.update_lead_after_call(lead_id, data.disposition)
 
-        logger.info(f"✅ AUTO-DISPOSITION: Call {call_uuid} and Lead {lead_id} updated to {data.disposition}")
-        return {"message": "Transcript and disposition saved successfully", "lead_id": lead_id}
+        logger.info(
+            f"✅ AUTO-DISPOSITION: Call {call_uuid} and Lead {lead_id} updated to {data.disposition}"
+        )
+        return {
+            "message": "Transcript and disposition saved successfully",
+            "lead_id": lead_id,
+        }
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ AUTO-DISPOSITION: Failed for call {call_uuid} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ AUTO-DISPOSITION: Failed for call {call_uuid} - {str(e)}",
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -2020,35 +2366,39 @@ async def start_call_monitoring(data: dict):
     try:
         # Map mode to extension
         extension_map = {
-            "all": "700",    # Cycle through all channels (listen only)
-            "listen": "700", # Listen only mode
-            "bot1": "701",   # Monitor bot 1
-            "bot2": "702",   # Monitor bot 2
-            "bot3": "703",   # Monitor bot 3
-            "whisper": "710", # Whisper mode (talk to bot, customer can't hear)
-            "barge": "711"   # Barge mode (join call, everyone can hear)
+            "all": "700",  # Cycle through all channels (listen only)
+            "listen": "700",  # Listen only mode
+            "bot1": "701",  # Monitor bot 1
+            "bot2": "702",  # Monitor bot 2
+            "bot3": "703",  # Monitor bot 3
+            "whisper": "710",  # Whisper mode (talk to bot, customer can't hear)
+            "barge": "711",  # Barge mode (join call, everyone can hear)
         }
 
         extension = extension_map.get(mode, "700")
         logger.debug(f"   Using extension {extension} for mode '{mode}'")
 
         # Originate call to supervisor's phone, then connect to monitoring extension
-        await orchestrator.ami.send_action({
-            "Action": "Originate",
-            "Channel": monitor_phone,
-            "Context": "ava-context",
-            "Exten": extension,
-            "Priority": "1",
-            "CallerID": "Call Monitor <9999>",
-            "Async": "true"
-        })
+        await orchestrator.ami.send_action(
+            {
+                "Action": "Originate",
+                "Channel": monitor_phone,
+                "Context": "ava-context",
+                "Exten": extension,
+                "Priority": "1",
+                "CallerID": "Call Monitor <9999>",
+                "Async": "true",
+            }
+        )
 
-        logger.info(f"✅ START CALL MONITORING: Session started - {mode} mode to {monitor_phone}")
+        logger.info(
+            f"✅ START CALL MONITORING: Session started - {mode} mode to {monitor_phone}"
+        )
 
         return {
             "message": "Monitoring session started",
             "mode": mode,
-            "extension": extension
+            "extension": extension,
         }
     except Exception as e:
         logger.error(f"❌ START CALL MONITORING: Failed - {str(e)}", exc_info=True)
@@ -2058,6 +2408,7 @@ async def start_call_monitoring(data: dict):
 # ============================================================================
 # WebSocket for Real-Time Updates
 # ============================================================================
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -2105,7 +2456,7 @@ async def broadcast_stats_loop():
                 "timestamp": datetime.now().isoformat(),
                 "bot_pool": bot_pool.get_pool_stats() if bot_pool else {},
                 "orchestrator": orchestrator.get_statistics() if orchestrator else {},
-                "active_campaigns": await db.get_active_campaigns() if db else []
+                "active_campaigns": await db.get_active_campaigns() if db else [],
             }
 
             # Broadcast to all connected clients
@@ -2129,15 +2480,16 @@ async def broadcast_stats_loop():
 # Prometheus Metrics Endpoint
 # ============================================================================
 
+
 @app.get("/metrics")
 async def prometheus_metrics():
     """Prometheus metrics endpoint for scraping.
-    
+
     Returns metrics in Prometheus text format.
     """
     if not PROMETHEUS_ENABLED:
         raise HTTPException(status_code=501, detail="Prometheus metrics not enabled")
-    
+
     try:
         # Update all metrics before returning
         if metrics and db and bot_pool:
@@ -2145,10 +2497,13 @@ async def prometheus_metrics():
             await metrics.update_campaign_metrics(db)
             await metrics.update_db_pool_metrics(db)
             metrics.update_system_uptime()
-        
+
         # Generate Prometheus text format
         from fastapi.responses import Response
-        return Response(content=generate_latest(registry), media_type=CONTENT_TYPE_LATEST)
+
+        return Response(
+            content=generate_latest(registry), media_type=CONTENT_TYPE_LATEST
+        )
     except Exception as e:
         logger.error(f"Error generating metrics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -2159,7 +2514,6 @@ async def prometheus_metrics():
 # ============================================================================
 
 
-
 @app.get("/", response_class=HTMLResponse)
 async def serve_root():
     """Serve the React dashboard at root."""
@@ -2168,6 +2522,7 @@ async def serve_root():
             return HTMLResponse(content=f.read())
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Dashboard not found")
+
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def serve_dashboard():
@@ -2184,89 +2539,108 @@ async def import_leads_csv(file: UploadFile = File(...), campaign_id: int = Form
     """Import leads from CSV file."""
     import csv
     import io
-    
+
     logger.info(f"📤 CSV IMPORT: Uploading CSV for campaign ID={campaign_id}")
-    
+
     try:
         # Validate campaign exists
         campaign = await db.get_campaign(campaign_id)
         if not campaign:
             raise HTTPException(status_code=404, detail="Campaign not found")
-        
+
         # Read CSV file
         contents = await file.read()
-        csv_text = contents.decode('utf-8')
+        csv_text = contents.decode("utf-8")
         csv_reader = csv.DictReader(io.StringIO(csv_text))
-        
+
         # Parse leads
         leads = []
         for row in csv_reader:
             lead_data = {
-                'phone_number': row.get('phone_number', row.get('phone', '')),
-                'first_name': row.get('first_name', row.get('firstname', '')),
-                'last_name': row.get('last_name', row.get('lastname', '')),
-                'business_name': row.get('business_name', row.get('company', '')),
-                'email': row.get('email', ''),
-                'address': row.get('address', ''),
-                'city': row.get('city', ''),
-                'state': row.get('state', ''),
-                'zip_code': row.get('zip_code', row.get('zip', '')),
-                'timezone': row.get('timezone', 'America/New_York'),
-                'custom_data': {}
+                "phone_number": row.get("phone_number", row.get("phone", "")),
+                "first_name": row.get("first_name", row.get("firstname", "")),
+                "last_name": row.get("last_name", row.get("lastname", "")),
+                "business_name": row.get("business_name", row.get("company", "")),
+                "email": row.get("email", ""),
+                "address": row.get("address", ""),
+                "city": row.get("city", ""),
+                "state": row.get("state", ""),
+                "zip_code": row.get("zip_code", row.get("zip", "")),
+                "timezone": row.get("timezone", "America/New_York"),
+                "custom_data": {},
             }
-            
+
             # Add any extra fields to custom_data
             for key, value in row.items():
-                if key not in ['phone_number', 'phone', 'first_name', 'firstname', 
-                              'last_name', 'lastname', 'business_name', 'company',
-                              'email', 'address', 'city', 'state', 'zip_code', 'zip', 'timezone']:
-                    lead_data['custom_data'][key] = value
-            
+                if key not in [
+                    "phone_number",
+                    "phone",
+                    "first_name",
+                    "firstname",
+                    "last_name",
+                    "lastname",
+                    "business_name",
+                    "company",
+                    "email",
+                    "address",
+                    "city",
+                    "state",
+                    "zip_code",
+                    "zip",
+                    "timezone",
+                ]:
+                    lead_data["custom_data"][key] = value
+
             leads.append(lead_data)
-        
+
         # Bulk import
         imported = 0
         for lead_data in leads:
             try:
                 await db.add_lead(
                     campaign_id=campaign_id,
-                    phone_number=lead_data['phone_number'],
-                    first_name=lead_data.get('first_name'),
-                    last_name=lead_data.get('last_name'),
-                    business_name=lead_data.get('business_name'),
-                    email=lead_data.get('email'),
-                    address=lead_data.get('address'),
-                    city=lead_data.get('city'),
-                    state=lead_data.get('state'),
-                    zip_code=lead_data.get('zip_code'),
-                    timezone=lead_data.get('timezone', 'America/New_York'),
-                    custom_data=lead_data.get('custom_data', {})
+                    phone_number=lead_data["phone_number"],
+                    first_name=lead_data.get("first_name"),
+                    last_name=lead_data.get("last_name"),
+                    business_name=lead_data.get("business_name"),
+                    email=lead_data.get("email"),
+                    address=lead_data.get("address"),
+                    city=lead_data.get("city"),
+                    state=lead_data.get("state"),
+                    zip_code=lead_data.get("zip_code"),
+                    timezone=lead_data.get("timezone", "America/New_York"),
+                    custom_data=lead_data.get("custom_data", {}),
                 )
                 imported += 1
             except Exception as e:
-                logger.warning(f"   ⚠️ Skipped lead {lead_data.get('phone_number')}: {str(e)}")
+                logger.warning(
+                    f"   ⚠️ Skipped lead {lead_data.get('phone_number')}: {str(e)}"
+                )
                 continue
-        
-        logger.info(f"✅ CSV IMPORT: Successfully imported {imported} of {len(leads)} leads")
-        
+
+        logger.info(
+            f"✅ CSV IMPORT: Successfully imported {imported} of {len(leads)} leads"
+        )
+
         return {
             "message": f"Successfully imported {imported} leads",
             "imported": imported,
             "total": len(leads),
-            "campaign_id": campaign_id
+            "campaign_id": campaign_id,
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"❌ CSV IMPORT: Failed - {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/campaigns/{campaign_id}/reset-leads")
 async def reset_campaign_leads(campaign_id: int):
     """Reset all leads in a campaign to NEW status."""
     logger.info(f"🔄 RESET CAMPAIGN LEADS: Request for campaign ID={campaign_id}")
-    
+
     try:
         # Update all leads in campaign to NEW status
         async with db.db.execute(
@@ -2276,25 +2650,134 @@ async def reset_campaign_leads(campaign_id: int):
                    last_call_time = NULL,
                    next_call_time = NULL
                WHERE campaign_id = ?""",
-            (campaign_id,)
+            (campaign_id,),
         ) as cursor:
             updated_count = cursor.rowcount
-        
+
         await db.db.commit()
-        
-        logger.info(f"✅ RESET CAMPAIGN LEADS: Reset {updated_count} leads in campaign ID={campaign_id}")
+
+        logger.info(
+            f"✅ RESET CAMPAIGN LEADS: Reset {updated_count} leads in campaign ID={campaign_id}"
+        )
         return {
             "message": f"Successfully reset {updated_count} leads",
             "updated_count": updated_count,
-            "campaign_id": campaign_id
+            "campaign_id": campaign_id,
         }
     except Exception as e:
-        logger.error(f"❌ RESET CAMPAIGN LEADS: Failed for ID={campaign_id} - {str(e)}", exc_info=True)
+        logger.error(
+            f"❌ RESET CAMPAIGN LEADS: Failed for ID={campaign_id} - {str(e)}",
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ============================================================================
+# ============================================================================
+# Groq Client + AI Features (Clean Merge - Nov 23 2025)
+# ============================================================================
+
+# Initialize Groq client (lazy load)
+try:
+    from groq import Groq
+
+    groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    logger.info("✅ Groq client initialized successfully")
+except Exception as e:
+    logger.warning(f"⚠️ Groq not available (optional feature): {e}")
+    groq_client = None
 
 # ============================================================================
+# Sentiment Analysis Endpoint
+# ============================================================================
+
+
+@app.post("/calls/{call_id}/sentiment")
+async def analyze_call_sentiment(call_id: int):
+    if groq_client is None:
+        raise HTTPException(503, "Groq AI not configured")
+    try:
+        call = await db.get_call_by_id(call_id)
+        if not call or not call.get("transcript"):
+            raise HTTPException(404, "Transcript not found")
+        transcript = call["transcript"]
+        chunks = [transcript[i : i + 1800] for i in range(0, len(transcript), 1800)]
+        results = []
+        for i, chunk in enumerate(chunks):
+            completion = groq_client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"Rate sentiment -1 to +1 and emotion (happy/neutral/angry/frustrated/excited/fearful/sad). JSON only: {{'sentiment': float, 'emotion': str}}\n\n{chunk[:2000]}",
+                    }
+                ],
+                temperature=0.1,
+                max_tokens=50,
+            )
+            try:
+                data = json.loads(completion.choices[0].message.content.strip("`json "))
+                results.append(
+                    {
+                        "time": i * 8,
+                        "sentiment": max(-1, min(1, float(data.get("sentiment", 0)))),
+                        "emotion": data.get("emotion", "neutral"),
+                    }
+                )
+            except:
+                results.append({"time": i * 8, "sentiment": 0, "emotion": "neutral"})
+        overall = sum(r["sentiment"] for r in results) / len(results) if results else 0
+        return {
+            "call_id": call_id,
+            "overall_sentiment": round(overall, 3),
+            "timeline": results,
+            "duration_seconds": len(chunks) * 8,
+        }
+    except Exception as e:
+        logger.error(f"❌ Sentiment failed: {e}")
+        raise HTTPException(500, str(e))
+
+
+# ============================================================================
+# Auto-Disposition Endpoint
+# ============================================================================
+
+
+@app.post("/calls/{call_id}/auto-disposition")
+async def auto_disposition(call_id: int):
+    if groq_client is None:
+        raise HTTPException(503, "Groq AI not configured")
+    try:
+        call = await db.get_call_by_id(call_id)
+        if not call or not call.get("transcript"):
+            raise HTTPException(404, "No transcript")
+        prompt = f"""Analyze this call and return ONLY ONE disposition:\n\nINTERESTED | NOT_INTERESTED | CALLBACK | VOICEMAIL | WRONG_NUMBER | DNC | LANGUAGE_BARRIER | OBJECTION | NO_ANSWER\n\nTranscript:\n{call["transcript"][:3900]}\n\nRespond with just the disposition."""
+        completion = groq_client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0,
+            max_tokens=15,
+        )
+        disposition = completion.choices[0].message.content.strip().upper()
+        valid = [
+            "INTERESTED",
+            "NOT_INTERESTED",
+            "CALLBACK",
+            "VOICEMAIL",
+            "WRONG_NUMBER",
+            "DNC",
+            "LANGUAGE_BARRIER",
+            "OBJECTION",
+            "NO_ANSWER",
+        ]
+        disposition = disposition if disposition in valid else "NOT_INTERESTED"
+        await db.update_call_disposition(call_id, disposition, "AI_AUTO")
+        return {"call_id": call_id, "auto_disposition": disposition, "saved": True}
+    except Exception as e:
+        logger.error(f"❌ Auto-disposition failed: {e}")
+        raise HTTPException(500, str(e))
+
+
 # Run Server
 # ============================================================================
 
@@ -2303,11 +2786,4 @@ if __name__ == "__main__":
 
     logger.info("🚀 Starting Exodus Dialer API server...")
 
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=8000,
-        log_level="info"
-    )
-
-
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")

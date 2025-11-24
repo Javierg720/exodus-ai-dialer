@@ -1,0 +1,51 @@
+<svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cyborgGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00f5ff;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#4169e1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8a2be2;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="200" cy="200" r="180" fill="url(#cyborgGlow)" opacity="0.1"/>
+  
+  <!-- Hexagonal tech border -->
+  <polygon points="200,50 280,100 280,180 200,230 120,180 120,100" 
+           fill="none" stroke="url(#cyborgGlow)" stroke-width="3" 
+           opacity="0.6" filter="url(#glow)"/>
+  
+  <!-- Inner glow circle -->
+  <circle cx="200" cy="200" r="150" fill="none" 
+          stroke="url(#cyborgGlow)" stroke-width="2" 
+          opacity="0.3" filter="url(#glow)"/>
+  
+  <!-- Circuit pattern lines -->
+  <line x1="100" y1="150" x2="140" y2="150" stroke="#00f5ff" stroke-width="2" opacity="0.5"/>
+  <line x1="260" y1="150" x2="300" y2="150" stroke="#00f5ff" stroke-width="2" opacity="0.5"/>
+  <line x1="100" y1="250" x2="140" y2="250" stroke="#ff6b35" stroke-width="2" opacity="0.5"/>
+  <line x1="260" y1="250" x2="300" y2="250" stroke="#ff6b35" stroke-width="2" opacity="0.5"/>
+  
+  <!-- Tech nodes -->
+  <circle cx="140" cy="150" r="4" fill="#00f5ff" filter="url(#glow)"/>
+  <circle cx="260" cy="150" r="4" fill="#00f5ff" filter="url(#glow)"/>
+  <circle cx="140" cy="250" r="4" fill="#ff6b35" filter="url(#glow)"/>
+  <circle cx="260" cy="250" r="4" fill="#ff6b35" filter="url(#glow)"/>
+  
+  <!-- Center icon (AI chip) -->
+  <rect x="180" y="180" width="40" height="40" rx="5" 
+        fill="none" stroke="url(#cyborgGlow)" stroke-width="2" filter="url(#glow)"/>
+  <rect x="188" y="188" width="24" height="24" rx="2" fill="url(#cyborgGlow)" opacity="0.3"/>
+  
+  <!-- Scan lines -->
+  <line x1="160" y1="200" x2="240" y2="200" stroke="#00f5ff" stroke-width="1" opacity="0.3">
+    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2s" repeatCount="indefinite"/>
+  </line>
+</svg>

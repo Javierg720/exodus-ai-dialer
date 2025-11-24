@@ -16,7 +16,7 @@ services:
     restart: always
     environment:
       - PORT=6033
-      - DEEPGRAM_API_KEY=44f464f1116d54ee9412f7b9214cdde028240091
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
       - DEEPGRAM_SAMPLE_RATE=8000
       - DEEPGRAM_ASR_MODEL=nova-3
       - DEEPGRAM_TTS_MODEL=aura-2-thalia-en
@@ -33,7 +33,7 @@ services:
     restart: always
     environment:
       - PORT=6010
-      - DEEPGRAM_API_KEY=44f464f1116d54ee9412f7b9214cdde028240091
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
       - SPEECH_RECOGNITION_LANGUAGE=en-US
       - SPEECH_RECOGNITION_MODEL=nova-2-phonecall
     networks:
@@ -46,7 +46,7 @@ services:
     restart: always
     environment:
       - PORT=6002
-      - GROQ_API_KEY=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
+      - GROQ_API_KEY=${GROQ_API_KEY}
       - GROQ_MODEL=llama-3.1-8b-instant
       - TEMPERATURE=0.6
     networks:

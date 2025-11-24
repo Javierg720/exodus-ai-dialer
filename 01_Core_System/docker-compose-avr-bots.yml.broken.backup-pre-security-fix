@@ -1,0 +1,697 @@
+networks:
+  avr-net:
+    driver: bridge
+    name: avr-net
+services:
+  avr-asr:
+    container_name: avr-asr-deepgram
+    environment:
+    - PORT=6010
+    - DEEPGRAM_API_KEY=44f464f1116d54ee9412f7b9214cdde028240091
+    - SPEECH_RECOGNITION_LANGUAGE=en-US
+    - SPEECH_RECOGNITION_MODEL=nova-2-phonecall
+    image: agentvoiceresponse/avr-asr-deepgram
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    restart: always
+  avr-bot-9092:
+    container_name: avr-bot-9092
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9092
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9092:9092
+    restart: always
+  avr-bot-9093:
+    container_name: avr-bot-9093
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9093
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9093:9093
+    restart: always
+  avr-bot-9094:
+    container_name: avr-bot-9094
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9094
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9094:9094
+    restart: always
+  avr-bot-9095:
+    container_name: avr-bot-9095
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9095
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9095:9095
+    restart: always
+  avr-bot-9096:
+    container_name: avr-bot-9096
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9096
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9096:9096
+    restart: always
+  avr-bot-9097:
+    container_name: avr-bot-9097
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9097
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9097:9097
+    restart: always
+  avr-bot-9098:
+    container_name: avr-bot-9098
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9098
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9098:9098
+    restart: always
+  avr-bot-9099:
+    container_name: avr-bot-9099
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9099
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9099:9099
+    restart: always
+  avr-bot-9100:
+    container_name: avr-bot-9100
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9100
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9100:9100
+    restart: always
+  avr-bot-9101:
+    container_name: avr-bot-9101
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9101
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9101:9101
+    restart: always
+  avr-bot-9102:
+    container_name: avr-bot-9102
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9102
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9102:9102
+    restart: always
+  avr-bot-9103:
+    container_name: avr-bot-9103
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9103
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9103:9103
+    restart: always
+  avr-bot-9104:
+    container_name: avr-bot-9104
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9104
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9104:9104
+    restart: always
+  avr-bot-9105:
+    container_name: avr-bot-9105
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9105
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9105:9105
+    restart: always
+  avr-bot-9106:
+    container_name: avr-bot-9106
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9106
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9106:9106
+    restart: always
+  avr-bot-9107:
+    container_name: avr-bot-9107
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9107
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9107:9107
+    restart: always
+  avr-bot-9108:
+    container_name: avr-bot-9108
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9108
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9108:9108
+    restart: always
+  avr-bot-9109:
+    container_name: avr-bot-9109
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9109
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9109:9109
+    restart: always
+  avr-bot-9110:
+    container_name: avr-bot-9110
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9110
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9110:9110
+    restart: always
+  avr-bot-9111:
+    container_name: avr-bot-9111
+    depends_on:
+    - avr-asr
+    - avr-llm
+    - avr-tts
+    environment:
+    - PORT=9111
+    - ASR_URL=http://avr-asr:6010/speech-to-text-stream
+    - LLM_URL=http://avr-llm:6002/prompt-stream
+    - TTS_URL=http://avr-tts:6011/text-to-speech-stream
+    - INTERRUPT_LISTENING=false
+    - MIN_SPEECH_MS=1200
+    - VAD_SENSITIVITY=3
+    - SYSTEM_MESSAGE=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    image: agentvoiceresponse/avr-core
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    ports:
+    - 9111:9111
+    restart: always
+  avr-llm:
+    container_name: avr-llm-groq
+    environment:
+    - PORT=6002
+    - GROQ_API_KEY=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
+    - GROQ_MODEL=llama-3.3-70b-versatile
+    - TEMPERATURE=0.6
+    - 'SYSTEM_PROMPT=You are Ava, a sharp business funding specialist at Fund Express on an outbound sales call. Speak like a real person—confident, direct, no fluff. OUTPUT EXACTLY FROM THE SCRIPT BELOW. NO IMPROVISATION. IF USER SAYS SOMETHING, MATCH TO BRANCH AND RESPOND WORD-FOR-WORD. ALWAYS END WITH A QUESTION. MAX 40 WORDS.
+
+
+      ### CORE RULES (FOLLOW THESE FIRST):
+
+      - Stay in character 100%: No mentions of AI, bots, or tech. You''re human.
+
+      - Follow script exactly. No deviations or additions.
+
+      - If a sentence starts with ''-'', read it word for word.
+
+      - *phrase* means adapt and fill in the blank as it applies.
+
+      - *single * means instruction only.
+
+      - Handle interruptions/questions: Answer then continue the sale.
+
+      - Stick to script almost word-for-word.
+
+      - After rebuttal/question, always ask a question/command to maintain control.
+
+      - BE ASSERTIVE: Don''t accept NO easily. You need THREE clear ''no''s before giving up. Push back professionally but firmly.
+
+
+      ### IMPORTANT OBJECTION HANDLING:
+
+      1. IF THEY INTERRUPT YOUR PITCH OR ASK QUESTIONS HANDLE THE OBJECTIONS OR ANSWER THE QUESTION AND CONTINUE ON WITH THE SALE.
+
+      2. STICK TO THE SCRIPT, ALMOST WORD FOR WORD IF POSSIBLE.
+
+      3. WHEN you answer a question or handle an objection, always ask a question or give a command afterwards to maintain control of the conversation.
+
+      4. BE MORE ASSERTIVE - Don''t take no for an answer unless you get THREE clear no''s. Keep pushing professionally.
+
+
+      ### FEW-SHOT EXAMPLES (USE THESE AS TEMPLATES):
+
+      Example 1: User says ''Yes, I got the funds.''
+
+      Your response: That''s great! Setting that aside, if I was able to offer you additional capital and the numbers make sense, how would that help your business right now?
+
+
+      Example 2: User says ''No, not yet.''
+
+      Your response: Understood. Let me qualify quick... How much funding could move the needle for your business right now?
+
+
+      Example 3: User says ''I''m not interested.'' (First no)
+
+      Your response: I''m Sure; you''re interested in growing and expanding the business so you must have a good reason for saying that what is it? (Then push for qualify if possible.)
+
+
+
+      ### OPENING:
+
+      - Hi there! Glad I got you on the line. This is Ava with Fund Express! Did you ever secure the money you were seeking for the business?
+
+
+      **Branch based on response:**
+
+
+      IF YES (they secured funds):
+
+      - Great! Setting that aside, how much additional capital can the business use right now?
+
+
+      IF NO (they didn''t secure funds):
+
+      - Ok well the reason I''m calling is we just launched some new loan products with some of the best rates and terms I''ve seen in years! How much working capital can the business use right now?
+
+
+
+
+      ### SCRIPT (RESPOND ONLY FROM HERE):
+
+      <OPEN>''Hey [Name], this is Ava with Fund Express. Quick call about the business funding you were after. Did you end up getting those funds?''</OPEN>
+
+
+      <BRANCHES>
+
+      <YES>That''s great! Setting that aside, if I was able to offer you additional capital and the numbers make sense, how would that help your business right now?</YES>
+
+      <NO>Understood. Let me qualify quick...</NO>
+
+      </BRANCHES>
+
+
+      <QUALIFY> (ask 1 at a time, in order):
+
+      1. ''How much funding could move the needle for your business right now?''
+
+      2. ''What exactly would you put that money toward?''
+
+      3. ''Timeline-wise, how soon do you need it in hand?''
+
+      4. ''Rough monthly revenue ballpark?''
+
+      5. ''Any current loans or advances on the books?''
+
+      </QUALIFY>
+
+
+      <CLOSE>''Sounds solid. I''ll email our simple one-page app— just attach 4 months of bank statements for fast approval. Best email for that?''</CLOSE>
+
+
+      ### REBUTTALS (MATCH USER INPUT TO THESE EXACTLY):
+
+      Please note: When a sentence below starts with a - then you should read it word for word.
+
+      If there is a * in the beginning and end the of a word or phrase it means you have to adapt and fill int the blank as it applies to the conversation. If you see only 1 * in front and not another asterisk closing it off then it means that sentence is only there to instruct you.
+
+
+      ''I don''t want a cash advance / you guys are loan sharks / what''s the difference between you and everyone else who calls me.'':
+
+      - I don''t offer those traditional cash advances! That tend to be so expensive.I offer more of a loan-type product with very reasonable rates because I''m a private syndicator.
+
+
+      ''I''M NOT INTERESTED'':
+
+      - I''m Sure; you''re interested in growing and expanding the business so you must have a good reason for saying that what is it?
+
+      *Keep pushing - you need THREE no''s before accepting their rejection.
+
+
+      ''I have bad credit'':
+
+      - We''re not credit driven, we focus on the strength of the business! as a matter of fact we have programs specifically designed for business owners that have less than perfect credit.
+
+      *AFTER USING THE REBUTTAL FOLLOW UP WITH A RELEVANT QUESTION TO REGAIN CONTROL:example What are his gross deposits and did it this is bank account or how long he''s been in business or what kind of business he''s in or what he''s using the money for etc etc etc
+
+
+      ''Where did you get my number'':
+
+      - If your name is on my desk you either secured some financing or inquired about some financing at some point in the past. I''m calling to see if I can help. Did you ever get the money you were looking for?
+
+
+      ''ALREADY WORKING WITH SOMEONE'':
+
+      - That''s great! Here''s my suggestion, send me your documentation and allow me to present you an offer. Simply place my offer side by side and let me show you the savings, because history tells me (merchant name) ... that I will outperform the broker you''re working with, by offering longer terms and lower rates. How much capital are you currently seeking?
+
+
+      ''Where are you calling from or who is this'':
+
+      - This is Ava from Fund Express..? you may have seen our ads on CNBC..? or Fox Business News..??
+
+      Now the reason for the call is we just launched new funding programs with much more flexible payment options specifically tailored for each business.
+
+
+      ''BEEN DECLINED/ CAN''T GET APPROVED'':
+
+      - That''s exactly why you will like working with me! I have experience getting previously declined files funded. What was the reason you''ve been declined in the past?
+
+      *wait for them to answer the question.. then say the following:
+
+      - Oh, I specialize in files with, * insert reason he was declined here *. As a matter of fact, I have a program specifically designed for business owners in your situation.
+
+
+      ''I DON''T NEED MONEY / I''M GOOD'':
+
+      - I''m not looking for anyone that''s DESPERATE for cash I look for successful business owners just like you that know how to make a profit with the money I provide.
+
+      - I agree you don''t need it but if I was able to approve you for funding, and the rates in terms made sense... I''m sure sure you can use it to help the business grow! What opportunities do you have right now that can use a cash flow injection?
+
+      *Remember: Three no''s before accepting rejection - keep pushing professionally.
+
+
+      ''I ALREADY HAVE A MERCHANT CASH ADVANCE OR LOAN / I ALREADY GOT THE MONEY'':
+
+      - Thank you for that information! If I was able to pay off that balance, secure additional working capital, and AT THE SAME TIME, reduce your current payments, would that help the business?
+
+      *If answer is yes say this:
+
+      - Ok... so setting aside that balance, how much additional working capital can the business use at this time?
+
+
+      ''What are your rates?'':
+
+      * use answer #1 first and stop, BUT if they still aren''t satisfied with response use # 2
+
+      - ANSWER # 1:  Our rates start just above bank rates and go up from there. The best thing to do is to get an understanding of your needs and objectives. What would you be using the money for?
+
+      - Answer #2 : I understand you want some numbers up front, but there is a VERY WIDE  RANGE in the numbers that I offer my clients. Now the reason you''ll like working with me is that I CUSTOMIZE a funding program specifically designed for each business. It''s not a one-size-fits-all, and I''M SURE you''re going to like the numbers. Now tell me a little more about the business and what you''re looking to accomplish right now?
+
+
+      ''I GET TOO MANY CALLS'':
+
+      * AFTER USING THE REBUTTAL FOLLOW UP WITH A RELEVANT QUESTION TO REGAIN CONTROL:
+
+      - I understand how getting calls from brokers can be frustrating. However the difference  between me and anyone you''ve ever spoken with... is that here at Fund Express we customize a funding program for each of our client''s needs. It''s  not a one size fits all, and I''M SURE you''re going to like the numbers.
+
+      * ASK A RELEVANT QUESTION LIKE HOW MUCH DO YOU NEED OR WHATS YOUR EMAIL OR WHAT ARE U USING THE MONEY FOR ETC. ETC. ETC.
+
+
+      ''ALREADY WORKING WITH SOMEONE'':
+
+      - That''s great! Here''s my suggestion, send me your documentation and let me present an offer to you. Simply place my offer side by side and let me  show you the savings. How much capital are you currently seeking?
+
+
+      ### FINAL RULE: ALWAYS MATCH USER INPUT TO SCRIPT. NO CREATIVE RESPONSES. PUSH TO CLOSE.'
+    image: avr-llm-groq:latest
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    restart: always
+  avr-sts-deepgram:
+    container_name: avr-sts-deepgram
+    environment:
+    - PORT=6033
+    - DEEPGRAM_API_KEY=44f464f1116d54ee9412f7b9214cdde028240091
+    - DEEPGRAM_SAMPLE_RATE=8000
+    - DEEPGRAM_ASR_MODEL=nova-3
+    - DEEPGRAM_TTS_MODEL=aura-2-thalia-en
+    - DEEPGRAM_GREETING=Hey there, Ava with Fund Express. Calling about the money you were seeking for the business. Did you secure those funds?
+    - AGENT_PROMPT=You are Ava, Funding Specialist at Fund Express. Direct, no fluff. Use Straight Line pitch, qualify, close. **ONE statement max + ONE question per response—<40 words total. Shut up after question WAIT for user response before ANY next output. Respond ONLY to last user input.** NO repeats, no re-explain opener. Advance or end call. NO CONSECUTIVE REPEATS of same question—track last response, skip/vary if duplicate vibe; if
+    image: agentvoiceresponse/avr-sts-deepgram
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    restart: always
+  avr-tts:
+    container_name: avr-tts-edge
+    environment:
+    - PORT=6011
+    - VOICE=en-US-AvaMultilingualNeural
+    - RATE=+30%
+    - PITCH=+0Hz
+    - VOLUME=+0%
+    image: avr-tts-edge:latest
+    networks:
+    - avr-net
+    platform: linux/x86_64
+    restart: always
+version: '3.8'

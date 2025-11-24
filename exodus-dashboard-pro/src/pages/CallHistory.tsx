@@ -3,6 +3,7 @@ import { Search, Play, Download, MessageSquare, Brain } from 'lucide-react'
 import { api } from '../lib/api'
 import GlassCard from '../components/GlassCard'
 import WaveformPlayer from '../components/WaveformPlayer'
+import ErrorAlert from '../components/ErrorAlert'
 import { motion } from 'framer-motion'
 import { Call } from '../types'
 import { useState, useMemo } from 'react'
@@ -29,7 +30,7 @@ export default function CallHistory() {
     direction: 'desc'
   })
   
-  const { data: apiCalls, isLoading } = useQuery<any[]>({
+  const { data: apiCalls, isLoading, error, refetch } = useQuery<any[]>({
     queryKey: ['callHistory'],
     queryFn: () => api.getCallHistory(),
   })
@@ -188,6 +189,15 @@ export default function CallHistory() {
         <h1 className="text-4xl font-bold">Call History</h1>
         <p className="text-ios-gray-2 mt-2">{calls?.length || 0} total calls</p>
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <ErrorAlert
+          error={error as Error}
+          onRetry={() => refetch()}
+          title="Failed to load call history"
+        />
+      )}
 
       {/* Search & Filters */}
       <div className="space-y-4">

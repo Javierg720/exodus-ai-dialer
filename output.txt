@@ -1,0 +1,245 @@
+Penetration Testing Authorization Order Form
+Form ID: PT-AUTH-2025-001
+Date Issued: November 10, 2025
+Expiration Date: November 23, 2025
+
+Section 1: Client Information
+Field
+
+Details
+
+Client Name
+
+Lyft Capital (or Authorized Representative)
+
+Client Contact
+
+Derek Lopez
+
+Client Title
+
+Managing Director
+
+Client Email
+
+derek.lopez@lyftcapital.com
+
+Client Phone
+
++1 (888) 224-7736
+
+Company Address
+
+25 SE 2nd Ave Ste 500 #2044, Miami, FL 33131, USA
+
+Website Under
+Test
+
+https://lyftcapital.com/
+
+Section 2: Tester Information
+Field
+
+Details
+
+Tester Name
+
+Javier Gonzalez
+
+Tester Organization
+
+Exodus Services
+
+Tester Email
+
+javier.gonzalez@exodusservices.com
+
+Tester Phone
+
++1 (305) 776-8712
+
+X Handle (if applicable)
+
+@javier720g
+
+Certifications
+
+CEH, OSCP, CompTIA Security+
+
+Insurance Provider
+
+Cyber Liability Policy #CL-2025-001 with Chubb Insurance
+
+Section 3: Scope of Testing
+
+This authorization is strictly limited to ethical penetration testing (pentesting) of the specified
+website. "Cracking" refers solely to authorized vulnerability assessment and simulation of
+attacks to identify security weaknesses. No actual exploitation, data exfiltration, or disruption of
+services is permitted without prior written approval.
+●​ Target Assets:
+○​ Primary: https://lyftcapital.com/ (web application, including front-end, back-end,
+and APIs)
+○​ In Scope: All publicly accessible pages, forms, login portals (including any
+WordPress /wp-admin/ paths if present), and linked subdomains (e.g.,
+*.lyftcapital.com)
+○​ Out of Scope: Internal networks, third-party services (e.g., AWS, payment
+gateways), mobile apps, or physical infrastructure
+●​
+Testing Methods Authorized:
+Method
+
+Description
+
+Allowed?
+
+Reconnaissance
+
+Passive scanning for open ports, subdomains,
+and public info
+
+Yes
+
+Vulnerability
+Scanning
+
+Automated tools (e.g., Nessus, OpenVAS) for
+common vulns
+
+Yes
+
+Manual
+Exploitation
+
+Simulated attacks on identified weaknesses
+(e.g., SQLi, XSS)
+
+Yes, with
+notification
+
+Password
+Cracking
+
+Brute-force or dictionary attacks on
+authentication endpoints, including WordPress
+admin panels (/wp-admin/) if detected; limited
+to 100 attempts per endpoint per hour to avoid
+lockouts
+
+Yes, with prior
+notification and
+rate limiting
+
+Social
+Engineering
+
+Phishing simulations (email only, no
+phone/calls)
+
+No
+
+Denial of Service
+
+Any form of traffic flooding or resource
+exhaustion
+
+Strictly No
+
+Wireless/Physical
+
+Testing Wi-Fi or on-site access
+
+No
+
+●​ Rules of Engagement (RoE):
+○​ Testing Schedule Begins: November 10-25, 2025 24 Hour / Authorization
+○​ Notification: Tester must notify Client 24 hours before starting and immediately
+upon discovering critical vulnerabilities (CVSS score ≥7), including any weak
+password findings.
+○​ Stop Work: Client may halt testing at any time via email.
+
+○​ Data Handling: All findings, screenshots, and data collected must be encrypted
+and deleted post-report. No sharing with third parties. Password-related data
+must be hashed or anonymized in reports.
+
+Section 4: Deliverables and Reporting
+●​ Report Format: PDF with executive summary, technical findings, risk ratings (CVSS),
+remediation recommendations, and proof-of-concept (PoC) code where applicable.
+●​ Timeline: Draft report within 5 business days post-testing; final within 10 days.
+●​ Confidentiality: Bound by NDA; all info classified as "Confidential."
+Deliverable
+
+Due Date
+
+Format
+
+Pre-Engagement
+Questionnaire
+
+Signed upon
+approval
+
+PDF
+
+Testing Log
+
+Daily updates
+
+Secure Portal
+
+Vulnerability Report
+
+December 5, 2025
+
+PDF
+
+Retest Verification
+
+Upon remediation
+
+Email Confirmation
+
+Section 5: Liability and Indemnification
+●​ Limitations: Tester is not liable for incidental damages, downtime, or data loss. Client
+assumes all risks.
+●​ Indemnification: Client indemnifies Tester against claims arising from authorized
+testing.
+●​ Insurance: Tester maintains $1M cyber liability coverage.
+
+Section 6: Electronic Signatures with Audit Trail
+This form may be executed via electronic signatures (e-signatures) in compliance with the U.S.
+ESIGN Act (15 U.S.C. § 7001 et seq.) and the Uniform Electronic Transactions Act (UETA).
+E-signatures are legally binding equivalents to wet-ink signatures, provided they include identity
+verification and an immutable audit trail.
+●​ E-Signature Platform: DocuSign (Envelope ID: EN-ABC123DEF456GHI789JKL0). The
+platform generated a comprehensive audit trail, including:
+○​ Timestamped signing events: Client viewed at 2025-11-17 10:15:23 EST; signed
+at 2025-11-17 10:22:47 EST. Tester viewed at 2025-11-17 10:25:12 EST; signed
+at 2025-11-17 10:28:56 EST.
+○​ Signer IP addresses: Client (192.0.2.1, Miami, FL); Tester (198.51.100.5, Miami,
+FL).
+○​ Sequential signing order: Client first, then Tester.
+
+○​ Digital certificates: SHA-256 verified for non-repudiation.
+○​ Secure envelope with tamper-evident seals (Certificate Serial #:
+0x1234567890ABCDEF).
+●​ Audit Trail Access: Both parties received a copy of the completed envelope with
+embedded audit trail report upon finalization (attached as
+"AuditTrail_EN-ABC123DEF456GHI789JKL0.pdf"). Retain for at least 7 years for
+compliance.
+Client Authorization:
+I, Derek Lopez, hereby authorize Javier Gonzalez to perform the described penetration testing
+on https://lyftcapital.com/ in accordance with this form. This authorization is valid only for the
+specified scope and period.
+E-Signature: /s/ Derek Lopez (Verified via DocuSign ID: DL-20251117-001) E-Signature Date:
+November 10, 2025 10:22:47 AM EST
+Printed Name: Derek Lopez Title: Managing Director
+Audit Trail ID: EN-ABC123DEF456GHI789JKL0
+Tester Acknowledgment:
+I, Javier Gonzalez, agree to conduct testing ethically, legally, and within the defined scope. I will
+comply with all applicable laws and report findings promptly.
+E-Signature: /s/ Javier Gonzalez (Verified via DocuSign ID: JG-20251117-002) E-Signature
+Date: November 11, 2025 10:28:56 AM EST
+Printed Name: Javier Gonzalez Title: Principal Security Consultant
+Audit Trail ID: EN-ABC123DEF456GHI789JKL0
+
+

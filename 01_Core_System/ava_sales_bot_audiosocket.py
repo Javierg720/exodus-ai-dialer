@@ -22,8 +22,14 @@ from pipecat.processors.aggregators.llm_response import (
 from pipecat.frames.frames import EndFrame, TranscriptionFrame, StartFrame
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
-from pipecat.processors.filters.stt_mute_filter import STTMuteFilter, STTMuteConfig, STTMuteStrategy
-from pipecat.audio.interruptions.min_words_interruption_strategy import MinWordsInterruptionStrategy
+from pipecat.processors.filters.stt_mute_filter import (
+    STTMuteFilter,
+    STTMuteConfig,
+    STTMuteStrategy,
+)
+from pipecat.audio.interruptions.min_words_interruption_strategy import (
+    MinWordsInterruptionStrategy,
+)
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 from pipecat.services.deepgram import DeepgramSTTService
 from pipecat.services.groq import GroqSTTService
@@ -60,8 +66,7 @@ async def analyze_call_disposition(transcript: str) -> str:
 
         # Use Cerebras for fast, cheap analysis
         client = AsyncOpenAI(
-            api_key=os.getenv("CEREBRAS_API_KEY"),
-            base_url="https://api.cerebras.ai/v1"
+            api_key=os.getenv("CEREBRAS_API_KEY"), base_url="https://api.cerebras.ai/v1"
         )
 
         analysis_prompt = f"""Analyze this sales call transcript and determine the disposition.
@@ -84,15 +89,25 @@ Return ONLY the disposition code, nothing else."""
             model="llama3.3-70b",
             messages=[{"role": "user", "content": analysis_prompt}],
             temperature=0.1,
-            max_tokens=20
+            max_tokens=20,
         )
 
         disposition = response.choices[0].message.content.strip()
 
         # Validate disposition
-        valid_dispositions = ["INTERESTED", "NOT_INTERESTED", "CALLBACK", "VOICEMAIL", "NO_DECISION", "SALE", "WRONG_NUMBER"]
+        valid_dispositions = [
+            "INTERESTED",
+            "NOT_INTERESTED",
+            "CALLBACK",
+            "VOICEMAIL",
+            "NO_DECISION",
+            "SALE",
+            "WRONG_NUMBER",
+        ]
         if disposition not in valid_dispositions:
-            logger.warning(f"Invalid disposition '{disposition}', defaulting to NO_DECISION")
+            logger.warning(
+                f"Invalid disposition '{disposition}', defaulting to NO_DECISION"
+            )
             return "NO_DECISION"
 
         return disposition
@@ -138,25 +153,19 @@ def load_bot_config():
         }
 
 
-async def main(
-    contact_name: str = "there", host: str = "0.0.0.0", port: int = 9092
-):
+async def main(contact_name: str = "there", host: str = "0.0.0.0", port: int = 9092):
     """Run Ava sales bot with AudioSocket transport"""
 
     # Load configuration
     config = load_bot_config()
-    logger.info(f"Loaded bot configuration - Provider: {config.get('llm', {}).get('provider')}, Model: {config.get('llm', {}).get('model')}")
-    
+    logger.info(
+        f"Loaded bot configuration - Provider: {config.get('llm', {}).get('provider')}, Model: {config.get('llm', {}).get('model')}"
+    )
+
     # Replace dynamic variables in system prompt
     system_prompt = config.get("script", {}).get("system_prompt", "")
     system_prompt = system_prompt.replace("{{first_name}}", contact_name)
     config["script"]["system_prompt"] = system_prompt
-    logger.info(f"Replaced {{{{first_name}}}} with '{contact_name}' in system prompt")
-    
-    # Replace dynamic variables in system prompt
-    system_prompt = config.get('script', {}).get('system_prompt', '')
-    system_prompt = system_prompt.replace('{{first_name}}', contact_name)
-    config['script']['system_prompt'] = system_prompt
     logger.info(f"Replaced {{{{first_name}}}} with '{contact_name}' in system prompt")
 
     # Initialize pipeline components
@@ -177,10 +186,12 @@ async def main(
         # 🚨 CRITICAL: Send StartFrame to initialize STT/TTS services
         if pipeline_task:
             from pipecat.frames.frames import TextFrame
-            
-            logger.info("🎬 Sending StartFrame to initialize pipeline services (Deepgram STT, Edge TTS)")
+
+            logger.info(
+                "🎬 Sending StartFrame to initialize pipeline services (Deepgram STT, Edge TTS)"
+            )
             await pipeline_task.queue_frames([StartFrame()])
-            
+
             # Small delay to ensure STT connects before audio starts flowing
             await asyncio.sleep(0.2)
 
@@ -189,11 +200,13 @@ async def main(
             logger.info(f"📣 Queuing opening pitch")
 
             # Save opening to transcript
-            conversation_transcript.append({
-                "role": "assistant",
-                "text": opening_pitch,
-                "timestamp": asyncio.get_event_loop().time() - call_start_time
-            })
+            conversation_transcript.append(
+                {
+                    "role": "assistant",
+                    "text": opening_pitch,
+                    "timestamp": asyncio.get_event_loop().time() - call_start_time,
+                }
+            )
 
             await pipeline_task.queue_frames([TextFrame(opening_pitch)])
 
@@ -207,12 +220,16 @@ async def main(
             from datetime import datetime
 
             # Build full transcript text
-            full_transcript = "\n".join([
-                f"{msg['role'].upper()}: {msg['text']}"
-                for msg in conversation_transcript
-            ])
+            full_transcript = "\n".join(
+                [
+                    f"{msg['role'].upper()}: {msg['text']}"
+                    for msg in conversation_transcript
+                ]
+            )
 
-            logger.info(f"📝 Saving transcript ({len(conversation_transcript)} messages)")
+            logger.info(
+                f"📝 Saving transcript ({len(conversation_transcript)} messages)"
+            )
 
             # Auto-analyze disposition (using LLM)
             try:
@@ -228,7 +245,7 @@ async def main(
                             "transcript": full_transcript,
                             "disposition": disposition,
                         },
-                        timeout=5
+                        timeout=5,
                     )
                 except Exception as e:
                     logger.warning(f"Failed to send disposition to API: {e}")
@@ -246,10 +263,10 @@ async def main(
     # VAD configuration - Nov 3 optimized (prevents call drops)
     vad = SileroVADAnalyzer(
         params=VADParams(
-            start_secs=0.1,      # Faster detection (was 0.2)
-            stop_secs=0.5,       # Industry standard - prevents timeouts (was 1.2)
-            min_volume=0.3,      # Lower for quieter speech (was 0.4)
-            confidence=0.6       # Higher for cleaner detection (was 0.5)
+            start_secs=0.1,  # Faster detection (was 0.2)
+            stop_secs=0.5,  # Industry standard - prevents timeouts (was 1.2)
+            min_volume=0.3,  # Lower for quieter speech (was 0.4)
+            confidence=0.6,  # Higher for cleaner detection (was 0.5)
         )
     )
 
@@ -269,9 +286,11 @@ async def main(
             on_server_ready=on_server_ready,
         ),
     )
-    
+
     # CRITICAL DEBUG: Verify audio_in_passthrough is actually True
-    logger.info(f"🔍 Transport params: audio_in_passthrough={transport._params.audio_in_passthrough}, audio_in_enabled={transport._params.audio_in_enabled}")
+    logger.info(
+        f"🔍 Transport params: audio_in_passthrough={transport._params.audio_in_passthrough}, audio_in_enabled={transport._params.audio_in_enabled}"
+    )
 
     # STT - Deepgram or Groq (required for AudioSocket since we get raw audio)
     stt_provider = os.getenv("STT_PROVIDER", "deepgram").lower()
@@ -279,7 +298,7 @@ async def main(
     if stt_provider == "groq":
         stt = GroqSTTService(
             api_key=os.getenv("GROQ_API_KEY"),
-            model="whisper-large-v3"  # Use regular v3, not turbo (turbo blocked)
+            model="whisper-large-v3",  # Use regular v3, not turbo (turbo blocked)
         )
         logger.info("✅ Using Groq Whisper Large v3 STT ($0.01/hour)")
     else:
@@ -296,9 +315,11 @@ async def main(
             api_key=os.getenv("OPENAI_API_KEY"),
             temperature=llm_config.get("temperature", 0.9),
             max_completion_tokens=llm_config.get("max_completion_tokens", 100),
-            top_p=llm_config.get("top_p", 0.9)
+            top_p=llm_config.get("top_p", 0.9),
         )
-        logger.info(f"Using OpenAI {llm_config.get('model')} (temp={llm_config.get('temperature', 0.9)})")
+        logger.info(
+            f"Using OpenAI {llm_config.get('model')} (temp={llm_config.get('temperature', 0.9)})"
+        )
     elif provider == "cerebras":
         llm = OpenAILLMService(
             model=llm_config.get("model", "llama3.3-70b"),
@@ -306,9 +327,11 @@ async def main(
             base_url="https://api.cerebras.ai/v1",
             temperature=llm_config.get("temperature", 0.7),
             max_completion_tokens=llm_config.get("max_completion_tokens", 100),
-            top_p=llm_config.get("top_p", 0.9)
+            top_p=llm_config.get("top_p", 0.9),
         )
-        logger.info(f"Using Cerebras {llm_config.get('model')} (temp={llm_config.get('temperature', 0.7)})")
+        logger.info(
+            f"Using Cerebras {llm_config.get('model')} (temp={llm_config.get('temperature', 0.7)})"
+        )
     elif provider == "groq":
         llm = OpenAILLMService(
             model=llm_config.get("model", "llama-3.3-70b-versatile"),
@@ -316,9 +339,11 @@ async def main(
             base_url="https://api.groq.com/openai/v1",
             temperature=llm_config.get("temperature", 0.6),
             max_completion_tokens=llm_config.get("max_completion_tokens", 100),
-            top_p=llm_config.get("top_p", 0.9)
+            top_p=llm_config.get("top_p", 0.9),
         )
-        logger.info(f"Using Groq {llm_config.get('model')} (temp={llm_config.get('temperature', 0.6)}, max_tokens={llm_config.get('max_completion_tokens', 100)})")
+        logger.info(
+            f"Using Groq {llm_config.get('model')} (temp={llm_config.get('temperature', 0.6)}, max_tokens={llm_config.get('max_completion_tokens', 100)})"
+        )
 
     # TTS - from config
     tts_config = config.get("tts", {})
@@ -326,7 +351,7 @@ async def main(
         voice=tts_config.get("voice", "en-US-AvaNeural"),
         rate=tts_config.get("rate", "+5%"),
         pitch=tts_config.get("pitch", "+2Hz"),
-        aggregate_sentences=True  # Buffer full sentences for smooth delivery
+        aggregate_sentences=True,  # Buffer full sentences for smooth delivery
     )
     logger.info(f"Using Edge TTS ({tts_config.get('voice')})")
 
@@ -338,13 +363,13 @@ async def main(
 
     # Add contact name context
     system_prompt += f"\n\nProspect's first name: {contact_name}"
-    
+
     # Pre-load opening pitch as assistant message (so LLM generates it)
     opening_pitch = f"Hey {contact_name}, this is Ava with Fund Express. Did you ever secure the money you were seeking for the business?"
 
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "assistant", "content": opening_pitch}
+        {"role": "assistant", "content": opening_pitch},
     ]
     context = OpenAILLMContext(messages=messages)
 
@@ -352,21 +377,30 @@ async def main(
     class TranscriptAwareUserAggregator(LLMUserContextAggregator):
         async def process_frame(self, frame, direction):
             nonlocal conversation_transcript, call_start_time
-            
+
             # CRITICAL DEBUG: Log ALL frames to diagnose why TranscriptionFrame never arrives
             from pipecat.frames.frames import InputAudioRawFrame
+
             if isinstance(frame, InputAudioRawFrame):
-                logger.debug(f"🎵 USER AGGREGATOR received InputAudioRawFrame: {len(frame.audio)} bytes @ {frame.sample_rate}Hz")
+                logger.debug(
+                    f"🎵 USER AGGREGATOR received InputAudioRawFrame: {len(frame.audio)} bytes @ {frame.sample_rate}Hz"
+                )
             elif isinstance(frame, TranscriptionFrame):
                 logger.info(f"👤 USER SAID: {frame.text}")
-                conversation_transcript.append({
-                    "role": "user",
-                    "text": frame.text,
-                    "timestamp": asyncio.get_event_loop().time() - call_start_time if call_start_time else 0
-                })
+                conversation_transcript.append(
+                    {
+                        "role": "user",
+                        "text": frame.text,
+                        "timestamp": asyncio.get_event_loop().time() - call_start_time
+                        if call_start_time
+                        else 0,
+                    }
+                )
             else:
-                logger.debug(f"🔍 USER AGGREGATOR received frame: {type(frame).__name__}")
-            
+                logger.debug(
+                    f"🔍 USER AGGREGATOR received frame: {type(frame).__name__}"
+                )
+
             return await super().process_frame(frame, direction)
 
     class TranscriptAwareAssistantAggregator(LLMAssistantContextAggregator):
@@ -376,11 +410,15 @@ async def main(
             from pipecat.frames.frames import TextFrame
 
             if isinstance(frame, TextFrame) and frame.text:
-                conversation_transcript.append({
-                    "role": "assistant",
-                    "text": frame.text,
-                    "timestamp": asyncio.get_event_loop().time() - call_start_time if call_start_time else 0
-                })
+                conversation_transcript.append(
+                    {
+                        "role": "assistant",
+                        "text": frame.text,
+                        "timestamp": asyncio.get_event_loop().time() - call_start_time
+                        if call_start_time
+                        else 0,
+                    }
+                )
             return await super().process_frame(frame, direction)
 
     # Create aggregators with transcript awareness
@@ -443,9 +481,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--port", type=int, default=9092, help="Port to bind AudioSocket server"
     )
-    parser.add_argument(
-        "--contact-name", default="there", help="Prospect's first name"
-    )
+    parser.add_argument("--contact-name", default="there", help="Prospect's first name")
     args = parser.parse_args()
 
     asyncio.run(main(args.contact_name, args.host, args.port))

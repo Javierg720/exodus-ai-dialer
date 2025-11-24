@@ -1,8 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Bot as BotIcon, RefreshCw, Activity, Power, PowerOff, RotateCcw, Zap } from 'lucide-react'
+import { Bot as BotIcon, RefreshCw, Activity, RotateCcw, Power, PowerOff } from 'lucide-react'
 import { api } from '../lib/api'
 import GlassCard from '../components/GlassCard'
+import ErrorAlert from '../components/ErrorAlert'
 import { motion } from 'framer-motion'
+import { useState } from 'react'
 
 interface BotData {
   id?: number  // Optional - API uses port as identifier
@@ -28,8 +30,9 @@ interface BotResponse {
 
 export default function Bots() {
   const queryClient = useQueryClient()
+  const [mutationError, setMutationError] = useState<Error | null>(null)
   
-  const { data, isLoading } = useQuery<BotResponse>({
+  const { data, isLoading, error, refetch } = useQuery<BotResponse>({
     queryKey: ['bots'],
     queryFn: () => api.getBots(),
     refetchInterval: 3000,
@@ -39,6 +42,10 @@ export default function Bots() {
     mutationFn: (botPort: number) => api.startBot(botPort),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bots'] })
+      setMutationError(null)
+    },
+    onError: (error: Error) => {
+      setMutationError(error)
     },
   })
 
@@ -46,6 +53,10 @@ export default function Bots() {
     mutationFn: (botPort: number) => api.stopBot(botPort),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bots'] })
+      setMutationError(null)
+    },
+    onError: (error: Error) => {
+      setMutationError(error)
     },
   })
 
@@ -53,21 +64,20 @@ export default function Bots() {
     mutationFn: (botPort: number) => api.restartBot(botPort),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bots'] })
+      setMutationError(null)
+    },
+    onError: (error: Error) => {
+      setMutationError(error)
     },
   })
 
-  const restartPoolMutation = useMutation({
-    mutationFn: () => api.restartBotPool(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bots'] })
-    },
-  })
-
-  const formatUptime = (seconds: number) => {
+  const formatUptime = (seconds: number | undefined | null) => {
+    // Handle undefined, null, or NaN values
+    if (seconds === undefined || seconds === null || isNaN(seconds)) return 'N/A'
     if (seconds === 0) return '0s'
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
-    const secs = seconds % 60
+    const secs = Math.floor(seconds % 60)
     
     if (hours > 0) return `${hours}h ${minutes}m`
     if (minutes > 0) return `${minutes}m ${secs}s`
@@ -104,15 +114,24 @@ export default function Bots() {
             {summary.running} running · {summary.stopped} stopped · {summary.total} total
           </p>
         </div>
-        <button
-          onClick={() => restartPoolMutation.mutate()}
-          disabled={restartPoolMutation.isPending}
-          className="ios-button bg-ios-blue hover:bg-ios-blue/90 text-white flex items-center gap-2"
-        >
-          <Zap className="w-5 h-5" />
-          {restartPoolMutation.isPending ? 'Restarting Pool...' : 'Restart All Bots'}
-        </button>
       </div>
+
+      {/* Error Alerts */}
+      {error && (
+        <ErrorAlert
+          error={error as Error}
+          onRetry={() => refetch()}
+          title="Failed to load bot status"
+        />
+      )}
+      
+      {mutationError && (
+        <ErrorAlert
+          error={mutationError}
+          onDismiss={() => setMutationError(null)}
+          title="Bot action failed"
+        />
+      )}
 
       {/* Status Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

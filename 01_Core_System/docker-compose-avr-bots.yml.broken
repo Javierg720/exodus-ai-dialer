@@ -7,7 +7,7 @@ services:
     container_name: avr-asr-deepgram
     environment:
     - PORT=6010
-    - DEEPGRAM_API_KEY=44f464f1116d54ee9412f7b9214cdde028240091
+    - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
     - SPEECH_RECOGNITION_LANGUAGE=en-US
     - SPEECH_RECOGNITION_MODEL=nova-2-phonecall
     image: agentvoiceresponse/avr-asr-deepgram
@@ -459,7 +459,7 @@ services:
     container_name: avr-llm-groq
     environment:
     - PORT=6002
-    - GROQ_API_KEY=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
+    - GROQ_API_KEY=${GROQ_API_KEY}
     - GROQ_MODEL=llama-3.3-70b-versatile
     - TEMPERATURE=0.6
     - 'SYSTEM_PROMPT=You are Ava, a sharp business funding specialist at Fund Express on an outbound sales call. Speak like a real person—confident, direct, no fluff. OUTPUT EXACTLY FROM THE SCRIPT BELOW. NO IMPROVISATION. IF USER SAYS SOMETHING, MATCH TO BRANCH AND RESPOND WORD-FOR-WORD. ALWAYS END WITH A QUESTION. MAX 40 WORDS.
@@ -670,7 +670,7 @@ services:
     container_name: avr-sts-deepgram
     environment:
     - PORT=6033
-    - DEEPGRAM_API_KEY=44f464f1116d54ee9412f7b9214cdde028240091
+    - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
     - DEEPGRAM_SAMPLE_RATE=8000
     - DEEPGRAM_ASR_MODEL=nova-3
     - DEEPGRAM_TTS_MODEL=aura-2-thalia-en

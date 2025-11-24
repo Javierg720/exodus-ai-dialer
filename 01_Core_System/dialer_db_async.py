@@ -24,6 +24,7 @@ from loguru import logger
 
 try:
     from dialer_logging import get_logger, PerformanceLogger
+
     struct_logger = get_logger("dialer_db_async")
     STRUCTURED_LOGGING = True
 except ImportError:
@@ -50,17 +51,21 @@ class AsyncDialerDB:
         self.db.row_factory = aiosqlite.Row
 
         # AGGRESSIVE SQLite optimization for high-concurrency dialing
-        await self.db.execute("PRAGMA journal_mode=WAL")       # Write-Ahead Logging
-        await self.db.execute("PRAGMA busy_timeout=60000")     # 60 second wait
-        await self.db.execute("PRAGMA cache_size=-128000")     # 128MB cache (doubled)
-        await self.db.execute("PRAGMA temp_store=MEMORY")      # RAM for temp tables
-        await self.db.execute("PRAGMA synchronous=NORMAL")     # Fast but safe (WAL mode)
-        await self.db.execute("PRAGMA wal_autocheckpoint=1000") # Checkpoint every 1000 pages
-        await self.db.execute("PRAGMA mmap_size=268435456")    # 256MB memory-mapped I/O
+        await self.db.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging
+        await self.db.execute("PRAGMA busy_timeout=60000")  # 60 second wait
+        await self.db.execute("PRAGMA cache_size=-128000")  # 128MB cache (doubled)
+        await self.db.execute("PRAGMA temp_store=MEMORY")  # RAM for temp tables
+        await self.db.execute("PRAGMA synchronous=NORMAL")  # Fast but safe (WAL mode)
+        await self.db.execute(
+            "PRAGMA wal_autocheckpoint=1000"
+        )  # Checkpoint every 1000 pages
+        await self.db.execute("PRAGMA mmap_size=268435456")  # 256MB memory-mapped I/O
         await self.db.commit()
 
         await self._init_database()
-        logger.info(f"✅ Async database connected: {self.db_path} (HIGH-CONCURRENCY MODE)")
+        logger.info(
+            f"✅ Async database connected: {self.db_path} (HIGH-CONCURRENCY MODE)"
+        )
 
     async def _init_database(self):
         """Initialize database schema if not exists."""
@@ -105,7 +110,12 @@ class AsyncDialerDB:
         dial_ratio: float = 3.0,
         max_dial_ratio: float = 5.0,
         stt_provider: str = "deepgram",
-        enable_recording: bool = False
+        enable_recording: bool = False,
+        max_attempts: int = 3,
+        retry_delay: int = 300,
+        call_timeout: int = 45,
+        working_hours_start: str = "09:00",
+        working_hours_end: str = "21:00",
     ) -> int:
         """Create a new campaign.
 
@@ -117,19 +127,45 @@ class AsyncDialerDB:
             max_dial_ratio: Maximum dial ratio
             stt_provider: STT service to use (deepgram or groq)
             enable_recording: Enable call recordings
+            max_attempts: Maximum call attempts per lead
+            retry_delay: Seconds between retry attempts
+            call_timeout: Seconds before timing out a call
+            working_hours_start: Start of working hours (HH:MM format)
+            working_hours_end: End of working hours (HH:MM format)
 
         Returns:
             Campaign ID
         """
-        logger.debug(f"📊 DB: Creating campaign '{name}', method={dial_method}, ratio={dial_ratio}")
+        logger.debug(
+            f"📊 DB: Creating campaign '{name}', method={dial_method}, ratio={dial_ratio}, "
+            f"max_attempts={max_attempts}, retry_delay={retry_delay}, call_timeout={call_timeout}, "
+            f"working_hours={working_hours_start}-{working_hours_end}"
+        )
 
         try:
             async with self.db.execute(
                 """
-                INSERT INTO campaigns (name, description, dial_method, dial_ratio, max_dial_ratio, stt_provider, enable_recording)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO campaigns (
+                    name, description, dial_method, dial_ratio, max_dial_ratio, 
+                    stt_provider, enable_recording, max_attempts, retry_delay, 
+                    call_timeout, working_hours_start, working_hours_end
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (name, description, dial_method, dial_ratio, max_dial_ratio, stt_provider, 1 if enable_recording else 0)
+                (
+                    name,
+                    description,
+                    dial_method,
+                    dial_ratio,
+                    max_dial_ratio,
+                    stt_provider,
+                    1 if enable_recording else 0,
+                    max_attempts,
+                    retry_delay,
+                    call_timeout,
+                    working_hours_start,
+                    working_hours_end,
+                ),
             ) as cursor:
                 campaign_id = cursor.lastrowid
 
@@ -137,7 +173,9 @@ class AsyncDialerDB:
             logger.info(f"✅ DB: Campaign created: {name} (ID: {campaign_id})")
             return campaign_id
         except Exception as e:
-            logger.error(f"❌ DB: Failed to create campaign '{name}': {str(e)}", exc_info=True)
+            logger.error(
+                f"❌ DB: Failed to create campaign '{name}': {str(e)}", exc_info=True
+            )
             raise
 
     async def start_campaign(self, campaign_id: int):
@@ -146,12 +184,15 @@ class AsyncDialerDB:
         try:
             await self.db.execute(
                 "UPDATE campaigns SET status = 'ACTIVE', started_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (campaign_id,)
+                (campaign_id,),
             )
             await self.db.commit()
             logger.info(f"▶️ DB: Campaign {campaign_id} started")
         except Exception as e:
-            logger.error(f"❌ DB: Failed to start campaign {campaign_id}: {str(e)}", exc_info=True)
+            logger.error(
+                f"❌ DB: Failed to start campaign {campaign_id}: {str(e)}",
+                exc_info=True,
+            )
             raise
 
     async def pause_campaign(self, campaign_id: int):
@@ -159,20 +200,21 @@ class AsyncDialerDB:
         logger.debug(f"📊 DB: Pausing campaign ID={campaign_id}")
         try:
             await self.db.execute(
-                "UPDATE campaigns SET status = 'PAUSED' WHERE id = ?",
-                (campaign_id,)
+                "UPDATE campaigns SET status = 'PAUSED' WHERE id = ?", (campaign_id,)
             )
             await self.db.commit()
             logger.info(f"⏸️ DB: Campaign {campaign_id} paused")
         except Exception as e:
-            logger.error(f"❌ DB: Failed to pause campaign {campaign_id}: {str(e)}", exc_info=True)
+            logger.error(
+                f"❌ DB: Failed to pause campaign {campaign_id}: {str(e)}",
+                exc_info=True,
+            )
             raise
 
     async def get_campaign(self, campaign_id: int) -> Optional[Dict]:
         """Get campaign details."""
         async with self.db.execute(
-            "SELECT * FROM campaigns WHERE id = ?",
-            (campaign_id,)
+            "SELECT * FROM campaigns WHERE id = ?", (campaign_id,)
         ) as cursor:
             row = await cursor.fetchone()
             return dict(row) if row else None
@@ -185,14 +227,44 @@ class AsyncDialerDB:
             rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
+    # ========================================================================
+    # SECURITY: Whitelist for update_campaign fields (SQL injection protection)
+    # ========================================================================
+    ALLOWED_CAMPAIGN_FIELDS = {
+        "name",
+        "description",
+        "dial_method",
+        "dial_ratio",
+        "max_dial_ratio",
+        "stt_provider",
+        "enable_recording",
+        "status",
+        "started_at",
+        "updated_at",
+        "max_attempts",
+        "retry_delay",
+        "call_timeout",
+        "working_hours_start",
+        "working_hours_end",
+    }
+
     async def update_campaign(self, campaign_id: int, campaign_data: dict):
-        """Update campaign details."""
+        """Update campaign details with field validation (SQL injection protection)."""
         # Build UPDATE query from provided fields
         fields = []
         values = []
 
         for key, value in campaign_data.items():
-            if key != 'id':  # Don't allow updating ID
+            if key != "id":  # Don't allow updating ID
+                # SECURITY: Validate field names against whitelist
+                if key not in self.ALLOWED_CAMPAIGN_FIELDS:
+                    logger.warning(
+                        f"⚠️ SECURITY: Attempted to update invalid campaign field: {key}"
+                    )
+                    raise ValueError(
+                        f"Invalid campaign field: {key}. Allowed fields: {', '.join(sorted(self.ALLOWED_CAMPAIGN_FIELDS))}"
+                    )
+
                 fields.append(f"{key} = ?")
                 values.append(value)
 
@@ -209,16 +281,10 @@ class AsyncDialerDB:
     async def delete_campaign(self, campaign_id: int):
         """Delete a campaign and all associated leads."""
         # Delete associated leads first
-        await self.db.execute(
-            "DELETE FROM leads WHERE campaign_id = ?",
-            (campaign_id,)
-        )
+        await self.db.execute("DELETE FROM leads WHERE campaign_id = ?", (campaign_id,))
 
         # Delete campaign
-        await self.db.execute(
-            "DELETE FROM campaigns WHERE id = ?",
-            (campaign_id,)
-        )
+        await self.db.execute("DELETE FROM campaigns WHERE id = ?", (campaign_id,))
 
         await self.db.commit()
         logger.info(f"🗑️  Campaign {campaign_id} deleted")
@@ -226,6 +292,34 @@ class AsyncDialerDB:
     # ========================================================================
     # LEAD OPERATIONS
     # ========================================================================
+
+    def _normalize_phone(self, phone: str) -> str:
+        """Normalize phone number to E.164 format (+1XXXXXXXXXX for US).
+
+        Prevents double +1 prefix bugs.
+
+        Args:
+            phone: Raw phone number in any format
+
+        Returns:
+            Normalized phone number in E.164 format
+        """
+        # Remove all non-digits
+        digits = "".join(c for c in phone if c.isdigit())
+
+        # Apply normalization rules
+        if len(digits) == 10:
+            # 10 digits - US number without country code
+            return f"+1{digits}"
+        elif len(digits) == 11 and digits.startswith("1"):
+            # 11 digits starting with 1 - already has country code
+            return f"+{digits}"
+        elif len(digits) == 11 and not digits.startswith("1"):
+            # 11 digits NOT starting with 1 - add +1
+            return f"+1{digits}"
+        else:
+            # International or other - just add +
+            return f"+{digits}"
 
     async def add_lead(
         self,
@@ -239,7 +333,7 @@ class AsyncDialerDB:
         state: str = "",
         zip_code: str = "",
         timezone: str = "America/New_York",
-        custom_data: Dict = None
+        custom_data: Dict = None,
     ) -> int:
         """Add a lead to a campaign.
 
@@ -259,12 +353,18 @@ class AsyncDialerDB:
         Returns:
             Lead ID
         """
+        # Normalize phone number to prevent +11... bugs
+        phone_number = self._normalize_phone(phone_number)
+        logger.debug(f"📊 DB: Normalized phone number to {phone_number}")
+
         # Check DNC list
         logger.debug(f"📊 DB: Checking DNC status for {phone_number}")
         if await self.is_in_dnc(phone_number):
             logger.warning(f"⚠️ DB: Phone {phone_number} is in DNC list, not adding")
             if STRUCTURED_LOGGING:
-                struct_logger.warning("lead_rejected_dnc", phone=phone_number, campaign_id=campaign_id)
+                struct_logger.warning(
+                    "lead_rejected_dnc", phone=phone_number, campaign_id=campaign_id
+                )
             return None
 
         custom_json = json.dumps(custom_data) if custom_data else None
@@ -276,19 +376,131 @@ class AsyncDialerDB:
                 INSERT INTO leads (campaign_id, phone_number, first_name, last_name, email, company, city, state, zip_code, timezone, custom_data)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (campaign_id, phone_number, first_name, last_name, email, company, city, state, zip_code, timezone, custom_json)
+                (
+                    campaign_id,
+                    phone_number,
+                    first_name,
+                    last_name,
+                    email,
+                    company,
+                    city,
+                    state,
+                    zip_code,
+                    timezone,
+                    custom_json,
+                ),
             ) as cursor:
                 lead_id = cursor.lastrowid
 
             await self.db.commit()
 
-            logger.info(f"✅ DB: Lead added - ID={lead_id}, Phone={phone_number}, Campaign={campaign_id}")
+            logger.info(
+                f"✅ DB: Lead added - ID={lead_id}, Phone={phone_number}, Campaign={campaign_id}"
+            )
             if STRUCTURED_LOGGING:
-                struct_logger.info("lead_added", lead_id=lead_id, phone=phone_number, campaign_id=campaign_id)
+                struct_logger.info(
+                    "lead_added",
+                    lead_id=lead_id,
+                    phone=phone_number,
+                    campaign_id=campaign_id,
+                )
 
             return lead_id
         except Exception as e:
-            logger.error(f"❌ DB: Failed to add lead {phone_number}: {str(e)}", exc_info=True)
+            # Handle duplicate lead constraint violation
+            error_msg = str(e)
+            if "UNIQUE constraint" in error_msg and (
+                "idx_campaign_phone" in error_msg or "campaign_id" in error_msg
+            ):
+                logger.warning(
+                    f"⚠️ DB: Duplicate lead - {phone_number} already exists in campaign {campaign_id}"
+                )
+                if STRUCTURED_LOGGING:
+                    struct_logger.warning(
+                        "lead_duplicate",
+                        phone=phone_number,
+                        campaign_id=campaign_id,
+                    )
+                return None  # Return None instead of raising error
+
+            logger.error(
+                f"❌ DB: Failed to add lead {phone_number}: {str(e)}", exc_info=True
+            )
+            raise
+
+    async def claim_next_leads(self, campaign_id: int, limit: int = 10) -> List[Dict]:
+        """Atomically claim and return next available leads.
+
+        Uses UPDATE...RETURNING pattern to prevent race conditions where multiple
+        dialers could get the same lead. This operation is atomic and thread-safe.
+
+        Prioritizes:
+        1. Scheduled callbacks (next_call_time <= now)
+        2. New leads (status=NEW)
+
+        Args:
+            campaign_id: Campaign ID
+            limit: Maximum number of leads to claim
+
+        Returns:
+            List of claimed lead dictionaries with status already set to CALLING
+        """
+        logger.debug(
+            f"📊 DB: Atomically claiming next {limit} leads for campaign {campaign_id}"
+        )
+
+        # Use UPDATE...RETURNING for atomic operation
+        # This prevents race conditions by updating and returning in a single transaction
+        query = """
+            UPDATE leads
+            SET status = 'CALLING', 
+                attempts = attempts + 1,
+                last_call_time = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id IN (
+                SELECT id FROM leads
+                WHERE campaign_id = ?
+                AND status IN ('NEW', 'CALLBACK')
+                AND attempts < max_attempts
+                AND (next_call_time IS NULL OR next_call_time <= CURRENT_TIMESTAMP)
+                ORDER BY
+                    CASE WHEN status = 'CALLBACK' THEN 0 ELSE 1 END,
+                    next_call_time ASC,
+                    created_at ASC
+                LIMIT ?
+            )
+            RETURNING *
+        """
+
+        try:
+            async with self.db.execute(query, (campaign_id, limit)) as cursor:
+                rows = await cursor.fetchall()
+                await self.db.commit()
+
+                leads = [dict(row) for row in rows]
+
+            if leads:
+                # Note: After UPDATE, status is already CALLING, so we can't count by original status
+                # Instead, count callbacks by checking if attempts > 1 or next_call_time was set
+                callback_count = sum(
+                    1
+                    for lead in leads
+                    if lead.get("attempts", 0) > 1 or lead.get("next_call_time")
+                )
+                new_count = len(leads) - callback_count
+                logger.info(
+                    f"✅ DB: Atomically claimed {len(leads)} leads - {callback_count} callbacks, {new_count} new"
+                )
+            else:
+                logger.info(f"ℹ️ DB: No available leads for campaign {campaign_id}")
+
+            return leads
+        except Exception as e:
+            logger.error(
+                f"❌ DB: Failed to claim leads for campaign {campaign_id}: {str(e)}",
+                exc_info=True,
+            )
+            await self.db.rollback()
             raise
 
     async def get_next_leads(self, campaign_id: int, limit: int = 10) -> List[Dict]:
@@ -328,15 +540,22 @@ class AsyncDialerDB:
                 leads = [dict(row) for row in rows]
 
             if leads:
-                callback_count = sum(1 for lead in leads if lead['status'] == 'CALLBACK')
-                new_count = sum(1 for lead in leads if lead['status'] == 'NEW')
-                logger.info(f"✅ DB: Retrieved {len(leads)} leads - {callback_count} callbacks, {new_count} new")
+                callback_count = sum(
+                    1 for lead in leads if lead["status"] == "CALLBACK"
+                )
+                new_count = sum(1 for lead in leads if lead["status"] == "NEW")
+                logger.info(
+                    f"✅ DB: Retrieved {len(leads)} leads - {callback_count} callbacks, {new_count} new"
+                )
             else:
                 logger.info(f"ℹ️ DB: No available leads for campaign {campaign_id}")
 
             return leads
         except Exception as e:
-            logger.error(f"❌ DB: Failed to get next leads for campaign {campaign_id}: {str(e)}", exc_info=True)
+            logger.error(
+                f"❌ DB: Failed to get next leads for campaign {campaign_id}: {str(e)}",
+                exc_info=True,
+            )
             raise
 
     async def mark_lead_calling(self, lead_id: int):
@@ -350,28 +569,41 @@ class AsyncDialerDB:
                 SET status = 'CALLING', attempts = attempts + 1
                 WHERE id = ?
                 """,
-                (lead_id,)
+                (lead_id,),
             )
             await self.db.commit()
             logger.debug(f"📞 DB: Lead {lead_id} marked as CALLING")
         except Exception as e:
-            logger.error(f"❌ DB: Failed to mark lead {lead_id} as calling: {str(e)}", exc_info=True)
+            logger.error(
+                f"❌ DB: Failed to mark lead {lead_id} as calling: {str(e)}",
+                exc_info=True,
+            )
             await self.db.rollback()
             raise
+
     async def mark_leads_calling_batch(self, lead_ids):
         """Batch update leads to CALLING status - reduces lock contention"""
         if not lead_ids:
             return
 
-        placeholders = ','.join(['?'] * len(lead_ids))
-        await self.db.execute(
-            f"UPDATE leads SET status='CALLING', attempts=attempts+1, updated_at=CURRENT_TIMESTAMP WHERE id IN ({placeholders})",
-            lead_ids
-        )
-        await self.db.commit()
+        try:
+            placeholders = ",".join(["?"] * len(lead_ids))
+            await self.db.execute(
+                f"UPDATE leads SET status='CALLING', attempts=attempts+1, updated_at=CURRENT_TIMESTAMP WHERE id IN ({placeholders})",
+                lead_ids,
+            )
+            await self.db.commit()
+            logger.debug(f"📊 DB: Marked {len(lead_ids)} leads as CALLING")
+        except Exception as e:
+            logger.error(
+                f"❌ DB: Failed to mark leads as calling: {str(e)}", exc_info=True
+            )
+            await self.db.rollback()
+            raise
 
-
-    async def update_lead_after_call(self, lead_id: int, disposition: str, callback_days: int = None):
+    async def update_lead_after_call(
+        self, lead_id: int, disposition: str, callback_days: int = None
+    ):
         """Update lead status after call completes.
 
         Args:
@@ -395,7 +627,9 @@ class AsyncDialerDB:
             status = "DNC"
             next_call_time = None
             # Add to DNC list
-            async with self.db.execute("SELECT phone_number FROM leads WHERE id = ?", (lead_id,)) as cursor:
+            async with self.db.execute(
+                "SELECT phone_number FROM leads WHERE id = ?", (lead_id,)
+            ) as cursor:
                 row = await cursor.fetchone()
                 if row:
                     await self.add_to_dnc(row[0], "Lead requested DNC")
@@ -412,7 +646,7 @@ class AsyncDialerDB:
             SET status = ?, next_call_time = ?
             WHERE id = ?
             """,
-            (status, next_call_time, lead_id)
+            (status, next_call_time, lead_id),
         )
         await self.db.commit()
 
@@ -432,12 +666,14 @@ class AsyncDialerDB:
         disposition: str = None,
         transcript: str = None,
         recording_url: str = None,
-        was_dropped: bool = False
+        was_dropped: bool = False,
     ):
         """Log a completed call."""
         duration = (end_time - start_time).total_seconds()
 
-        logger.debug(f"📊 DB: Logging call {call_uuid} - Lead={lead_id}, Status={call_status}, Duration={duration:.1f}s")
+        logger.debug(
+            f"📊 DB: Logging call {call_uuid} - Lead={lead_id}, Status={call_status}, Duration={duration:.1f}s"
+        )
 
         try:
             await self.db.execute(
@@ -448,9 +684,20 @@ class AsyncDialerDB:
                     call_status, disposition_code, transcription_text, recording_url, was_dropped
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (lead_id, campaign_id, call_uuid, bot_port,
-                 start_time, end_time, duration,
-                 call_status, disposition, transcript, recording_url, was_dropped)
+                (
+                    lead_id,
+                    campaign_id,
+                    call_uuid,
+                    bot_port,
+                    start_time,
+                    end_time,
+                    duration,
+                    call_status,
+                    disposition,
+                    transcript,
+                    recording_url,
+                    was_dropped,
+                ),
             )
             await self.db.commit()
 
@@ -458,19 +705,25 @@ class AsyncDialerDB:
             if was_dropped:
                 logger.warning(f"   ⚠️ Call was dropped (TCPA concern)")
         except Exception as e:
-            logger.error(f"❌ DB: Failed to log call {call_uuid}: {str(e)}", exc_info=True)
+            logger.error(
+                f"❌ DB: Failed to log call {call_uuid}: {str(e)}", exc_info=True
+            )
             raise
 
-    async def update_call_transcript(self, call_uuid: str, transcript: str, disposition: str):
+    async def update_call_transcript(
+        self, call_uuid: str, transcript: str, disposition: str
+    ):
         """Update call log with transcript and disposition.
-        
+
         Args:
             call_uuid: Call UUID to update
             transcript: Full conversation transcript
             disposition: Auto-analyzed disposition code
         """
-        logger.debug(f"📝 DB: Updating transcript for call {call_uuid}, disposition={disposition}")
-        
+        logger.debug(
+            f"📝 DB: Updating transcript for call {call_uuid}, disposition={disposition}"
+        )
+
         try:
             await self.db.execute(
                 """
@@ -478,12 +731,17 @@ class AsyncDialerDB:
                 SET transcription_text = ?, disposition_code = ?
                 WHERE call_uuid = ?
                 """,
-                (transcript, disposition, call_uuid)
+                (transcript, disposition, call_uuid),
             )
             await self.db.commit()
-            logger.info(f"✅ DB: Updated transcript for call {call_uuid}: {disposition}")
+            logger.info(
+                f"✅ DB: Updated transcript for call {call_uuid}: {disposition}"
+            )
         except Exception as e:
-            logger.error(f"❌ DB: Failed to update transcript for call {call_uuid}: {str(e)}", exc_info=True)
+            logger.error(
+                f"❌ DB: Failed to update transcript for call {call_uuid}: {str(e)}",
+                exc_info=True,
+            )
             raise
 
     # ========================================================================
@@ -496,55 +754,10 @@ class AsyncDialerDB:
             SELECT * FROM v_todays_stats
             WHERE campaign_id = ?
         """
-        
+
         async with self.db.execute(query, (campaign_id,)) as cursor:
             row = await cursor.fetchone()
             return dict(row) if row else None
-
-    async def calculate_drop_rate(self, campaign_id: int, days: int = 30) -> float:
-        """Calculate drop rate for TCPA compliance (30-day rolling window).
-
-        Args:
-            campaign_id: Campaign ID
-            days: Number of days to calculate over (default: 30 for TCPA)
-
-        Returns:
-            Drop rate as decimal (0.0 to 1.0)
-        """
-        cutoff_date = datetime.now() - timedelta(days=days)
-        logger.debug(f"📊 DB: Calculating {days}-day drop rate for campaign {campaign_id}")
-
-        query = """
-            SELECT
-                COUNT(*) as total_answered,
-                SUM(CASE WHEN was_dropped = 1 THEN 1 ELSE 0 END) as total_dropped
-            FROM call_log
-            WHERE campaign_id = ?
-            AND call_status = 'ANSWERED'
-            AND start_time >= ?
-        """
-
-        try:
-            async with self.db.execute(query, (campaign_id, cutoff_date)) as cursor:
-                row = await cursor.fetchone()
-
-            total_answered = row[0] or 0
-            total_dropped = row[1] or 0
-
-            if total_answered == 0:
-                logger.info(f"ℹ️ DB: No answered calls in last {days} days for campaign {campaign_id}")
-                return 0.0
-
-            drop_rate = total_dropped / total_answered
-            logger.info(f"📊 DB: Campaign {campaign_id} drop rate: {drop_rate:.2%} ({total_dropped}/{total_answered} calls)")
-
-            if drop_rate > 0.03:  # TCPA limit is 3%
-                logger.warning(f"⚠️ DB: Campaign {campaign_id} exceeding TCPA drop rate limit! {drop_rate:.2%} > 3%")
-
-            return drop_rate
-        except Exception as e:
-            logger.error(f"❌ DB: Failed to calculate drop rate for campaign {campaign_id}: {str(e)}", exc_info=True)
-            raise
 
     # ========================================================================
     # DNC LIST
@@ -553,8 +766,7 @@ class AsyncDialerDB:
     async def is_in_dnc(self, phone_number: str) -> bool:
         """Check if phone number is in DNC list."""
         async with self.db.execute(
-            "SELECT COUNT(*) FROM dnc_list WHERE phone_number = ?",
-            (phone_number,)
+            "SELECT COUNT(*) FROM dnc_list WHERE phone_number = ?", (phone_number,)
         ) as cursor:
             row = await cursor.fetchone()
             return row[0] > 0
@@ -564,7 +776,7 @@ class AsyncDialerDB:
         try:
             await self.db.execute(
                 "INSERT INTO dnc_list (phone_number, reason) VALUES (?, ?)",
-                (phone_number, reason)
+                (phone_number, reason),
             )
             await self.db.commit()
             logger.info(f"🚫 Added to DNC: {phone_number}")
@@ -579,30 +791,47 @@ class AsyncDialerDB:
             leads: List of lead dictionaries
 
         Returns:
-            Number of leads imported
+            Number of leads imported (skips duplicates and DNC entries)
         """
         imported = 0
+        skipped_duplicates = 0
+        skipped_dnc = 0
+
         for lead_data in leads:
             try:
-                await self.add_lead(
+                lead_id = await self.add_lead(
                     campaign_id=campaign_id,
-                    phone_number=lead_data['phone_number'],
-                    first_name=lead_data.get('first_name', ''),
-                    last_name=lead_data.get('last_name', ''),
-                    email=lead_data.get('email', ''),
-                    company=lead_data.get('company', ''),
-                    city=lead_data.get('city', ''),
-                    state=lead_data.get('state', ''),
-                    zip_code=lead_data.get('zip_code', ''),
-                    timezone=lead_data.get('timezone', 'America/New_York')
+                    phone_number=lead_data["phone_number"],
+                    first_name=lead_data.get("first_name", ""),
+                    last_name=lead_data.get("last_name", ""),
+                    email=lead_data.get("email", ""),
+                    company=lead_data.get("company", ""),
+                    city=lead_data.get("city", ""),
+                    state=lead_data.get("state", ""),
+                    zip_code=lead_data.get("zip_code", ""),
+                    timezone=lead_data.get("timezone", "America/New_York"),
                 )
-                imported += 1
+
+                if lead_id is None:
+                    # Lead was rejected (DNC or duplicate)
+                    skipped_duplicates += 1
+                else:
+                    imported += 1
             except Exception as e:
-                logger.warning(f"Failed to import lead {lead_data.get('phone_number', 'unknown')}: {e}")
+                logger.warning(
+                    f"Failed to import lead {lead_data.get('phone_number', 'unknown')}: {e}"
+                )
+
+        if skipped_duplicates > 0:
+            logger.info(
+                f"📊 Bulk import summary: {imported} imported, {skipped_duplicates} skipped (duplicates/DNC)"
+            )
 
         return imported
 
-    async def get_leads_by_campaign(self, campaign_id: int, limit: int = 100, offset: int = 0) -> List[Dict]:
+    async def get_leads_by_campaign(
+        self, campaign_id: int, limit: int = 100, offset: int = 0
+    ) -> List[Dict]:
         """Get all leads for a specific campaign.
 
         Args:
@@ -613,7 +842,8 @@ class AsyncDialerDB:
         Returns:
             List of lead dictionaries
         """
-        async with self.db.execute("""
+        async with self.db.execute(
+            """
             SELECT id, campaign_id, phone_number, first_name, last_name, email, company,
                    city, state, zip_code, timezone, status, attempts, max_attempts,
                    last_call_time, next_call_time, created_at, updated_at
@@ -621,7 +851,9 @@ class AsyncDialerDB:
             WHERE campaign_id = ?
             ORDER BY created_at DESC
             LIMIT ? OFFSET ?
-        """, (campaign_id, limit, offset)) as cursor:
+        """,
+            (campaign_id, limit, offset),
+        ) as cursor:
             rows = await cursor.fetchall()
             columns = [desc[0] for desc in cursor.description]
 
@@ -630,7 +862,7 @@ class AsyncDialerDB:
                 lead = dict(zip(columns, row))
                 # Convert datetime objects to ISO strings
                 for key, value in lead.items():
-                    if hasattr(value, 'isoformat'):
+                    if hasattr(value, "isoformat"):
                         lead[key] = value.isoformat()
                 leads.append(lead)
 
@@ -645,13 +877,18 @@ class AsyncDialerDB:
         Returns:
             Total number of leads
         """
-        async with self.db.execute("""
+        async with self.db.execute(
+            """
             SELECT COUNT(*) FROM leads WHERE campaign_id = ?
-        """, (campaign_id,)) as cursor:
+        """,
+            (campaign_id,),
+        ) as cursor:
             result = await cursor.fetchone()
             return result[0] if result else 0
 
-    async def calculate_drop_rate(self, campaign_id: Optional[int] = None, days: int = 30) -> float:
+    async def calculate_drop_rate(
+        self, campaign_id: Optional[int] = None, days: int = 30
+    ) -> float:
         """Calculate drop rate for recent calls (TCPA compliance).
 
         Args:
@@ -662,6 +899,7 @@ class AsyncDialerDB:
             Drop rate (0.0-1.0)
         """
         from datetime import datetime, timedelta
+
         cutoff = datetime.now() - timedelta(days=days)
 
         if campaign_id is not None:
@@ -674,7 +912,7 @@ class AsyncDialerDB:
                 FROM call_log
                 WHERE campaign_id = ? AND start_time >= ?
                 """,
-                (campaign_id, cutoff)
+                (campaign_id, cutoff),
             ) as cursor:
                 result = await cursor.fetchone()
         else:
@@ -687,7 +925,7 @@ class AsyncDialerDB:
                 FROM call_log
                 WHERE start_time >= ?
                 """,
-                (cutoff,)
+                (cutoff,),
             ) as cursor:
                 result = await cursor.fetchone()
 
@@ -696,6 +934,7 @@ class AsyncDialerDB:
     async def get_todays_stats(self) -> dict:
         """Get statistics for today's calls."""
         from datetime import datetime
+
         today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
         # Call counts by status
@@ -711,7 +950,7 @@ class AsyncDialerDB:
             FROM call_log
             WHERE start_time >= ?
             """,
-            (today,)
+            (today,),
         ) as cursor:
             call_stats = await cursor.fetchone()
 
@@ -724,7 +963,7 @@ class AsyncDialerDB:
             WHERE start_time >= ? AND disposition_code IS NOT NULL
             GROUP BY disposition_code
             """,
-            (today,)
+            (today,),
         ) as cursor:
             disp_rows = await cursor.fetchall()
             for row in disp_rows:
@@ -737,7 +976,7 @@ class AsyncDialerDB:
             "busy": call_stats[3] or 0,
             "failed": call_stats[4] or 0,
             "avg_duration": round(call_stats[5] or 0, 1),
-            "dispositions": dispositions
+            "dispositions": dispositions,
         }
 
     async def get_lead_stats(self) -> dict:
@@ -760,5 +999,40 @@ class AsyncDialerDB:
             "new": result[1] or 0,
             "called": result[2] or 0,
             "calling": result[3] or 0,
-            "scheduled": result[4] or 0
+            "scheduled": result[4] or 0,
         }
+
+    async def get_call_by_id(self, call_id: int):
+        """Get call record by ID"""
+        try:
+            async with self.lock:
+                cursor = await self.db.execute(
+                    "SELECT * FROM call_log WHERE id = ?", (call_id,)
+                )
+                row = await cursor.fetchone()
+                if row:
+                    columns = [desc[0] for desc in cursor.description]
+                    return dict(zip(columns, row))
+                return None
+        except Exception as e:
+            logger.error(f"Failed to get call {call_id}: {e}")
+            return None
+
+    async def update_call_disposition(
+        self, call_id: int, disposition: str, method: str = "MANUAL"
+    ):
+        """Update call disposition"""
+        try:
+            async with self.lock:
+                await self.db.execute(
+                    "UPDATE call_log SET disposition = ?, disposition_method = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    (disposition, method, call_id),
+                )
+                await self.db.commit()
+                logger.info(
+                    f"✅ Updated call {call_id} disposition to {disposition} ({method})"
+                )
+                return True
+        except Exception as e:
+            logger.error(f"Failed to update disposition for call {call_id}: {e}")
+            return False

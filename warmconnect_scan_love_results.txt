@@ -1,0 +1,9 @@
+Warmconnect.com Subdomain Scan Results
+Mode: love
+Total Scanned: 20
+Active Found: 0
+
+======================================================================
+ACTIVE SUBDOMAINS:
+======================================================================
+

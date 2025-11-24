@@ -1,28 +1,146 @@
+import toast from 'react-hot-toast'
+
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
+export class APIError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public statusText: string,
+    public details?: any
+  ) {
+    super(message)
+    this.name = 'APIError'
+  }
+}
 
 class APIClient {
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-    })
+    try {
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+      })
 
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`)
+      if (!response.ok) {
+        // Try to parse error response body for detailed error message
+        let errorMessage = response.statusText
+        let errorDetails = null
+
+        try {
+          const errorData = await response.json()
+          // Check for common error response formats
+          if (errorData.detail) {
+            errorMessage = typeof errorData.detail === 'string' 
+              ? errorData.detail 
+              : JSON.stringify(errorData.detail)
+          } else if (errorData.message) {
+            errorMessage = errorData.message
+          } else if (errorData.error) {
+            errorMessage = errorData.error
+          }
+          errorDetails = errorData
+        } catch {
+          // If response is not JSON, try to get text
+          try {
+            const errorText = await response.text()
+            if (errorText) {
+              errorMessage = errorText
+            }
+          } catch {
+            // Keep default statusText
+          }
+        }
+
+        // Create user-friendly error messages based on status code
+        let userFriendlyMessage = errorMessage
+
+        if (response.status === 404) {
+          userFriendlyMessage = 'Resource not found'
+        } else if (response.status === 401) {
+          userFriendlyMessage = 'Authentication required. Please log in.'
+        } else if (response.status === 403) {
+          userFriendlyMessage = 'You do not have permission to perform this action'
+        } else if (response.status === 500) {
+          userFriendlyMessage = 'Server error. Please try again later.'
+        } else if (response.status === 503) {
+          userFriendlyMessage = 'Service temporarily unavailable. Please try again later.'
+        } else if (response.status >= 400 && response.status < 500) {
+          userFriendlyMessage = errorMessage || 'Invalid request. Please check your input.'
+        } else if (response.status >= 500) {
+          userFriendlyMessage = 'Server error. Please contact support if this persists.'
+        }
+
+        const apiError = new APIError(
+          userFriendlyMessage,
+          response.status,
+          response.statusText,
+          errorDetails
+        )
+        toast.error(userFriendlyMessage)
+        throw apiError
+      }
+
+      return response.json()
+    } catch (error) {
+      // Handle network errors
+      if (error instanceof APIError) {
+        throw error
+      }
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        const networkError = new APIError(
+          'Unable to connect to server. Please check your connection.',
+          0,
+          'Network Error'
+        )
+        toast.error('Unable to connect to server. Please check your connection.')
+        throw networkError
+      }
+
+      const unexpectedError = new APIError(
+        'An unexpected error occurred. Please try again.',
+        0,
+        'Unknown Error',
+        error
+      )
+      toast.error('An unexpected error occurred. Please try again.')
+      throw unexpectedError
     }
-
-    return response.json()
   }
 
   // Auth
   async login(username: string, password: string) {
-    return this.request('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ username, password }),
-    })
+    try {
+      const formData = new URLSearchParams()
+      formData.append('username', username)
+      formData.append('password', password)
+      
+      const response = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData,
+      })
+      
+      if (!response.ok) {
+        const errorMessage = `API Error: ${response.statusText}`
+        toast.error(errorMessage)
+        throw new Error(errorMessage)
+      }
+      
+      return response.json()
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Login failed'
+      if (!(error instanceof Error) || !error.message.includes('API Error')) {
+        toast.error(errorMsg)
+      }
+      throw error
+    }
   }
 
   // Stats
@@ -113,20 +231,54 @@ class APIClient {
   }
 
   async importLeads(file: File, campaignId?: number) {
-    const formData = new FormData()
-    formData.append('file', file)
-    if (campaignId) formData.append('campaign_id', campaignId.toString())
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      if (campaignId) formData.append('campaign_id', campaignId.toString())
 
-    const response = await fetch(`${API_BASE}/leads/import`, {
-      method: 'POST',
-      body: formData,
-    })
+      const response = await fetch(`${API_BASE}/leads/import`, {
+        method: 'POST',
+        body: formData,
+      })
 
-    if (!response.ok) {
-      throw new Error(`Import Error: ${response.statusText}`)
+      if (!response.ok) {
+        let errorMessage = 'Failed to import leads'
+        try {
+          const errorData = await response.json()
+          if (errorData.detail) {
+            errorMessage = typeof errorData.detail === 'string' 
+              ? errorData.detail 
+              : JSON.stringify(errorData.detail)
+          } else if (errorData.message) {
+            errorMessage = errorData.message
+          }
+        } catch {
+          errorMessage = response.statusText || errorMessage
+        }
+
+        const importError = new APIError(
+          errorMessage,
+          response.status,
+          response.statusText
+        )
+        toast.error(errorMessage)
+        throw importError
+      }
+
+      return response.json()
+    } catch (error) {
+      if (error instanceof APIError) {
+        throw error
+      }
+      const importError = new APIError(
+        'Failed to import leads. Please check the file format and try again.',
+        0,
+        'Import Error',
+        error
+      )
+      toast.error('Failed to import leads. Please check the file format and try again.')
+      throw importError
     }
-
-    return response.json()
   }
 
   async updateLeadStatus(id: number, status: string) {
@@ -146,14 +298,14 @@ class APIClient {
   async addLeadNote(id: number, note: string) {
     return this.request(`/leads/${id}/notes`, {
       method: 'POST',
-      body: JSON.stringify({ note }),
+      body: JSON.stringify({ notes: note }),
     })
   }
 
   async scheduleCallback(id: number, callbackTime: string) {
     return this.request(`/leads/${id}/callback`, {
       method: 'POST',
-      body: JSON.stringify({ callback_time: callbackTime }),
+      body: JSON.stringify({ callback_date: callbackTime }),
     })
   }
 
@@ -201,6 +353,10 @@ class APIClient {
     return this.request('/bots')
   }
 
+  async getBotsStatus() {
+    return this.request('/bots')
+  }
+
   async restartBot(botPort: number) {
     return this.request(`/bots/${botPort}/restart`, {
       method: 'POST',
@@ -221,6 +377,24 @@ class APIClient {
 
   async restartBotPool() {
     return this.request('/bots/pool/restart', {
+      method: 'POST',
+    })
+  }
+
+  async startAllBots() {
+    return this.request('/bots/pool/start', {
+      method: 'POST',
+    })
+  }
+
+  async stopAllBots() {
+    return this.request('/bots/pool/stop', {
+      method: 'POST',
+    })
+  }
+
+  async rebootSystem() {
+    return this.request('/system/reboot', {
       method: 'POST',
     })
   }
@@ -255,11 +429,31 @@ class APIClient {
   }
 
   async exportDNC(): Promise<Blob> {
-    const response = await fetch(`${API_BASE}/dnc/export`)
-    if (!response.ok) {
-      throw new Error(`Export Error: ${response.statusText}`)
+    try {
+      const response = await fetch(`${API_BASE}/dnc/export`)
+      if (!response.ok) {
+        const exportError = new APIError(
+          'Failed to export DNC list',
+          response.status,
+          response.statusText
+        )
+        toast.error('Failed to export DNC list')
+        throw exportError
+      }
+      return response.blob()
+    } catch (error) {
+      if (error instanceof APIError) {
+        throw error
+      }
+      const exportError = new APIError(
+        'Failed to export DNC list. Please try again.',
+        0,
+        'Export Error',
+        error
+      )
+      toast.error('Failed to export DNC list. Please try again.')
+      throw exportError
     }
-    return response.blob()
   }
 
   // Dispositions

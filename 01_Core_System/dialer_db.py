@@ -26,6 +26,7 @@ from sqlalchemy import create_engine, pool
 
 try:
     from dialer_logging import get_logger, PerformanceLogger
+
     struct_logger = get_logger("dialer_db")
     STRUCTURED_LOGGING = True
 except ImportError:
@@ -36,7 +37,9 @@ except ImportError:
 class DialerDB:
     """Database interface for Exodus dialer with connection pooling."""
 
-    def __init__(self, db_path: str = "dialer.db", pool_size: int = 10, max_overflow: int = 20):
+    def __init__(
+        self, db_path: str = "dialer.db", pool_size: int = 10, max_overflow: int = 20
+    ):
         """Initialize database connection with pooling.
 
         Args:
@@ -45,7 +48,7 @@ class DialerDB:
             max_overflow: Max connections beyond pool_size (default: 20)
         """
         self.db_path = db_path
-        
+
         # Create SQLAlchemy engine with connection pooling
         # Using QueuePool for better performance with concurrent access
         self.engine = create_engine(
@@ -54,11 +57,13 @@ class DialerDB:
             pool_size=pool_size,
             max_overflow=max_overflow,
             pool_pre_ping=True,  # Verify connections before use
-            echo=False  # Set to True for SQL logging
+            echo=False,  # Set to True for SQL logging
         )
-        
-        logger.info(f"🔗 Database connection pool initialized: size={pool_size}, max_overflow={max_overflow}")
-        
+
+        logger.info(
+            f"🔗 Database connection pool initialized: size={pool_size}, max_overflow={max_overflow}"
+        )
+
         self._init_database()
 
     def _init_database(self):
@@ -94,7 +99,7 @@ class DialerDB:
     @contextmanager
     def _get_connection(self):
         """Get database connection from pool.
-        
+
         Connections are automatically returned to pool when context exits.
         """
         # Get raw connection from SQLAlchemy pool
@@ -108,10 +113,10 @@ class DialerDB:
             raise
         finally:
             conn.close()  # Returns connection to pool, doesn't actually close it
-    
+
     def get_pool_stats(self) -> Dict:
         """Get connection pool statistics for monitoring.
-        
+
         Returns:
             Dict with pool size, checked out connections, overflow count
         """
@@ -120,9 +125,9 @@ class DialerDB:
             "pool_size": self.engine.pool.size(),
             "checked_out": self.engine.pool.checkedout(),
             "overflow": self.engine.pool.overflow(),
-            "status": pool_status
+            "status": pool_status,
         }
-    
+
     def dispose_pool(self):
         """Dispose of connection pool (call on shutdown)."""
         self.engine.dispose()
@@ -140,7 +145,7 @@ class DialerDB:
         dial_ratio: float = 3.0,
         max_dial_ratio: float = 5.0,
         stt_provider: str = "deepgram",
-        enable_recording: bool = False
+        enable_recording: bool = False,
     ) -> int:
         """Create a new campaign.
 
@@ -162,7 +167,15 @@ class DialerDB:
                 INSERT INTO campaigns (name, description, dial_method, dial_ratio, max_dial_ratio, stt_provider, enable_recording)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (name, description, dial_method, dial_ratio, max_dial_ratio, stt_provider, 1 if enable_recording else 0)
+                (
+                    name,
+                    description,
+                    dial_method,
+                    dial_ratio,
+                    max_dial_ratio,
+                    stt_provider,
+                    1 if enable_recording else 0,
+                ),
             )
             conn.commit()
             campaign_id = cursor.lastrowid
@@ -174,7 +187,7 @@ class DialerDB:
         with self._get_connection() as conn:
             conn.execute(
                 "UPDATE campaigns SET status = 'ACTIVE', started_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (campaign_id,)
+                (campaign_id,),
             )
             conn.commit()
             logger.info(f"▶️  Campaign {campaign_id} started")
@@ -183,8 +196,7 @@ class DialerDB:
         """Pause a campaign (set status to PAUSED)."""
         with self._get_connection() as conn:
             conn.execute(
-                "UPDATE campaigns SET status = 'PAUSED' WHERE id = ?",
-                (campaign_id,)
+                "UPDATE campaigns SET status = 'PAUSED' WHERE id = ?", (campaign_id,)
             )
             conn.commit()
             logger.info(f"⏸️  Campaign {campaign_id} paused")
@@ -193,8 +205,7 @@ class DialerDB:
         """Get campaign details."""
         with self._get_connection() as conn:
             row = conn.execute(
-                "SELECT * FROM campaigns WHERE id = ?",
-                (campaign_id,)
+                "SELECT * FROM campaigns WHERE id = ?", (campaign_id,)
             ).fetchone()
             return dict(row) if row else None
 
@@ -218,7 +229,11 @@ class DialerDB:
         last_name: str = "",
         email: str = "",
         company: str = "",
-        custom_data: Dict = None
+        city: str = "",
+        state: str = "",
+        zip_code: str = "",
+        timezone: str = "America/New_York",
+        custom_data: Dict = None,
     ) -> int:
         """Add a lead to a campaign.
 
@@ -229,6 +244,10 @@ class DialerDB:
             last_name: Last name
             email: Email address
             company: Company name
+            city: City
+            state: State
+            zip_code: ZIP code
+            timezone: Timezone (default: America/New_York)
             custom_data: Additional data as dictionary (stored as JSON)
 
         Returns:
@@ -237,13 +256,15 @@ class DialerDB:
         if STRUCTURED_LOGGING:
             perf = PerformanceLogger(struct_logger, "add_lead", campaign_id=campaign_id)
             perf.__enter__()
-        
+
         # Check DNC list
         if self.is_in_dnc(phone_number):
             logger.warning(f"⚠️  Phone {phone_number} is in DNC list, not adding")
             if STRUCTURED_LOGGING:
                 perf.__exit__(None, None, None)
-                struct_logger.warning("lead_rejected_dnc", phone=phone_number, campaign_id=campaign_id)
+                struct_logger.warning(
+                    "lead_rejected_dnc", phone=phone_number, campaign_id=campaign_id
+                )
             return None
 
         custom_json = json.dumps(custom_data) if custom_data else None
@@ -251,18 +272,35 @@ class DialerDB:
         with self._get_connection() as conn:
             cursor = conn.execute(
                 """
-                INSERT INTO leads (campaign_id, phone_number, first_name, last_name, email, company, custom_data)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO leads (campaign_id, phone_number, first_name, last_name, email, company, city, state, zip_code, timezone, custom_data)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (campaign_id, phone_number, first_name, last_name, email, company, custom_json)
+                (
+                    campaign_id,
+                    phone_number,
+                    first_name,
+                    last_name,
+                    email,
+                    company,
+                    city,
+                    state,
+                    zip_code,
+                    timezone,
+                    custom_json,
+                ),
             )
             conn.commit()
             lead_id = cursor.lastrowid
-            
+
             if STRUCTURED_LOGGING:
                 perf.__exit__(None, None, None)
-                struct_logger.info("lead_added", lead_id=lead_id, phone=phone_number, campaign_id=campaign_id)
-            
+                struct_logger.info(
+                    "lead_added",
+                    lead_id=lead_id,
+                    phone=phone_number,
+                    campaign_id=campaign_id,
+                )
+
             return lead_id
 
     def bulk_import_leads(self, campaign_id: int, leads: List[Dict]) -> int:
@@ -284,7 +322,7 @@ class DialerDB:
                 lead.get("last_name", ""),
                 lead.get("email", ""),
                 lead.get("company", ""),
-                lead.get("custom_data")
+                lead.get("custom_data"),
             )
             if lead_id:
                 count += 1
@@ -321,7 +359,7 @@ class DialerDB:
                   last_call_time ASC  -- Longest since last call
                 LIMIT ?
                 """,
-                (campaign_id, limit)
+                (campaign_id, limit),
             ).fetchall()
             return [dict(row) for row in rows]
 
@@ -330,15 +368,12 @@ class DialerDB:
         with self._get_connection() as conn:
             conn.execute(
                 "UPDATE leads SET status = 'CALLING', last_call_time = CURRENT_TIMESTAMP WHERE id = ?",
-                (lead_id,)
+                (lead_id,),
             )
             conn.commit()
 
     def update_lead_after_call(
-        self,
-        lead_id: int,
-        call_status: str,
-        disposition: Optional[str] = None
+        self, lead_id: int, call_status: str, disposition: Optional[str] = None
     ):
         """Update lead after call completes.
 
@@ -352,20 +387,19 @@ class DialerDB:
         with self._get_connection() as conn:
             # Get current lead data
             lead = conn.execute(
-                "SELECT attempts, max_attempts FROM leads WHERE id = ?",
-                (lead_id,)
+                "SELECT attempts, max_attempts FROM leads WHERE id = ?", (lead_id,)
             ).fetchone()
-            
+
             if not lead:
                 logger.error(f"Lead {lead_id} not found")
                 return
-            
+
             current_attempts = lead["attempts"]
             max_attempts = lead["max_attempts"]
-            
+
             # Increment attempts only if below max
             new_attempts = min(current_attempts + 1, max_attempts)
-            
+
             next_call_time = None
             new_status = None
 
@@ -374,7 +408,7 @@ class DialerDB:
                 # Get disposition details
                 disp = conn.execute(
                     "SELECT terminates_lead, requires_callback, callback_delay_days FROM dispositions WHERE code = ?",
-                    (disposition,)
+                    (disposition,),
                 ).fetchone()
 
                 if disp:
@@ -386,7 +420,9 @@ class DialerDB:
                         # Schedule callback
                         callback_delay = disp["callback_delay_days"] or 1
                         next_call_time = datetime.now() + timedelta(days=callback_delay)
-                        new_status = "ANSWERED"  # Keep as ANSWERED but schedule callback
+                        new_status = (
+                            "ANSWERED"  # Keep as ANSWERED but schedule callback
+                        )
                         logger.info(
                             f"📅 Scheduled callback for lead {lead_id} in {callback_delay} days "
                             f"(disposition: {disposition})"
@@ -401,16 +437,21 @@ class DialerDB:
                 new_status = "BUSY"
             else:
                 new_status = "FAILED"
-            
+
             # If we've hit max attempts and didn't answer/complete, mark as FAILED
-            if new_attempts >= max_attempts and new_status not in ("COMPLETED", "ANSWERED"):
+            if new_attempts >= max_attempts and new_status not in (
+                "COMPLETED",
+                "ANSWERED",
+            ):
                 new_status = "FAILED"
-                logger.info(f"Lead {lead_id} marked as FAILED after {new_attempts} attempts")
+                logger.info(
+                    f"Lead {lead_id} marked as FAILED after {new_attempts} attempts"
+                )
 
             # Update lead with new status, attempts, and callback time
             conn.execute(
                 "UPDATE leads SET status = ?, attempts = ?, next_call_time = ? WHERE id = ?",
-                (new_status, new_attempts, next_call_time, lead_id)
+                (new_status, new_attempts, next_call_time, lead_id),
             )
             conn.commit()
 
@@ -430,7 +471,7 @@ class DialerDB:
         disposition_code: Optional[str] = None,
         was_dropped: bool = False,
         recording_url: Optional[str] = None,
-        transcription: Optional[str] = None
+        transcription: Optional[str] = None,
     ) -> int:
         """Log a completed call.
 
@@ -463,11 +504,19 @@ class DialerDB:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    lead_id, campaign_id, call_uuid, bot_port,
-                    start_time, end_time, duration,
-                    call_status, disposition_code, 1 if was_dropped else 0,
-                    recording_url, transcription
-                )
+                    lead_id,
+                    campaign_id,
+                    call_uuid,
+                    bot_port,
+                    start_time,
+                    end_time,
+                    duration,
+                    call_status,
+                    disposition_code,
+                    1 if was_dropped else 0,
+                    recording_url,
+                    transcription,
+                ),
             )
             conn.commit()
             call_log_id = cursor.lastrowid
@@ -492,7 +541,7 @@ class DialerDB:
                 SET transcription_text = ?, disposition_code = ?
                 WHERE call_uuid = ?
                 """,
-                (transcript, disposition, call_uuid)
+                (transcript, disposition, call_uuid),
             )
             conn.commit()
             logger.info(f"📝 Updated transcript for call {call_uuid}: {disposition}")
@@ -508,11 +557,13 @@ class DialerDB:
                 """
                 SELECT * FROM v_todays_stats WHERE campaign_id = ?
                 """,
-                (campaign_id,)
+                (campaign_id,),
             ).fetchone()
             return dict(row) if row else {}
 
-    def calculate_drop_rate(self, campaign_id: Optional[int] = None, days: int = 30) -> float:
+    def calculate_drop_rate(
+        self, campaign_id: Optional[int] = None, days: int = 30
+    ) -> float:
         """Calculate drop rate for recent calls (TCPA compliance).
 
         Args:
@@ -535,7 +586,7 @@ class DialerDB:
                     FROM call_log
                     WHERE campaign_id = ? AND start_time >= ?
                     """,
-                    (campaign_id, cutoff)
+                    (campaign_id, cutoff),
                 ).fetchone()
             else:
                 # All campaigns
@@ -547,12 +598,12 @@ class DialerDB:
                     FROM call_log
                     WHERE start_time >= ?
                     """,
-                    (cutoff,)
+                    (cutoff,),
                 ).fetchone()
 
             return result["drop_rate"] if result and result["drop_rate"] else 0.0
 
-    async def get_todays_stats(self) -> dict:
+    def get_todays_stats(self) -> dict:
         """Get statistics for today's calls."""
         today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -570,7 +621,7 @@ class DialerDB:
                 FROM call_log
                 WHERE start_time >= ?
                 """,
-                (today,)
+                (today,),
             ).fetchone()
 
             # Disposition breakdown
@@ -582,11 +633,11 @@ class DialerDB:
                 WHERE start_time >= ? AND disposition_code IS NOT NULL
                 GROUP BY disposition_code
                 """,
-                (today,)
+                (today,),
             ).fetchall()
 
             for row in disp_rows:
-                dispositions[row['disposition_code']] = row['count']
+                dispositions[row["disposition_code"]] = row["count"]
 
             return {
                 "total_calls": call_stats["total_calls"] or 0,
@@ -595,10 +646,10 @@ class DialerDB:
                 "busy": call_stats["busy"] or 0,
                 "failed": call_stats["failed"] or 0,
                 "avg_duration": round(call_stats["avg_duration"] or 0, 1),
-                "dispositions": dispositions
+                "dispositions": dispositions,
             }
 
-    async def get_lead_stats(self) -> dict:
+    def get_lead_stats(self) -> dict:
         """Get lead statistics."""
         with self._get_connection() as conn:
             result = conn.execute(
@@ -618,7 +669,7 @@ class DialerDB:
                 "new": result["new"] or 0,
                 "called": result["called"] or 0,
                 "calling": result["calling"] or 0,
-                "scheduled": result["scheduled"] or 0
+                "scheduled": result["scheduled"] or 0,
             }
 
     # ========================================================================
@@ -630,7 +681,7 @@ class DialerDB:
         with self._get_connection() as conn:
             conn.execute(
                 "INSERT OR IGNORE INTO dnc_list (phone_number, reason, added_by) VALUES (?, ?, 'system')",
-                (phone_number, reason)
+                (phone_number, reason),
             )
             conn.commit()
             logger.info(f"🚫 Added to DNC: {phone_number}")
@@ -639,8 +690,7 @@ class DialerDB:
         """Check if phone number is in DNC list."""
         with self._get_connection() as conn:
             row = conn.execute(
-                "SELECT 1 FROM dnc_list WHERE phone_number = ?",
-                (phone_number,)
+                "SELECT 1 FROM dnc_list WHERE phone_number = ?", (phone_number,)
             ).fetchone()
             return row is not None
 
@@ -656,11 +706,13 @@ class DialerDB:
                 INSERT OR REPLACE INTO bot_instances (port, status, started_at, last_health_check)
                 VALUES (?, 'IDLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """,
-                (port,)
+                (port,),
             )
             conn.commit()
 
-    def update_bot_status(self, port: int, status: str, call_uuid: Optional[str] = None):
+    def update_bot_status(
+        self, port: int, status: str, call_uuid: Optional[str] = None
+    ):
         """Update bot instance status."""
         with self._get_connection() as conn:
             conn.execute(
@@ -669,7 +721,7 @@ class DialerDB:
                 SET status = ?, current_call_uuid = ?, last_health_check = CURRENT_TIMESTAMP
                 WHERE port = ?
                 """,
-                (status, call_uuid, port)
+                (status, call_uuid, port),
             )
             conn.commit()
 
@@ -680,7 +732,9 @@ if __name__ == "__main__":
     db = DialerDB("test_dialer.db")
 
     # Create campaign
-    campaign_id = db.create_campaign("Test Campaign", dial_method="PROGRESSIVE", dial_ratio=3.0)
+    campaign_id = db.create_campaign(
+        "Test Campaign", dial_method="PROGRESSIVE", dial_ratio=3.0
+    )
 
     # Add leads
     db.add_lead(campaign_id, "5551234567", "John", "Doe")
@@ -700,7 +754,7 @@ if __name__ == "__main__":
         start_time=datetime.now(),
         end_time=datetime.now(),
         call_status="ANSWERED",
-        disposition_code="INTERESTED"
+        disposition_code="INTERESTED",
     )
 
     # Get stats

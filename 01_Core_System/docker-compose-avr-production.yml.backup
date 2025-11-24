@@ -13,7 +13,7 @@ services:
     image: avr-asr-deepgram:v5
     environment:
       - PORT=6010
-      - DEEPGRAM_API_KEY=44f464f1116d54ee9412f7b9214cdde028240091
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
       - SPEECH_RECOGNITION_LANGUAGE=en-US
       - SPEECH_RECOGNITION_MODEL=nova-2-phonecall
       - ENABLE_DENOISING=false
@@ -30,7 +30,7 @@ services:
     container_name: avr-llm-groq
     environment:
       - PORT=6002
-      - GROQ_API_KEY=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
+      - GROQ_API_KEY=${GROQ_API_KEY}
       - GROQ_MODEL=llama-3.3-70b-versatile
       - TEMPERATURE=0.6
     image: avr-llm-groq:latest

@@ -1,0 +1,21 @@
+INSTRUCTIONS TO ADD THE AI AVATAR IMAGE:
+
+1. Save the AI avatar image you uploaded as: ai-avatar.jpg
+
+2. Copy it to this directory:
+   /home/ubuntu/Documents/EXODUS_BACKUP_20251117_163623/exodus-dashboard-pro/public/ai-avatar.jpg
+
+3. The image will automatically appear in the sidebar underneath "EXODUS"
+
+ALTERNATIVE METHOD (if you have the image URL):
+
+Replace the src in Sidebar.tsx line 48:
+   FROM: src="/ai-avatar.jpg"
+   TO:   src="YOUR_IMAGE_URL_HERE"
+
+The image is styled with:
+- Rounded corners (rounded-2xl)
+- Cyan-to-purple border gradient
+- Glowing shadow effect
+- Animated pulse overlay
+- Brightness/contrast enhancement

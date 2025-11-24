@@ -44,3 +44,4 @@ package-lock.json
 dist/
 build/
 *.egg-info/
+rockyou.txt

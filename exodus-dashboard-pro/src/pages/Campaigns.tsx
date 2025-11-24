@@ -2,25 +2,42 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Play, Pause, Plus } from 'lucide-react'
 import { api } from '../lib/api'
 import GlassCard from '../components/GlassCard'
+import ErrorAlert from '../components/ErrorAlert'
 import { motion } from 'framer-motion'
 import { Campaign } from '../types'
+import { useState } from 'react'
+import AddCampaignModal from '../components/AddCampaignModal'
 
 export default function Campaigns() {
   const queryClient = useQueryClient()
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [mutationError, setMutationError] = useState<Error | null>(null)
   
-  const { data: campaigns, isLoading } = useQuery<Campaign[]>({
+  const { data: campaigns, isLoading, error, refetch } = useQuery<Campaign[]>({
     queryKey: ['campaigns'],
     queryFn: () => api.getCampaigns(),
   })
 
   const startMutation = useMutation({
     mutationFn: (id: number) => api.startCampaign(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['campaigns'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] })
+      setMutationError(null)
+    },
+    onError: (error: Error) => {
+      setMutationError(error)
+    },
   })
 
   const pauseMutation = useMutation({
     mutationFn: (id: number) => api.pauseCampaign(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['campaigns'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] })
+      setMutationError(null)
+    },
+    onError: (error: Error) => {
+      setMutationError(error)
+    },
   })
 
   if (isLoading) {
@@ -48,11 +65,31 @@ export default function Campaigns() {
           <h1 className="text-4xl font-bold">Campaigns</h1>
           <p className="text-ios-gray-2 mt-2">{campaigns?.length || 0} total campaigns</p>
         </div>
-        <button className="ios-button-primary flex items-center gap-2">
+        <button 
+          onClick={() => setShowAddModal(true)}
+          className="ios-button-primary flex items-center gap-2"
+        >
           <Plus className="w-5 h-5" />
           New Campaign
         </button>
       </div>
+
+      {/* Error Alerts */}
+      {error && (
+        <ErrorAlert
+          error={error as Error}
+          onRetry={() => refetch()}
+          title="Failed to load campaigns"
+        />
+      )}
+      
+      {mutationError && (
+        <ErrorAlert
+          error={mutationError}
+          onDismiss={() => setMutationError(null)}
+          title="Campaign action failed"
+        />
+      )}
 
       {/* Campaigns Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -149,6 +186,12 @@ export default function Campaigns() {
           </GlassCard>
         ))}
       </div>
+
+      {/* Add Campaign Modal */}
+      <AddCampaignModal 
+        isOpen={showAddModal} 
+        onClose={() => setShowAddModal(false)} 
+      />
     </motion.div>
   )
 }
