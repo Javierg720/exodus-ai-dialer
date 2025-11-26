@@ -203,6 +203,69 @@ class SimpleAMIManager:
             logger.error(f"⏱️ AMI action timeout: {action.get('Action')}")
             raise
 
+    async def send_action_with_events(
+        self, action: Dict[str, Any], event_name: str, complete_event: str, timeout: float = 10.0
+    ) -> tuple[Dict[str, str], list[Dict[str, str]]]:
+        """Send an AMI action and collect events until complete event is received.
+
+        Used for actions like CoreShowChannels that return multiple events.
+
+        Args:
+            action: The AMI action dictionary
+            event_name: The event type to collect (e.g., "CoreShowChannel")
+            complete_event: The event that signals completion (e.g., "CoreShowChannelsComplete")
+            timeout: Maximum time to wait for all events
+
+        Returns:
+            Tuple of (initial_response, list_of_events)
+        """
+        # Generate unique ActionID for this request
+        self._action_id += 1
+        action_id = f"action-{self._action_id}"
+        action["ActionID"] = action_id
+
+        events = []
+        events_complete = asyncio.Event()
+
+        # Temporary handler to collect events with matching ActionID
+        async def collect_event(manager, event: Dict[str, str]):
+            if event.get("ActionID") == action_id:
+                if event.get("Event") == complete_event:
+                    events_complete.set()
+                elif event.get("Event") == event_name:
+                    events.append(event)
+
+        # Register temporary handlers
+        if event_name not in self._event_handlers:
+            self._event_handlers[event_name] = []
+        if complete_event not in self._event_handlers:
+            self._event_handlers[complete_event] = []
+
+        self._event_handlers[event_name].append(collect_event)
+        self._event_handlers[complete_event].append(collect_event)
+
+        try:
+            # Send the action and get initial response
+            response = await self.send_action(action, timeout=timeout)
+
+            if response.get("Response") != "Success":
+                return response, []
+
+            # Wait for all events to be collected
+            try:
+                await asyncio.wait_for(events_complete.wait(), timeout=timeout)
+            except asyncio.TimeoutError:
+                logger.warning(f"⏱️ Timeout waiting for {complete_event}, collected {len(events)} events")
+
+            return response, events
+
+        finally:
+            # Clean up temporary handlers
+            if collect_event in self._event_handlers.get(event_name, []):
+                self._event_handlers[event_name].remove(collect_event)
+            if collect_event in self._event_handlers.get(complete_event, []):
+                self._event_handlers[complete_event].remove(collect_event)
+
     def _blocking_send_action(self, action: Dict[str, Any], future: asyncio.Future):
         """Send action (blocking, like test_ami.py that works)."""
         with self._lock:

@@ -2081,17 +2081,52 @@ async def get_active_calls():
             )
 
         # Also get ALL active channels from Asterisk (includes manual calls)
+        # Track channel IDs already in active_calls to avoid duplicates
+        known_channels = {call.get("channel_id") for call in active_calls if call.get("channel_id")}
+
         try:
-            response = await orchestrator.ami.send_action(
-                {"Action": "CoreShowChannels"}
+            response, channel_events = await orchestrator.ami.send_action_with_events(
+                {"Action": "CoreShowChannels"},
+                event_name="CoreShowChannel",
+                complete_event="CoreShowChannelsComplete",
+                timeout=5.0
             )
 
-            # Parse channels from AMI response
+            # Parse channels from AMI events
             if response and response.get("Response") == "Success":
-                # AMI returns events, we need to collect them
-                # For now, just return dialer calls
-                # TODO: Parse AMI CoreShowChannels events properly
-                pass
+                for event in channel_events:
+                    channel_name = event.get("Channel", "")
+
+                    # Skip channels we already track from dialer
+                    if channel_name in known_channels:
+                        continue
+
+                    # Parse duration (format is HH:MM:SS)
+                    duration_str = event.get("Duration", "00:00:00")
+                    try:
+                        parts = duration_str.split(":")
+                        duration_seconds = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+                    except (ValueError, IndexError):
+                        duration_seconds = 0
+
+                    # Add channel as an active call (source: asterisk)
+                    active_calls.append({
+                        "uniqueid": event.get("Uniqueid", channel_name),
+                        "lead_id": None,
+                        "campaign_id": None,
+                        "bot_port": None,
+                        "status": event.get("State", "Unknown"),
+                        "channel_id": channel_name,
+                        "phone_number": event.get("CallerIDNum", "Unknown"),
+                        "caller_name": event.get("CallerIDName", ""),
+                        "context": event.get("Context", ""),
+                        "application": event.get("Application", ""),
+                        "duration_seconds": duration_seconds,
+                        "start_time": None,  # Not available from CoreShowChannels
+                        "source": "asterisk",
+                    })
+
+                logger.debug(f"   Found {len(channel_events)} channels from Asterisk AMI")
         except Exception as ami_err:
             logger.debug(f"Could not get channels from AMI: {ami_err}")
 
