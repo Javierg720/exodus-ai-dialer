@@ -13,6 +13,7 @@ import CallHistory from './pages/CallHistory'
 import DNCList from './pages/DNCList'
 import Bots from './pages/Bots'
 import Settings from './pages/Settings'
+import SoundVisualizerDemo from './pages/SoundVisualizerDemo'
 
 function App() {
   const darkMode = useStore((state) => state.darkMode)
@@ -45,6 +46,7 @@ function App() {
                 <Route path="/dnc" element={<DNCList />} />
                 <Route path="/bots" element={<Bots />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/visualizer" element={<SoundVisualizerDemo />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>
