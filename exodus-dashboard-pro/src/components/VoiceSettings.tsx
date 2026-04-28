@@ -121,7 +121,7 @@ export default function VoiceSettings({ campaignId }: { campaignId: number }) {
         <div className="p-4 bg-ios-blue/5 rounded-lg border border-ios-blue/20">
           <p className="text-sm text-ios-gray-2 mb-2"><strong>Example Prompt:</strong></p>
           <p className="text-sm font-mono bg-dark-2 p-3 rounded">
-            Hi {"{"}{"{"}}first_name{"}"}{"}"}, this is Sarah from {"{"}{"{"}}company{"}"}{"}"}. How are you today?
+            {'Hi {{first_name}}, this is Sarah from {{company}}. How are you today?'}
           </p>
         </div>
       </GlassCard>

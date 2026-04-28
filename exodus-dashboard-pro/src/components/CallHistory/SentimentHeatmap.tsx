@@ -22,10 +22,12 @@ interface SentimentHeatmapProps {
 }
 
 export default function SentimentHeatmap({ callId }: SentimentHeatmapProps) {
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+  
   const { data, isLoading, error } = useQuery<{ status: string; data: SentimentData }>({
     queryKey: ['sentiment', callId],
     queryFn: async () => {
-      const response = await fetch(`http://localhost:8000/calls/${callId}/sentiment`, {
+      const response = await fetch(`${API_URL}/calls/${callId}/sentiment`, {
         method: 'POST',
       })
       if (!response.ok) throw new Error('Failed to analyze sentiment')
